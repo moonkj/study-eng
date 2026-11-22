@@ -206,16 +206,18 @@ class _ReminderItem extends ConsumerWidget {
         SwitchListTile(
           secondary: const Icon(Icons.notifications_none_rounded, color: AppColors.penBlue),
           title: Text('아침 알림', style: sans(15, weight: FontWeight.w500)),
-          subtitle: ValueListenableBuilder(
-            valueListenable: ref.read(studyProvider.notifier).reminderBlocked,
-            builder: (_, blocked, _) => Text(
-              !on
-                  ? '꺼짐'
-                  : blocked
-                  ? '휴대폰 설정에서 알림 권한이 꺼져 있어요'
-                  : '매일 ${formatMinutes(minutes!)}',
-              style: sans(13, color: on && blocked ? AppColors.error : AppColors.ink2),
-            ),
+          subtitle: Consumer(
+            builder: (_, ref, _) {
+              final blocked = ref.watch(reminderBlockedProvider);
+              return Text(
+                !on
+                    ? '꺼짐'
+                    : blocked
+                    ? '휴대폰 설정에서 알림 권한이 꺼져 있어요'
+                    : '매일 ${formatMinutes(minutes!)}',
+                style: sans(13, color: on && blocked ? AppColors.error : AppColors.ink2),
+              );
+            },
           ),
           value: on,
           activeThumbColor: AppColors.card,

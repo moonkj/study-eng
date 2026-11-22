@@ -180,7 +180,11 @@ void main() {
     expect(find.text('마이크 권한이 필요해요.'), findsOneWidget);
     await tester.tap(find.text('소리 내어 읽었어요 (넘어가기)'));
     await tester.pumpAndSettle();
-    expect(find.text('완벽해요'), findsOneWidget);
+    // 채점하지 않았으므로 점수 없이 다음 문장으로 넘어가고, 평균에도 넣지 않는다
+    expect(find.text('완벽해요'), findsNothing);
+    final s = ProviderScope.containerOf(tester.element(find.byType(Scaffold).first)).read(studyProvider);
+    expect(s.spokenCount, 1);
+    expect(s.speaking, isEmpty);
   });
 
   testWidgets('설정에서 아침 알림을 켜면 7:30에 예약된다', (tester) async {

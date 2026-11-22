@@ -10,11 +10,32 @@ import '../../domain/level.dart';
 import '../../domain/srs.dart';
 import '../settings/settings_screen.dart' show formatMinutes;
 
-class CompleteScreen extends ConsumerWidget {
+class CompleteScreen extends ConsumerStatefulWidget {
   const CompleteScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<CompleteScreen> createState() => _CompleteScreenState();
+}
+
+class _CompleteScreenState extends ConsumerState<CompleteScreen> {
+  /// 알림 제안은 처음 완료했을 때 한 번만 (화면에 있는 동안은 계속 보여 준다)
+  late final bool _askReminder = () {
+    final st = ref.read(studyProvider).settings;
+    return st.reminderMinutes == null && !st.reminderOffered;
+  }();
+
+  @override
+  void initState() {
+    super.initState();
+    if (_askReminder) {
+      Future.microtask(() {
+        if (mounted) ref.read(studyProvider.notifier).markReminderOffered();
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final s = ref.watch(studyProvider);
     final delta = s.todayLevelDelta;
     final now = s.profile.overall;
@@ -29,7 +50,6 @@ class CompleteScreen extends ConsumerWidget {
       50 || 100 => '${s.streakDays}일 연속! 기록을 세웠어요',
       _ => null,
     };
-    final askReminder = s.settings.reminderMinutes == null;
 
     return Scaffold(
       body: SafeArea(
@@ -174,7 +194,7 @@ class CompleteScreen extends ConsumerWidget {
                       ],
                     ),
                   ),
-                  if (askReminder) ...[const SizedBox(height: 12), const _ReminderSuggestion()],
+                  if (_askReminder) ...[const SizedBox(height: 12), const _ReminderSuggestion()],
                   const SizedBox(height: 12),
                   Container(
                     padding: const EdgeInsets.all(18),
@@ -287,6 +307,12 @@ class _ReminderSuggestionState extends ConsumerState<_ReminderSuggestion> {
                     side: const BorderSide(color: AppColors.line),
                     onPressed: () => _pick(m),
                   ),
+                ActionChip(
+                  label: Text('괜찮아요', style: sans(14, color: AppColors.ink2)),
+                  backgroundColor: AppColors.paper,
+                  side: const BorderSide(color: AppColors.line),
+                  onPressed: () => setState(() => _message = '알림은 설정에서 언제든 켤 수 있어요.'),
+                ),
               ],
             ),
         ],

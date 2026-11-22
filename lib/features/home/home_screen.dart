@@ -35,6 +35,10 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final s = ref.watch(studyProvider);
     final now = ref.watch(clockProvider)();
+    // 홈으로 돌아왔을 때 학습일이 바뀌었으면(루틴 중이라 미뤄 둔 경우 포함) 오늘로 새로 고친다
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (context.mounted) ref.read(studyProvider.notifier).refreshIfNewDay(fromHome: true);
+    });
     final exp = s.pack.expressions.first;
     final wide = context.windowSize == WindowSize.expanded;
 
@@ -45,7 +49,7 @@ class HomeScreen extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(koreanDate(now), style: sans(13, color: AppColors.ink2, letterSpacing: 0.2)),
+              Text(koreanDate(s.now), style: sans(13, color: AppColors.ink2, letterSpacing: 0.2)),
               const SizedBox(height: 4),
               Text(greeting(now), style: sans(26, weight: FontWeight.w700, letterSpacing: -0.5)),
             ],

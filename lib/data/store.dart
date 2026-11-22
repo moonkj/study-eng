@@ -9,6 +9,22 @@ import '../domain/srs.dart';
 import '../domain/study_log.dart';
 import 'pack_source.dart';
 
+/// 복습 카드 저장 형식 (마지막 평가일까지 저장해야 '같은 날 재정답 무시'가 앱을 다시 켜도 유지된다)
+Map<String, Object?> cardToJson(ReviewCard c) => {
+  'stage': c.stage,
+  'due': dateKey(c.due),
+  'lapses': c.lapses,
+  if (c.lastReviewed != null) 'last': dateKey(c.lastReviewed!),
+};
+
+ReviewCard cardFromJson(String id, Map<String, Object?> m) => ReviewCard(
+  itemId: id,
+  stage: (m['stage'] as num).toInt(),
+  due: parseDateKey(m['due'] as String),
+  lapses: (m['lapses'] as num).toInt(),
+  lastReviewed: m['last'] == null ? null : parseDateKey(m['last'] as String),
+);
+
 /// 오늘 하루의 진행 상태 (날짜가 바뀌면 새로 시작)
 class TodayProgress {
   const TodayProgress({
@@ -19,6 +35,9 @@ class TodayProgress {
     this.spoken = const {},
     this.quizAnswers = const {},
     this.levelDelta,
+    this.packId,
+    this.cardsBefore = const {},
+    this.regenCount = 0,
   });
 
   final String date;
@@ -35,6 +54,15 @@ class TodayProgress {
   /// 루틴을 끝낸 뒤 얻은 레벨 점수
   final int? levelDelta;
 
+  /// 오늘 진행이 어느 팩에 대한 것인지 (팩이 바뀌면 번호 기준 진행이 어긋나므로 버린다)
+  final String? packId;
+
+  /// 오늘 처음 평가하기 전의 카드 (null = 원래 없던 카드). 평가를 바꾸거나 되돌릴 때 기준이 된다.
+  final Map<String, ReviewCard?> cardsBefore;
+
+  /// 오늘 레벨 재진단으로 팩을 다시 만든 횟수 (비용 방지)
+  final int regenCount;
+
   Map<String, Object?> toJson() => {
     'date': date,
     'done': done.toList(),
@@ -43,6 +71,9 @@ class TodayProgress {
     'spoken': spoken,
     'quizAnswers': quizAnswers.map((k, v) => MapEntry('$k', v)),
     'levelDelta': levelDelta,
+    'packId': packId,
+    'cardsBefore': cardsBefore.map((k, c) => MapEntry(k, c == null ? null : cardToJson(c))),
+    'regenCount': regenCount,
   };
 
   factory TodayProgress.fromJson(Map<String, Object?> j) => TodayProgress(
@@ -53,12 +84,17 @@ class TodayProgress {
     spoken: (j['spoken'] as Map).cast<String, String>(),
     quizAnswers: (j['quizAnswers'] as Map).map((k, v) => MapEntry(int.parse(k as String), (v as num).toInt())),
     levelDelta: (j['levelDelta'] as num?)?.toInt(),
+    packId: j['packId'] as String?,
+    cardsBefore: ((j['cardsBefore'] as Map?) ?? const {}).map(
+      (k, v) => MapEntry(k as String, v == null ? null : cardFromJson(k, (v as Map).cast<String, Object?>())),
+    ),
+    regenCount: (j['regenCount'] as num?)?.toInt() ?? 0,
   );
 }
 
 /// 사용자 설정
 class AppSettings {
-  const AppSettings({this.voice = 'en-US', this.speed = 1.0, this.reminderMinutes});
+  const AppSettings({this.voice = 'en-US', this.speed = 1.0, this.reminderMinutes, this.reminderOffered = false});
 
   /// 발음 음성: en-US(미국) / en-GB(영국)
   final String voice;
@@ -69,13 +105,23 @@ class AppSettings {
   /// 아침 알림 시각(자정부터 분). null 이면 알림 끔
   final int? reminderMinutes;
 
-  AppSettings copyWith({String? voice, double? speed, int? Function()? reminderMinutes}) => AppSettings(
-    voice: voice ?? this.voice,
-    speed: speed ?? this.speed,
-    reminderMinutes: reminderMinutes == null ? this.reminderMinutes : reminderMinutes(),
-  );
+  /// 첫 완료 때 알림 시각을 한 번 제안했는지 (매일 묻지 않게)
+  final bool reminderOffered;
 
-  Map<String, Object?> toJson() => {'voice': voice, 'speed': speed, 'reminder': reminderMinutes};
+  AppSettings copyWith({String? voice, double? speed, int? Function()? reminderMinutes, bool? reminderOffered}) =>
+      AppSettings(
+        voice: voice ?? this.voice,
+        speed: speed ?? this.speed,
+        reminderMinutes: reminderMinutes == null ? this.reminderMinutes : reminderMinutes(),
+        reminderOffered: reminderOffered ?? this.reminderOffered,
+      );
+
+  Map<String, Object?> toJson() => {
+    'voice': voice,
+    'speed': speed,
+    'reminder': reminderMinutes,
+    'reminderOffered': reminderOffered,
+  };
 
   factory AppSettings.fromJson(Map<String, Object?>? j) => j == null
       ? const AppSettings()
@@ -83,6 +129,7 @@ class AppSettings {
           voice: j['voice'] as String? ?? 'en-US',
           speed: (j['speed'] as num?)?.toDouble() ?? 1.0,
           reminderMinutes: (j['reminder'] as num?)?.toInt(),
+          reminderOffered: j['reminderOffered'] as bool? ?? false,
         );
 }
 
@@ -126,7 +173,7 @@ class SavedData {
     'contentStep': contentStep,
     'onboarded': onboarded,
     'log': log.map((k, v) => MapEntry(k, v.toJson())),
-    'cards': cards.map((k, c) => MapEntry(k, {'stage': c.stage, 'due': dateKey(c.due), 'lapses': c.lapses})),
+    'cards': cards.map((k, c) => MapEntry(k, cardToJson(c))),
     'today': today?.toJson(),
     'lastReasons': lastReasons,
     'packs': packs,
@@ -168,14 +215,7 @@ class SavedData {
         final cards = <String, ReviewCard>{};
         for (final e in (j['cards'] as Map).entries) {
           try {
-            final m = (e.value as Map).cast<String, Object?>();
-            cards[e.key as String] = ReviewCard(
-              itemId: e.key as String,
-              stage: (m['stage'] as num).toInt(),
-              due: parseDateKey(m['due'] as String),
-              lapses: (m['lapses'] as num).toInt(),
-              lastReviewed: m['last'] == null ? null : parseDateKey(m['last'] as String),
-            );
+            cards[e.key as String] = cardFromJson(e.key as String, (e.value as Map).cast<String, Object?>());
           } catch (_) {
             // 카드 하나가 깨졌으면 그 카드만 버린다
           }
@@ -229,7 +269,9 @@ class PrefsStore implements AppStore {
       return SavedData.fromJson(jsonDecode(raw) as Map<String, Object?>);
     } catch (_) {
       // 핵심 값이 깨졌으면 처음부터 시작한다. 원본은 시각을 붙인 백업 키에 남겨 덮어쓰지 않는다.
-      _prefs.setString('$_key.corrupt.${DateTime.now().millisecondsSinceEpoch}', raw);
+      // 백업은 최신 하나만 남기고(쌓이지 않게), 깨진 원본은 지운다
+      _prefs.setString('$_key.corrupt', raw);
+      _prefs.remove(_key);
       return null;
     }
   }

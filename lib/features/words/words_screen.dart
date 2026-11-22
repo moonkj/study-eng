@@ -20,15 +20,29 @@ class WordsScreen extends ConsumerStatefulWidget {
 class _WordsScreenState extends ConsumerState<WordsScreen> {
   late int _index = ref.read(studyProvider).wordRatings.length.clamp(0, ref.read(studyProvider).pack.words.length - 1);
   bool _revealed = false;
+  ScaffoldMessengerState? _messenger;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _messenger = ScaffoldMessenger.maybeOf(context);
+  }
+
+  @override
+  void dispose() {
+    // 화면을 닫은 뒤 '되돌리기'가 남아 다른 화면에서 눌리지 않게
+    _messenger?.hideCurrentSnackBar();
+    super.dispose();
+  }
 
   void _rate(SelfRating r) {
     final s = ref.read(studyProvider);
     final words = s.pack.words;
     final id = words[_index].id;
-    final previous = s.cards[id];
     ref.read(studyProvider.notifier).rateWord(id, r);
     HapticFeedback.selectionClick();
     if (_index >= words.length - 1) {
+      _messenger?.hideCurrentSnackBar();
       ref.read(studyProvider.notifier).complete(RoutineStep.words);
       context.pop();
       return;
@@ -51,7 +65,7 @@ class _WordsScreenState extends ConsumerState<WordsScreen> {
           action: SnackBarAction(
             label: '되돌리기',
             onPressed: () {
-              ref.read(studyProvider.notifier).undoWordRating(id, previous);
+              ref.read(studyProvider.notifier).undoWordRating(id);
               if (mounted) setState(() => _index = rated);
             },
           ),

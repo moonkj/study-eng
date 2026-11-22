@@ -93,8 +93,8 @@ void main() {
       SharedPreferences.setMockInitialValues({'todaye.v1': '{broken'});
       final prefs = await SharedPreferences.getInstance();
       expect(PrefsStore(prefs).load(), isNull);
-      final backup = prefs.getKeys().where((k) => k.startsWith('todaye.v1.corrupt.')).single;
-      expect(prefs.getString(backup), '{broken');
+      expect(prefs.getString('todaye.v1.corrupt'), '{broken');
+      expect(prefs.getString('todaye.v1'), isNull);
     });
   });
 }

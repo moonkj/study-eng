@@ -79,10 +79,12 @@ class _SpeakingScreenState extends ConsumerState<SpeakingScreen> {
   }
 
   /// 음성 인식을 쓸 수 없을 때: 소리 내어 읽었다고 스스로 체크하고 넘어간다.
+  /// 채점하지 않았으므로 말하기 평균에는 넣지 않고 다음 문장으로 넘어간다.
   void _selfCheck() {
     final s = _sentences[_index];
-    _record(s, s.en);
+    if (!_practice) ref.read(studyProvider.notifier).recordSilent(s);
     setState(() => _error = null);
+    _next(force: true);
   }
 
   /// 소리 내기 어려운 곳: 듣고 속으로 따라 한 뒤 넘어간다 (점수 없음)

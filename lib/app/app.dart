@@ -38,11 +38,12 @@ class _TodayeAppState extends ConsumerState<TodayeApp> {
 
   void _checkDay() => ref.read(studyProvider.notifier).refreshIfNewDay();
 
-  /// 앱을 켜 둔 채 자정을 넘기는 경우
+  /// 앱을 켜 둔 채 학습일 경계(새벽 4시)를 넘기는 경우
   void _scheduleMidnight() {
     _midnight?.cancel();
     final now = ref.read(clockProvider)();
-    final next = DateTime(now.year, now.month, now.day + 1, 0, 0, 5);
+    var next = DateTime(now.year, now.month, now.day, dayStartHour, 0, 5);
+    if (!next.isAfter(now)) next = DateTime(now.year, now.month, now.day + 1, dayStartHour, 0, 5);
     _midnight = Timer(next.difference(now), () {
       _checkDay();
       _scheduleMidnight();

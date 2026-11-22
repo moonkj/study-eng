@@ -32,7 +32,12 @@ SavedData onboarded({Map<String, Map<String, Object?>> packs = const {}}) =>
 void main() {
   final day = DateTime(2026, 11, 23, 23, 50);
 
-  test('자정을 넘기면 오늘 기준으로 새로 고친다', () {
+  test('학습일은 새벽 4시에 바뀐다', () {
+    expect(studyDay(DateTime(2026, 11, 24, 1, 30)), DateTime(2026, 11, 23));
+    expect(studyDay(DateTime(2026, 11, 24, 4, 0)), DateTime(2026, 11, 24));
+  });
+
+  test('새벽 4시를 넘기면 오늘 기준으로 새로 고친다', () {
     var now = day;
     final c = ProviderContainer(
       overrides: [
@@ -47,8 +52,14 @@ void main() {
     ctl.refreshIfNewDay(); // 같은 날이면 그대로
     expect(c.read(studyProvider).wordRatings, isNotEmpty);
 
-    now = DateTime(2026, 11, 24, 0, 1);
+    now = DateTime(2026, 11, 24, 0, 1); // 자정 직후는 아직 같은 학습일
     ctl.refreshIfNewDay();
+    expect(c.read(studyProvider).wordRatings, isNotEmpty);
+
+    now = DateTime(2026, 11, 24, 4, 1);
+    ctl.refreshIfNewDay(); // 루틴 중이면 진행을 지우지 않고 미룬다
+    expect(c.read(studyProvider).wordRatings, isNotEmpty);
+    ctl.refreshIfNewDay(fromHome: true); // 홈으로 돌아오면 새로 고친다
     final s = c.read(studyProvider);
     expect(s.today.date, '2026-11-24');
     expect(s.wordRatings, isEmpty);
@@ -202,6 +213,108 @@ void main() {
     expect(s.spokenCount, 2);
     expect(s.speaking.length, 1);
     expect(s.speakingAverage, 100);
+    c.dispose();
+  });
+
+  test('같은 평가를 여러 번 누르거나 바꿔도 복습 단계가 계속 오르지 않는다', () {
+    final c = ProviderContainer(
+      overrides: [
+        storeProvider.overrideWithValue(MemoryStore(onboarded())),
+        clockProvider.overrideWithValue(() => day),
+      ],
+    );
+    final ctl = c.read(studyProvider.notifier);
+    final id = c.read(studyProvider).pack.expressions.first.id;
+    ctl.setExpressionKnown(id, true);
+    final once = c.read(studyProvider).cards[id]!;
+    ctl.setExpressionKnown(id, true);
+    ctl.setExpressionKnown(id, false);
+    ctl.setExpressionKnown(id, true);
+    final after = c.read(studyProvider).cards[id]!;
+    expect(after.stage, once.stage);
+    expect(after.due, once.due);
+
+    ctl.rateWord('w-actually', SelfRating.know);
+    final w = c.read(studyProvider).cards['w-actually']!;
+    ctl.rateWord('w-actually', SelfRating.dontKnow);
+    ctl.rateWord('w-actually', SelfRating.know);
+    expect(c.read(studyProvider).cards['w-actually']!.stage, w.stage);
+    c.dispose();
+  });
+
+  test('단어 평가 되돌리기는 원래 카드로 돌아가고, 단어 단계를 끝낸 뒤에는 무시한다', () {
+    final c = ProviderContainer(
+      overrides: [
+        storeProvider.overrideWithValue(MemoryStore(onboarded())),
+        clockProvider.overrideWithValue(() => day),
+      ],
+    );
+    final ctl = c.read(studyProvider.notifier);
+    ctl.rateWord('w-actually', SelfRating.know);
+    ctl.undoWordRating('w-actually');
+    var s = c.read(studyProvider);
+    expect(s.cards.containsKey('w-actually'), isFalse); // 원래 없던 카드
+    expect(s.wordRatings, isEmpty);
+
+    ctl.rateWord('w-actually', SelfRating.know);
+    ctl.complete(RoutineStep.words);
+    ctl.undoWordRating('w-actually');
+    s = c.read(studyProvider);
+    expect(s.wordRatings['w-actually'], SelfRating.know);
+    c.dispose();
+  });
+
+  test('오늘 진행이 다른 팩에 대한 것이면 비우고, 퀴즈 번호가 넘쳐도 멈추지 않는다', () {
+    final saved = SavedData(
+      profile: profile,
+      contentStep: 8,
+      onboarded: true,
+      today: const TodayProgress(date: '2026-11-23', packId: 'other-pack', quizAnswers: {0: 1, 99: 0}),
+    );
+    final c = ProviderContainer(
+      overrides: [storeProvider.overrideWithValue(MemoryStore(saved)), clockProvider.overrideWithValue(() => day)],
+    );
+    final s = c.read(studyProvider);
+    expect(s.quizAnswers, isEmpty);
+    expect(s.today.packId, packIdOf(s.pack));
+    c.dispose();
+
+    final legacy = SavedData(
+      profile: profile,
+      contentStep: 8,
+      onboarded: true,
+      today: const TodayProgress(date: '2026-11-23', quizAnswers: {99: 0}),
+    );
+    final c2 = ProviderContainer(
+      overrides: [storeProvider.overrideWithValue(MemoryStore(legacy)), clockProvider.overrideWithValue(() => day)],
+    );
+    expect(c2.read(studyProvider).quizCorrect, 0);
+    c2.dispose();
+  });
+
+  test('마지막 평가일이 저장되어 다시 켜도 같은 날 재정답으로 단계가 오르지 않는다', () {
+    final card = ReviewCard(itemId: 'x', stage: 1, due: DateTime(2026, 11, 26), lapses: 3, lastReviewed: day);
+    final back = cardFromJson('x', cardToJson(card));
+    expect(back.lastReviewed, DateTime(2026, 11, 23));
+    expect(back.lapses, 3);
+  });
+
+  test('재진단으로 오늘 팩을 다시 만드는 것은 하루 2번까지', () async {
+    final source = ControlledSource();
+    final c = ProviderContainer(
+      overrides: [
+        storeProvider.overrideWithValue(MemoryStore(onboarded())),
+        clockProvider.overrideWithValue(() => day),
+        packSourceProvider.overrideWithValue(source),
+      ],
+    );
+    c.read(studyProvider);
+    await Future<void>.delayed(Duration.zero);
+    final ctl = c.read(studyProvider.notifier);
+    for (var i = 0; i < 4; i++) {
+      ctl.applyLevelTest(defaultProfile(step: 4 + i));
+    }
+    expect(source.pending.length, 3); // 시작 1 + 재진단 2
     c.dispose();
   });
 }
