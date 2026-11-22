@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:go_router/go_router.dart';
 
@@ -74,61 +75,87 @@ class TabShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final size = context.windowSize;
+    // iPad 키보드: ⌘1~4 로 탭 이동
+    final tabKeys = [
+      LogicalKeyboardKey.digit1,
+      LogicalKeyboardKey.digit2,
+      LogicalKeyboardKey.digit3,
+      LogicalKeyboardKey.digit4,
+    ];
+    Widget withTabKeys(Widget child) => CallbackShortcuts(
+      bindings: {
+        for (var i = 0; i < tabs.length; i++)
+          SingleActivator(tabKeys[i], meta: true, includeRepeats: false): () => _go(i),
+      },
+      child: child,
+    );
     if (size.isWide) {
       // iPad: 왼쪽 세로 내비게이션 + 내용
-      return Scaffold(
-        body: Row(
-          children: [
-            _SideNav(current: shell.currentIndex, onSelect: _go, extended: size == WindowSize.expanded),
-            const VerticalDivider(width: 1, thickness: 1, color: AppColors.line),
-            Expanded(child: shell),
-          ],
+      return withTabKeys(
+        Scaffold(
+          body: Row(
+            children: [
+              _SideNav(current: shell.currentIndex, onSelect: _go, extended: size == WindowSize.expanded),
+              const VerticalDivider(width: 1, thickness: 1, color: AppColors.line),
+              // 내용 영역의 실제 폭을 MediaQuery 로 알려 준다 (여백·단 나눔이 내비게이션 폭을 빼고 계산되게)
+              Expanded(
+                child: LayoutBuilder(
+                  builder: (context, c) => MediaQuery(
+                    data: MediaQuery.of(context).copyWith(size: Size(c.maxWidth, c.maxHeight)),
+                    child: shell,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       );
     }
-    return Scaffold(
-      body: shell,
-      bottomNavigationBar: DecoratedBox(
-        decoration: const BoxDecoration(
-          color: AppColors.paper,
-          border: Border(top: BorderSide(color: AppColors.line)),
-        ),
-        child: SafeArea(
-          top: false,
-          child: SizedBox(
-            height: 64,
-            child: Row(
-              children: [
-                for (var i = 0; i < tabs.length; i++)
-                  Expanded(
-                    child: Semantics(
-                      selected: shell.currentIndex == i,
-                      button: true,
-                      child: InkWell(
-                        onTap: () => _go(i),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              shell.currentIndex == i ? tabs[i].$2 : tabs[i].$1,
-                              size: 22,
-                              color: shell.currentIndex == i ? AppColors.ink : AppColors.ink2,
-                            ),
-                            const SizedBox(height: 3),
-                            Text(
-                              tabs[i].$3,
-                              style: sans(
-                                12,
-                                weight: shell.currentIndex == i ? FontWeight.w700 : FontWeight.w500,
+    return withTabKeys(
+      Scaffold(
+        body: shell,
+        bottomNavigationBar: DecoratedBox(
+          decoration: const BoxDecoration(
+            color: AppColors.paper,
+            border: Border(top: BorderSide(color: AppColors.line)),
+          ),
+          child: SafeArea(
+            top: false,
+            child: SizedBox(
+              height: 64,
+              child: Row(
+                children: [
+                  for (var i = 0; i < tabs.length; i++)
+                    Expanded(
+                      child: Semantics(
+                        selected: shell.currentIndex == i,
+                        button: true,
+                        child: InkWell(
+                          onTap: () => _go(i),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                shell.currentIndex == i ? tabs[i].$2 : tabs[i].$1,
+                                size: 22,
                                 color: shell.currentIndex == i ? AppColors.ink : AppColors.ink2,
                               ),
-                            ),
-                          ],
+                              const SizedBox(height: 3),
+                              Text(
+                                tabs[i].$3,
+                                style: sans(
+                                  12,
+                                  weight: shell.currentIndex == i ? FontWeight.w700 : FontWeight.w500,
+                                  color: shell.currentIndex == i ? AppColors.ink : AppColors.ink2,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
-                  ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

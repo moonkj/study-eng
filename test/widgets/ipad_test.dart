@@ -74,4 +74,32 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('2/10'), findsOneWidget);
   });
+
+  testWidgets('키보드: 키를 누르고 있어도 평가는 한 번만 들어간다', (tester) async {
+    await setSize(tester, const Size(1180, 820));
+    await tester.pumpWidget(app(initial: '/words'));
+    await tester.pumpAndSettle();
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.digit3);
+    await tester.sendKeyRepeatEvent(LogicalKeyboardKey.digit3);
+    await tester.sendKeyRepeatEvent(LogicalKeyboardKey.digit3);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.digit3);
+    await tester.pumpAndSettle();
+    expect(find.text('1/10'), findsOneWidget);
+  });
+
+  testWidgets('키보드: ⌘2 로 복습 탭, ⌘1 로 오늘 탭', (tester) async {
+    await setSize(tester, const Size(1180, 820));
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.metaLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.digit2);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.metaLeft);
+    await tester.pumpAndSettle();
+    expect(find.text('오늘의 루틴'), findsNothing);
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.metaLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.digit1);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.metaLeft);
+    await tester.pumpAndSettle();
+    expect(find.text('오늘의 루틴'), findsOneWidget);
+  });
 }

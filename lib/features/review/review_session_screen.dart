@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../app/study_controller.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/tokens.dart';
+import '../../core/widgets/study_shortcuts.dart';
 import '../../core/widgets/widgets.dart';
 import '../../data/pack_source.dart';
 import '../../domain/srs.dart';
@@ -50,7 +51,7 @@ class _ReviewSessionScreenState extends ConsumerState<ReviewSessionScreen> {
     final finished = _index >= _items.length;
     return Scaffold(
       body: SafeArea(
-        child: CallbackShortcuts(
+        child: StudyShortcuts(
           bindings: {
             const SingleActivator(LogicalKeyboardKey.space): () => setState(() => _revealed = true),
             const SingleActivator(LogicalKeyboardKey.digit1): () => _rate(SelfRating.dontKnow),
@@ -58,66 +59,63 @@ class _ReviewSessionScreenState extends ConsumerState<ReviewSessionScreen> {
             const SingleActivator(LogicalKeyboardKey.digit3): () => _rate(SelfRating.know),
             const SingleActivator(LogicalKeyboardKey.escape): () => context.pop(),
           },
-          child: Focus(
-            autofocus: true,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(8, 8, 12, 0),
+                child: StudyTopBar(
+                  title: !finished && _index >= _firstPass ? '몰랐던 카드 한 번 더' : '복습',
+                  index: _index,
+                  total: _items.length,
+                  close: true,
+                ),
+              ),
+              Expanded(
+                child: _items.isEmpty
+                    ? const _Empty()
+                    : finished
+                    ? _Summary(results: _results)
+                    : _Card(
+                        item: _items[_index],
+                        today: ref.read(studyProvider).now,
+                        revealed: _revealed,
+                        onReveal: () => setState(() => _revealed = true),
+                        onListen: () => ref.read(sayProvider)(_items[_index].text.replaceAll('~', '')),
+                      ),
+              ),
+              if (!finished && _items.isNotEmpty)
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(8, 8, 12, 0),
-                  child: StudyTopBar(
-                    title: !finished && _index >= _firstPass ? '몰랐던 카드 한 번 더' : '복습',
-                    index: _index,
-                    total: _items.length,
-                    close: true,
-                  ),
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+                  child: _revealed
+                      ? Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed: () => _rate(SelfRating.dontKnow),
+                                child: const Text('몰랐어요'),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed: () => _rate(SelfRating.confusing),
+                                child: const Text('헷갈렸어요'),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: FilledButton(onPressed: () => _rate(SelfRating.know), child: const Text('알았어요')),
+                            ),
+                          ],
+                        )
+                      : FilledButton(onPressed: () => setState(() => _revealed = true), child: const Text('뜻 확인하기')),
+                )
+              else
+                BottomActions(
+                  children: [FilledButton(onPressed: () => context.pop(), child: const Text('닫기'))],
                 ),
-                Expanded(
-                  child: _items.isEmpty
-                      ? const _Empty()
-                      : finished
-                      ? _Summary(results: _results)
-                      : _Card(
-                          item: _items[_index],
-                          today: ref.read(studyProvider).now,
-                          revealed: _revealed,
-                          onReveal: () => setState(() => _revealed = true),
-                          onListen: () => ref.read(sayProvider)(_items[_index].text.replaceAll('~', '')),
-                        ),
-                ),
-                if (!finished && _items.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
-                    child: _revealed
-                        ? Row(
-                            children: [
-                              Expanded(
-                                child: OutlinedButton(
-                                  onPressed: () => _rate(SelfRating.dontKnow),
-                                  child: const Text('몰랐어요'),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: OutlinedButton(
-                                  onPressed: () => _rate(SelfRating.confusing),
-                                  child: const Text('헷갈렸어요'),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: FilledButton(onPressed: () => _rate(SelfRating.know), child: const Text('알았어요')),
-                              ),
-                            ],
-                          )
-                        : FilledButton(onPressed: () => setState(() => _revealed = true), child: const Text('뜻 확인하기')),
-                  )
-                else
-                  BottomActions(
-                    children: [FilledButton(onPressed: () => context.pop(), child: const Text('닫기'))],
-                  ),
-              ],
-            ),
+            ],
           ),
         ),
       ),

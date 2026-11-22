@@ -36,7 +36,8 @@ class HomeScreen extends ConsumerWidget {
       if (context.mounted && (ModalRoute.of(context)?.isCurrent ?? true)) refreshStudyDay(ref, fromHome: true);
     });
     final exp = s.pack.expressions.first;
-    final wide = context.windowSize == WindowSize.expanded;
+    // 내용 영역 폭 기준 (iPad 에서는 내비게이션 폭을 뺀 값): 두 단이 답답하지 않을 때만 나눈다
+    final wide = MediaQuery.sizeOf(context).width >= 760;
 
     final header = Row(
       crossAxisAlignment: CrossAxisAlignment.start,

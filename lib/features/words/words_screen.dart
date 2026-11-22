@@ -7,6 +7,7 @@ import '../../app/routine_flow.dart';
 import '../../app/study_controller.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/tokens.dart';
+import '../../core/widgets/study_shortcuts.dart';
 import '../../core/widgets/widgets.dart';
 import '../../data/models.dart';
 import '../../domain/srs.dart';
@@ -95,7 +96,7 @@ class _WordsScreenState extends ConsumerState<WordsScreen> {
     return Scaffold(
       body: SafeArea(
         // iPad 하드웨어 키보드: Space 뜻 보기, 1·2·3 평가, L 발음 듣기, Esc 닫기
-        child: CallbackShortcuts(
+        child: StudyShortcuts(
           bindings: {
             const SingleActivator(LogicalKeyboardKey.space): () => setState(() => _revealed = true),
             const SingleActivator(LogicalKeyboardKey.digit1): () => _rate(SelfRating.dontKnow),
@@ -104,67 +105,64 @@ class _WordsScreenState extends ConsumerState<WordsScreen> {
             const SingleActivator(LogicalKeyboardKey.keyL): () => ref.read(sayProvider)(w.word),
             const SingleActivator(LogicalKeyboardKey.escape): () => context.pop(),
           },
-          child: Focus(
-            autofocus: true,
-            child: Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(8, 8, 12, 0),
-                  child: StudyTopBar(title: '오늘의 단어', index: _index, total: words.length),
-                ),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 22, 20, 0),
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 280),
-                      transitionBuilder: (child, anim) => SlideTransition(
-                        position: Tween(
-                          begin: const Offset(0.15, 0),
-                          end: Offset.zero,
-                        ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
-                        child: FadeTransition(opacity: anim, child: child),
-                      ),
-                      child: _WordCard(
-                        key: ValueKey(w.id),
-                        word: w,
-                        revealed: _revealed,
-                        onReveal: () => setState(() => _revealed = true),
-                      ),
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(8, 8, 12, 0),
+                child: StudyTopBar(title: '오늘의 단어', index: _index, total: words.length),
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 22, 20, 0),
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 280),
+                    transitionBuilder: (child, anim) => SlideTransition(
+                      position: Tween(
+                        begin: const Offset(0.15, 0),
+                        end: Offset.zero,
+                      ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
+                      child: FadeTransition(opacity: anim, child: child),
+                    ),
+                    child: _WordCard(
+                      key: ValueKey(w.id),
+                      word: w,
+                      revealed: _revealed,
+                      onReveal: () => setState(() => _revealed = true),
                     ),
                   ),
                 ),
-                const SizedBox(height: 18),
-                Text('이 단어, 얼마나 알고 있었나요?', style: sans(13, color: AppColors.ink2)),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: _RateButton(
-                          label: '몰라요',
-                          sub: '내일 다시',
-                          color: AppColors.error,
-                          onTap: () => _rate(SelfRating.dontKnow),
-                        ),
+              ),
+              const SizedBox(height: 18),
+              Text('이 단어, 얼마나 알고 있었나요?', style: sans(13, color: AppColors.ink2)),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _RateButton(
+                        label: '몰라요',
+                        sub: '내일 다시',
+                        color: AppColors.error,
+                        onTap: () => _rate(SelfRating.dontKnow),
                       ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: _RateButton(
-                          label: '헷갈려요',
-                          sub: '3일 뒤',
-                          color: AppColors.caution,
-                          onTap: () => _rate(SelfRating.confusing),
-                        ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _RateButton(
+                        label: '헷갈려요',
+                        sub: '3일 뒤',
+                        color: AppColors.caution,
+                        onTap: () => _rate(SelfRating.confusing),
                       ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: _RateButton(label: '알아요', sub: '7일 뒤', dark: true, onTap: () => _rate(SelfRating.know)),
-                      ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _RateButton(label: '알아요', sub: '7일 뒤', dark: true, onTap: () => _rate(SelfRating.know)),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),

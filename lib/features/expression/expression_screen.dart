@@ -8,6 +8,7 @@ import '../../app/study_controller.dart';
 import '../../core/layout/adaptive.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/tokens.dart';
+import '../../core/widgets/study_shortcuts.dart';
 import '../../core/widgets/widgets.dart';
 import '../../data/models.dart';
 import '../speaking/speaking_screen.dart';
@@ -83,7 +84,7 @@ class _ExpressionScreenState extends ConsumerState<ExpressionScreen> {
     return Scaffold(
       body: SafeArea(
         // iPad 하드웨어 키보드: ←·→ 이동, 1 이미 알아요, 2 처음 봐요, Enter 다음, Esc 닫기
-        child: CallbackShortcuts(
+        child: StudyShortcuts(
           bindings: {
             const SingleActivator(LogicalKeyboardKey.arrowLeft): () => _go(-1),
             const SingleActivator(LogicalKeyboardKey.arrowRight): () => _go(1),
@@ -92,91 +93,88 @@ class _ExpressionScreenState extends ConsumerState<ExpressionScreen> {
             const SingleActivator(LogicalKeyboardKey.enter): () => _next(items.length),
             const SingleActivator(LogicalKeyboardKey.escape): () => context.pop(),
           },
-          child: Focus(
-            autofocus: true,
-            child: Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(8, 8, 16, 0),
-                  child: Row(
-                    children: [
-                      IconButton(
-                        tooltip: '홈으로',
-                        onPressed: () => context.pop(),
-                        icon: const Icon(Icons.chevron_left_rounded, size: 26),
-                      ),
-                      const Spacer(),
-                      _Dots(count: items.length, index: _index),
-                      const Spacer(),
-                      SizedBox(
-                        width: 44,
-                        child: Text(
-                          '${_index + 1}/${items.length}',
-                          textAlign: TextAlign.right,
-                          style: sans(13, color: AppColors.ink2),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: PageView.builder(
-                    controller: _page,
-                    itemCount: items.length,
-                    onPageChanged: (i) => setState(() => _index = i),
-                    itemBuilder: (_, i) => SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-                      child: _ExpressionCard(e: items[i]),
-                    ),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(top: 12),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text('이 표현은', style: sans(13, color: AppColors.ink2)),
-                      const SizedBox(width: 8),
-                      _ChoicePill(
-                        label: '이미 알아요',
-                        selected: known == true,
-                        onTap: () => ref.read(studyProvider.notifier).setExpressionKnown(current.id, true),
-                      ),
-                      const SizedBox(width: 8),
-                      _ChoicePill(
-                        label: '처음 봐요',
-                        selected: known == false,
-                        onTap: () => ref.read(studyProvider.notifier).setExpressionKnown(current.id, false),
-                      ),
-                    ],
-                  ),
-                ),
-                BottomActions(
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(8, 8, 16, 0),
+                child: Row(
                   children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          flex: 10,
-                          child: OutlinedButton.icon(
-                            onPressed: () => _practice(current),
-                            icon: const Icon(Icons.mic_none_rounded, size: 20),
-                            label: const Text('말해보기'),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          flex: 14,
-                          child: FilledButton(
-                            onPressed: () => _next(items.length),
-                            child: Text(isLast ? '표현 학습 완료' : '다음 표현'),
-                          ),
-                        ),
-                      ],
+                    IconButton(
+                      tooltip: '홈으로',
+                      onPressed: () => context.pop(),
+                      icon: const Icon(Icons.chevron_left_rounded, size: 26),
+                    ),
+                    const Spacer(),
+                    _Dots(count: items.length, index: _index),
+                    const Spacer(),
+                    SizedBox(
+                      width: 44,
+                      child: Text(
+                        '${_index + 1}/${items.length}',
+                        textAlign: TextAlign.right,
+                        style: sans(13, color: AppColors.ink2),
+                      ),
                     ),
                   ],
                 ),
-              ],
-            ),
+              ),
+              Expanded(
+                child: PageView.builder(
+                  controller: _page,
+                  itemCount: items.length,
+                  onPageChanged: (i) => setState(() => _index = i),
+                  itemBuilder: (_, i) => SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+                    child: _ExpressionCard(e: items[i]),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text('이 표현은', style: sans(13, color: AppColors.ink2)),
+                    const SizedBox(width: 8),
+                    _ChoicePill(
+                      label: '이미 알아요',
+                      selected: known == true,
+                      onTap: () => ref.read(studyProvider.notifier).setExpressionKnown(current.id, true),
+                    ),
+                    const SizedBox(width: 8),
+                    _ChoicePill(
+                      label: '처음 봐요',
+                      selected: known == false,
+                      onTap: () => ref.read(studyProvider.notifier).setExpressionKnown(current.id, false),
+                    ),
+                  ],
+                ),
+              ),
+              BottomActions(
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        flex: 10,
+                        child: OutlinedButton.icon(
+                          onPressed: () => _practice(current),
+                          icon: const Icon(Icons.mic_none_rounded, size: 20),
+                          label: const Text('말해보기'),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        flex: 14,
+                        child: FilledButton(
+                          onPressed: () => _next(items.length),
+                          child: Text(isLast ? '표현 학습 완료' : '다음 표현'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
       ),

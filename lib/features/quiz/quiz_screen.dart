@@ -7,6 +7,7 @@ import '../../app/routine_flow.dart';
 import '../../app/study_controller.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/tokens.dart';
+import '../../core/widgets/study_shortcuts.dart';
 import '../../core/widgets/widgets.dart';
 import '../../data/models.dart';
 
@@ -52,7 +53,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
       body: SafeArea(
         bottom: false,
         // iPad 하드웨어 키보드: 1~4 보기 선택, Enter 다음, Esc 닫기
-        child: CallbackShortcuts(
+        child: StudyShortcuts(
           bindings: {
             for (final (i, key) in [
               LogicalKeyboardKey.digit1,
@@ -66,87 +67,84 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
             },
             const SingleActivator(LogicalKeyboardKey.escape): () => context.pop(),
           },
-          child: Focus(
-            autofocus: true,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(8, 8, 20, 0),
-                  child: Row(
-                    children: [
-                      IconButton(tooltip: '닫기', onPressed: () => context.pop(), icon: const Icon(Icons.close_rounded)),
-                      const SizedBox(width: 4),
-                      Expanded(child: _Segments(state: s)),
-                      const SizedBox(width: 12),
-                      Text(
-                        '${_index + 1}/${quiz.length}',
-                        style: sans(13, weight: FontWeight.w600, color: AppColors.ink2),
-                      ),
-                    ],
-                  ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(8, 8, 20, 0),
+                child: Row(
+                  children: [
+                    IconButton(tooltip: '닫기', onPressed: () => context.pop(), icon: const Icon(Icons.close_rounded)),
+                    const SizedBox(width: 4),
+                    Expanded(child: _Segments(state: s)),
+                    const SizedBox(width: 12),
+                    Text(
+                      '${_index + 1}/${quiz.length}',
+                      style: sans(13, weight: FontWeight.w600, color: AppColors.ink2),
+                    ),
+                  ],
                 ),
-                Expanded(
-                  child: ListView(
-                    padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
-                    children: [
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: item.isReview
-                            ? Tag(
-                                '복습 · ${item.reviewLabel}',
-                                icon: Icons.replay_rounded,
-                                color: AppColors.ink,
-                                background: AppColors.sand,
-                              )
-                            : const Tag('오늘 배운 내용'),
-                      ),
-                      const SizedBox(height: 14),
-                      Text(
-                        '알맞은 영어 문장을 골라주세요',
-                        style: sans(15, weight: FontWeight.w500, color: AppColors.ink2),
+              ),
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
+                  children: [
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: item.isReview
+                          ? Tag(
+                              '복습 · ${item.reviewLabel}',
+                              icon: Icons.replay_rounded,
+                              color: AppColors.ink,
+                              background: AppColors.sand,
+                            )
+                          : const Tag('오늘 배운 내용'),
+                    ),
+                    const SizedBox(height: 14),
+                    Text(
+                      '알맞은 영어 문장을 골라주세요',
+                      style: sans(15, weight: FontWeight.w500, color: AppColors.ink2),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(item.prompt, style: sans(26, weight: FontWeight.w700, letterSpacing: -0.5, height: 1.35)),
+                    const SizedBox(height: 22),
+                    for (var i = 0; i < item.choices.length; i++) ...[
+                      _Choice(
+                        text: item.choices[i],
+                        status: !answered
+                            ? _Status.idle
+                            : i == item.answerIndex
+                            ? _Status.correct
+                            : i == picked
+                            ? _Status.wrong
+                            : _Status.dim,
+                        onTap: answered ? null : () => _answer(i),
                       ),
                       const SizedBox(height: 8),
-                      Text(item.prompt, style: sans(26, weight: FontWeight.w700, letterSpacing: -0.5, height: 1.35)),
-                      const SizedBox(height: 22),
-                      for (var i = 0; i < item.choices.length; i++) ...[
-                        _Choice(
-                          text: item.choices[i],
-                          status: !answered
-                              ? _Status.idle
-                              : i == item.answerIndex
-                              ? _Status.correct
-                              : i == picked
-                              ? _Status.wrong
-                              : _Status.dim,
-                          onTap: answered ? null : () => _answer(i),
-                        ),
-                        const SizedBox(height: 8),
-                      ],
                     ],
-                  ),
+                  ],
                 ),
-                AnimatedSize(
-                  duration: const Duration(milliseconds: 260),
-                  curve: Curves.easeOutCubic,
-                  child: answered
-                      ? _Feedback(
-                          item: item,
-                          picked: picked,
-                          onListen: () => ref.read(sayProvider)(item.choices[item.answerIndex]),
-                          correct: picked == item.answerIndex,
-                          onNext: _next,
-                          nextLabel: _index < quiz.length - 1
-                              ? '다음 문제'
-                              // 다른 단계가 남았으면 결과 화면이 아니라 다음 단계를 묻는다
-                              : s.done.length >= RoutineStep.values.length - 1
-                              ? '결과 보기'
-                              : '퀴즈 마치기',
-                        )
-                      : const SizedBox(width: double.infinity),
-                ),
-              ],
-            ),
+              ),
+              AnimatedSize(
+                duration: const Duration(milliseconds: 260),
+                curve: Curves.easeOutCubic,
+                child: answered
+                    ? _Feedback(
+                        item: item,
+                        picked: picked,
+                        onListen: () => ref.read(sayProvider)(item.choices[item.answerIndex]),
+                        correct: picked == item.answerIndex,
+                        onNext: _next,
+                        nextLabel: _index < quiz.length - 1
+                            ? '다음 문제'
+                            // 다른 단계가 남았으면 결과 화면이 아니라 다음 단계를 묻는다
+                            : s.done.length >= RoutineStep.values.length - 1
+                            ? '결과 보기'
+                            : '퀴즈 마치기',
+                      )
+                    : const SizedBox(width: double.infinity),
+              ),
+            ],
           ),
         ),
       ),

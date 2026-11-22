@@ -7,6 +7,7 @@ import '../../app/routine_flow.dart';
 import '../../app/study_controller.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/tokens.dart';
+import '../../core/widgets/study_shortcuts.dart';
 import '../../core/widgets/widgets.dart';
 import '../../data/models.dart';
 import '../../domain/korean_pron_tips.dart';
@@ -123,7 +124,7 @@ class _SpeakingScreenState extends ConsumerState<SpeakingScreen> {
 
     return Scaffold(
       body: SafeArea(
-        child: CallbackShortcuts(
+        child: StudyShortcuts(
           // iPad 하드웨어 키보드: Space 말하기, S 천천히 듣기, Enter·→ 다음, Esc 닫기
           bindings: {
             const SingleActivator(LogicalKeyboardKey.space): () => _quiet ? _silentNext() : _toggleMic(),
@@ -133,140 +134,135 @@ class _SpeakingScreenState extends ConsumerState<SpeakingScreen> {
             const SingleActivator(LogicalKeyboardKey.arrowRight): _next,
             const SingleActivator(LogicalKeyboardKey.escape): () => context.pop(),
           },
-          child: Focus(
-            autofocus: true,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(8, 8, 12, 0),
-                  child: StudyTopBar(title: widget.title, index: _index, total: _sentences.length),
-                ),
-                Expanded(
-                  child: ListView(
-                    padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
-                    children: [
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: FilterChip(
-                          label: Text('소리 내기 어려워요', style: sans(13, weight: FontWeight.w500)),
-                          avatar: Icon(_quiet ? Icons.volume_off_rounded : Icons.volume_off_outlined, size: 16),
-                          selected: _quiet,
-                          showCheckmark: false,
-                          selectedColor: AppColors.sand,
-                          backgroundColor: AppColors.paper,
-                          side: const BorderSide(color: AppColors.line),
-                          onSelected: (v) => setState(() {
-                            ref.read(quietModeProvider.notifier).set(v);
-                            _error = null;
-                          }),
-                        ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(8, 8, 12, 0),
+                child: StudyTopBar(title: widget.title, index: _index, total: _sentences.length),
+              ),
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+                  children: [
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: FilterChip(
+                        label: Text('소리 내기 어려워요', style: sans(13, weight: FontWeight.w500)),
+                        avatar: Icon(_quiet ? Icons.volume_off_rounded : Icons.volume_off_outlined, size: 16),
+                        selected: _quiet,
+                        showCheckmark: false,
+                        selectedColor: AppColors.sand,
+                        backgroundColor: AppColors.paper,
+                        side: const BorderSide(color: AppColors.line),
+                        onSelected: (v) => setState(() {
+                          ref.read(quietModeProvider.notifier).set(v);
+                          _error = null;
+                        }),
                       ),
-                      const SizedBox(height: 16),
-                      _SentenceView(text: sentence.en, result: result),
-                      const SizedBox(height: 10),
-                      Row(
+                    ),
+                    const SizedBox(height: 16),
+                    _SentenceView(text: sentence.en, result: result),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(sentence.ko, style: sans(15, color: AppColors.ink2)),
+                        ),
+                        RoundIconButton(
+                          icon: Icons.volume_up_rounded,
+                          label: '문장 듣기',
+                          filled: false,
+                          onPressed: () => say(sentence.en),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    if (_quiet)
+                      const _QuietCard()
+                    else if (_listening)
+                      _HintCard(listening: true, partial: _partial)
+                    else if (_error != null)
+                      _ErrorCard(message: _error!, onSelfCheck: _selfCheck, onRetry: _toggleMic)
+                    else if (result != null) ...[
+                      _ScoreCard(result: result),
+                      const SizedBox(height: 12),
+                      _TipCard(result: result),
+                    ] else
+                      const _HintCard(listening: false),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 8, 24, 20),
+                child: _quiet
+                    ? Row(
                         children: [
-                          Expanded(
-                            child: Text(sentence.ko, style: sans(15, color: AppColors.ink2)),
-                          ),
-                          RoundIconButton(
+                          _SideButton(
                             icon: Icons.volume_up_rounded,
-                            label: '문장 듣기',
-                            filled: false,
-                            onPressed: () => say(sentence.en),
+                            label: '0.8배',
+                            semantic: '천천히 듣기',
+                            onTap: () => say(sentence.en, slow: true),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: FilledButton(onPressed: _silentNext, child: const Text('속으로 따라 했어요 · 다음')),
                           ),
                         ],
-                      ),
-                      const SizedBox(height: 24),
-                      if (_quiet)
-                        const _QuietCard()
-                      else if (_listening)
-                        _HintCard(listening: true, partial: _partial)
-                      else if (_error != null)
-                        _ErrorCard(message: _error!, onSelfCheck: _selfCheck, onRetry: _toggleMic)
-                      else if (result != null) ...[
-                        _ScoreCard(result: result),
-                        const SizedBox(height: 12),
-                        _TipCard(result: result),
-                      ] else
-                        const _HintCard(listening: false),
-                    ],
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 8, 24, 20),
-                  child: _quiet
-                      ? Row(
-                          children: [
-                            _SideButton(
-                              icon: Icons.volume_up_rounded,
-                              label: '0.8배',
-                              semantic: '천천히 듣기',
-                              onTap: () => say(sentence.en, slow: true),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: FilledButton(onPressed: _silentNext, child: const Text('속으로 따라 했어요 · 다음')),
-                            ),
-                          ],
-                        )
-                      : Row(
-                          children: [
-                            _SideButton(
-                              icon: Icons.volume_up_rounded,
-                              label: '0.8배',
-                              semantic: '천천히 듣기',
-                              onTap: () => say(sentence.en, slow: true),
-                            ),
-                            const Spacer(),
-                            Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Semantics(
-                                  button: true,
-                                  label: _listening ? '말하기 끝내기' : (result == null ? '말하기 시작' : '한 번 더 말하기'),
-                                  child: GestureDetector(
-                                    onTap: _toggleMic,
-                                    child: AnimatedContainer(
-                                      duration: const Duration(milliseconds: 200),
-                                      width: 84,
-                                      height: 84,
-                                      decoration: BoxDecoration(
-                                        color: _listening ? AppColors.penBlue : AppColors.ink,
-                                        shape: BoxShape.circle,
-                                        boxShadow: [
-                                          BoxShadow(color: AppColors.sand, spreadRadius: _listening ? 14 : 8),
-                                        ],
-                                      ),
-                                      child: Icon(
-                                        _listening ? Icons.stop_rounded : Icons.mic_none_rounded,
-                                        size: 32,
-                                        color: AppColors.highlighter,
-                                      ),
+                      )
+                    : Row(
+                        children: [
+                          _SideButton(
+                            icon: Icons.volume_up_rounded,
+                            label: '0.8배',
+                            semantic: '천천히 듣기',
+                            onTap: () => say(sentence.en, slow: true),
+                          ),
+                          const Spacer(),
+                          Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Semantics(
+                                button: true,
+                                label: _listening ? '말하기 끝내기' : (result == null ? '말하기 시작' : '한 번 더 말하기'),
+                                child: GestureDetector(
+                                  onTap: _toggleMic,
+                                  child: AnimatedContainer(
+                                    duration: const Duration(milliseconds: 200),
+                                    width: 84,
+                                    height: 84,
+                                    decoration: BoxDecoration(
+                                      color: _listening ? AppColors.penBlue : AppColors.ink,
+                                      shape: BoxShape.circle,
+                                      boxShadow: [BoxShadow(color: AppColors.sand, spreadRadius: _listening ? 14 : 8)],
+                                    ),
+                                    child: Icon(
+                                      _listening ? Icons.stop_rounded : Icons.mic_none_rounded,
+                                      size: 32,
+                                      color: AppColors.highlighter,
                                     ),
                                   ),
                                 ),
-                                const SizedBox(height: 14),
-                                Text(
-                                  _listening ? '다 말했으면 누르기' : (result == null ? '눌러서 말하기' : '한 번 더 말하기'),
-                                  style: sans(12, color: AppColors.ink2),
-                                ),
-                              ],
-                            ),
-                            const Spacer(),
-                            _SideButton(
-                              icon: Icons.chevron_right_rounded,
-                              label: '다음',
-                              semantic: '다음 문장',
-                              filled: true,
-                              onTap: done ? _next : null,
-                            ),
-                          ],
-                        ),
-                ),
-              ],
-            ),
+                              ),
+                              const SizedBox(height: 14),
+                              Text(
+                                _listening ? '다 말했으면 누르기' : (result == null ? '눌러서 말하기' : '한 번 더 말하기'),
+                                style: sans(12, color: AppColors.ink2),
+                              ),
+                            ],
+                          ),
+                          const Spacer(),
+                          _SideButton(
+                            icon: Icons.chevron_right_rounded,
+                            label: '다음',
+                            semantic: '다음 문장',
+                            filled: true,
+                            onTap: done ? _next : null,
+                          ),
+                        ],
+                      ),
+              ),
+            ],
           ),
         ),
       ),
