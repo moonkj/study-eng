@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:todaye/app/app.dart';
 import 'package:todaye/app/study_controller.dart';
+import 'package:todaye/core/audio/tts.dart';
 import 'package:todaye/data/store.dart';
 import 'package:todaye/domain/level.dart';
 import 'package:todaye/domain/study_log.dart';
@@ -10,10 +11,26 @@ import 'package:todaye/features/speaking/speech_input.dart';
 
 class _PerfectSpeech implements SpeechInput {
   @override
-  bool get isDemo => false;
+  Future<SpeechAttempt> listen({required String expected, void Function(String partial)? onPartial}) async {
+    onPartial?.call(expected);
+    return SpeechAttempt.heard(expected);
+  }
 
   @override
-  Future<String> listen(String target) async => target;
+  Future<void> stop() async {}
+}
+
+class FakeSpeaker implements Speaker {
+  final spoken = <(String, bool)>[];
+
+  @override
+  void configure({required String voice, required double speed}) {}
+
+  @override
+  Future<void> speak(String text, {bool slow = false}) async => spoken.add((text, slow));
+
+  @override
+  Future<void> stop() async {}
 }
 
 /// 진단을 마치고 11/10~11/21 12일 연속 학습한 사용자
@@ -34,14 +51,18 @@ SavedData seeded() => SavedData(
   },
 );
 
-Widget app({String initial = '/', AppStore? store}) => ProviderScope(
+Widget app({String initial = '/', AppStore? store, Speaker? speaker}) => ProviderScope(
   overrides: [
+    speakerProvider.overrideWithValue(speaker ?? FakeSpeaker()),
     storeProvider.overrideWithValue(store ?? MemoryStore(seeded())),
     clockProvider.overrideWithValue(() => DateTime(2026, 11, 22, 8, 0)),
     speechInputProvider.overrideWithValue(_PerfectSpeech()),
   ],
   child: TodayeApp(initialLocation: initial),
 );
+
+/// Semantics(label: ...) 로 감싼 버튼 찾기
+Finder labeled(String label) => find.byWidgetPredicate((w) => w is Semantics && w.properties.label == label);
 
 Future<void> setPhone(WidgetTester tester) async {
   tester.view.physicalSize = const Size(390 * 3, 844 * 3);
@@ -119,6 +140,43 @@ void main() {
     expect(s.contentStep, 8);
   });
 
+  testWidgets('듣기 버튼은 설정한 음성으로 읽어주고, 0.8배는 느리게 읽는다', (tester) async {
+    await setPhone(tester);
+    final speaker = FakeSpeaker();
+    await tester.pumpWidget(app(speaker: speaker));
+    await tester.pumpAndSettle();
+
+    await tester.tap(labeled('예문 듣기').first);
+    expect(speaker.spoken.last, ("I've been meaning to call you.", false));
+
+    await tester.tap(find.text('예문 따라 말하기'));
+    await tester.pumpAndSettle();
+    await tester.tap(labeled('천천히 듣기'));
+    expect(speaker.spoken.last, ("Actually, I'm a little tired.", true));
+  });
+
+  testWidgets('음성 인식이 실패하면 이유를 보여주고, 스스로 체크하고 넘어갈 수 있다', (tester) async {
+    await setPhone(tester);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          storeProvider.overrideWithValue(MemoryStore(seeded())),
+          clockProvider.overrideWithValue(() => DateTime(2026, 11, 22, 8, 0)),
+          speakerProvider.overrideWithValue(FakeSpeaker()),
+          speechInputProvider.overrideWithValue(_FailingSpeech()),
+        ],
+        child: const TodayeApp(initialLocation: '/speaking'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.bySemanticsLabel('말하기 시작'));
+    await tester.pumpAndSettle();
+    expect(find.text('마이크 권한이 필요해요.'), findsOneWidget);
+    await tester.tap(find.text('소리 내어 읽었어요 (넘어가기)'));
+    await tester.pumpAndSettle();
+    expect(find.text('완벽해요'), findsOneWidget);
+  });
+
   testWidgets('첫 실행이면 환영 화면이 나오고, 건너뛰면 B1.1로 시작한다', (tester) async {
     await setPhone(tester);
     await tester.pumpWidget(app(store: MemoryStore()));
@@ -144,4 +202,13 @@ void main() {
     expect(find.text('내 레벨'), findsOneWidget);
     expect(find.text('오늘 학습 시작하기'), findsOneWidget);
   });
+}
+
+class _FailingSpeech implements SpeechInput {
+  @override
+  Future<SpeechAttempt> listen({required String expected, void Function(String partial)? onPartial}) async =>
+      const SpeechAttempt.failed('마이크 권한이 필요해요.');
+
+  @override
+  Future<void> stop() async {}
 }

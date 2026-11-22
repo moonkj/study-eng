@@ -54,6 +54,36 @@ class TodayProgress {
   );
 }
 
+/// 사용자 설정
+class AppSettings {
+  const AppSettings({this.voice = 'en-US', this.speed = 1.0, this.reminderMinutes});
+
+  /// 발음 음성: en-US(미국) / en-GB(영국)
+  final String voice;
+
+  /// 듣기 속도 배율: 0.8 / 1.0 / 1.15
+  final double speed;
+
+  /// 아침 알림 시각(자정부터 분). null 이면 알림 끔
+  final int? reminderMinutes;
+
+  AppSettings copyWith({String? voice, double? speed, int? Function()? reminderMinutes}) => AppSettings(
+    voice: voice ?? this.voice,
+    speed: speed ?? this.speed,
+    reminderMinutes: reminderMinutes == null ? this.reminderMinutes : reminderMinutes(),
+  );
+
+  Map<String, Object?> toJson() => {'voice': voice, 'speed': speed, 'reminder': reminderMinutes};
+
+  factory AppSettings.fromJson(Map<String, Object?>? j) => j == null
+      ? const AppSettings()
+      : AppSettings(
+          voice: j['voice'] as String? ?? 'en-US',
+          speed: (j['speed'] as num?)?.toDouble() ?? 1.0,
+          reminderMinutes: (j['reminder'] as num?)?.toInt(),
+        );
+}
+
 /// 기기에 저장되는 전체 학습 데이터
 class SavedData {
   const SavedData({
@@ -65,6 +95,7 @@ class SavedData {
     this.today,
     this.lastReasons = const [],
     this.packJson,
+    this.settings = const AppSettings(),
   });
 
   final LearnerProfile profile;
@@ -79,6 +110,7 @@ class SavedData {
 
   /// 오늘 받은 학습 팩 (다시 생성하지 않도록 저장)
   final Map<String, Object?>? packJson;
+  final AppSettings settings;
 
   static const version = 1;
 
@@ -92,6 +124,7 @@ class SavedData {
     'today': today?.toJson(),
     'lastReasons': lastReasons,
     'pack': packJson,
+    'settings': settings.toJson(),
   };
 
   factory SavedData.fromJson(Map<String, Object?> j) {
@@ -122,6 +155,7 @@ class SavedData {
       today: j['today'] == null ? null : TodayProgress.fromJson((j['today'] as Map).cast()),
       lastReasons: (j['lastReasons'] as List).cast<String>(),
       packJson: (j['pack'] as Map?)?.cast<String, Object?>(),
+      settings: AppSettings.fromJson((j['settings'] as Map?)?.cast<String, Object?>()),
     );
   }
 }

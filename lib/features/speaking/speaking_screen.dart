@@ -7,6 +7,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/widgets.dart';
 import '../../domain/speech_score.dart';
+import '../../core/audio/tts.dart';
 import 'speech_input.dart';
 
 class SpeakingScreen extends ConsumerStatefulWidget {
@@ -19,14 +20,43 @@ class SpeakingScreen extends ConsumerStatefulWidget {
 class _SpeakingScreenState extends ConsumerState<SpeakingScreen> {
   late int _index = ref.read(studyProvider).speaking.length.clamp(0, ref.read(studyProvider).pack.sentences.length - 1);
   bool _listening = false;
+  String _partial = '';
+  String? _error;
 
-  Future<void> _speak() async {
+  Future<void> _toggleMic() async {
+    final input = ref.read(speechInputProvider);
+    if (_listening) {
+      await input.stop();
+      return;
+    }
     final s = ref.read(studyProvider).pack.sentences[_index];
-    setState(() => _listening = true);
-    final heard = await ref.read(speechInputProvider).listen(s.en);
+    await ref.read(speakerProvider).stop();
+    setState(() {
+      _listening = true;
+      _partial = '';
+      _error = null;
+    });
+    final attempt = await input.listen(
+      expected: s.en,
+      onPartial: (p) {
+        if (mounted) setState(() => _partial = p);
+      },
+    );
     if (!mounted) return;
-    ref.read(studyProvider.notifier).recordSpeaking(s, heard);
-    setState(() => _listening = false);
+    if (attempt.ok) {
+      ref.read(studyProvider.notifier).recordSpeaking(s, attempt.text!);
+    }
+    setState(() {
+      _listening = false;
+      _error = attempt.ok ? null : attempt.error;
+    });
+  }
+
+  /// 음성 인식을 쓸 수 없을 때: 소리 내어 읽었다고 스스로 체크하고 넘어간다.
+  void _selfCheck() {
+    final s = ref.read(studyProvider).pack.sentences[_index];
+    ref.read(studyProvider.notifier).recordSpeaking(s, s.en);
+    setState(() => _error = null);
   }
 
   void _next() {
@@ -36,7 +66,11 @@ class _SpeakingScreenState extends ConsumerState<SpeakingScreen> {
       context.pop();
       return;
     }
-    setState(() => _index++);
+    setState(() {
+      _index++;
+      _error = null;
+      _partial = '';
+    });
   }
 
   @override
@@ -44,7 +78,7 @@ class _SpeakingScreenState extends ConsumerState<SpeakingScreen> {
     final st = ref.watch(studyProvider);
     final sentence = st.pack.sentences[_index];
     final result = st.speaking[sentence.id];
-    final demo = ref.watch(speechInputProvider).isDemo;
+    final say = ref.read(sayProvider);
 
     return Scaffold(
       body: SafeArea(
@@ -61,22 +95,30 @@ class _SpeakingScreenState extends ConsumerState<SpeakingScreen> {
                 children: [
                   _SentenceView(text: sentence.en, result: result),
                   const SizedBox(height: 10),
-                  Text(sentence.ko, style: sans(15, color: AppColors.ink2)),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(sentence.ko, style: sans(15, color: AppColors.ink2)),
+                      ),
+                      RoundIconButton(
+                        icon: Icons.volume_up_rounded,
+                        label: '문장 듣기',
+                        filled: false,
+                        onPressed: () => say(sentence.en),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 24),
-                  if (result != null) ...[
+                  if (_listening)
+                    _HintCard(listening: true, partial: _partial)
+                  else if (_error != null)
+                    _ErrorCard(message: _error!, onSelfCheck: _selfCheck, onRetry: _toggleMic)
+                  else if (result != null) ...[
                     _ScoreCard(result: result),
                     const SizedBox(height: 12),
                     _TipCard(result: result),
                   ] else
-                    _HintCard(listening: _listening),
-                  if (demo) ...[
-                    const SizedBox(height: 16),
-                    Text(
-                      '데모 모드: 실제 음성 인식은 다음 단계에서 연결돼요.',
-                      textAlign: TextAlign.center,
-                      style: sans(12, color: AppColors.ink2),
-                    ),
-                  ],
+                    const _HintCard(listening: false),
                 ],
               ),
             ),
@@ -84,16 +126,21 @@ class _SpeakingScreenState extends ConsumerState<SpeakingScreen> {
               padding: const EdgeInsets.fromLTRB(24, 8, 24, 20),
               child: Row(
                 children: [
-                  _SideButton(icon: Icons.volume_up_rounded, label: '0.8배', semantic: '천천히 듣기', onTap: () {}),
+                  _SideButton(
+                    icon: Icons.volume_up_rounded,
+                    label: '0.8배',
+                    semantic: '천천히 듣기',
+                    onTap: () => say(sentence.en, slow: true),
+                  ),
                   const Spacer(),
                   Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Semantics(
                         button: true,
-                        label: result == null ? '말하기 시작' : '한 번 더 말하기',
+                        label: _listening ? '말하기 끝내기' : (result == null ? '말하기 시작' : '한 번 더 말하기'),
                         child: GestureDetector(
-                          onTap: _listening ? null : _speak,
+                          onTap: _toggleMic,
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 200),
                             width: 84,
@@ -104,7 +151,7 @@ class _SpeakingScreenState extends ConsumerState<SpeakingScreen> {
                               boxShadow: [BoxShadow(color: AppColors.sand, spreadRadius: _listening ? 14 : 8)],
                             ),
                             child: Icon(
-                              _listening ? Icons.graphic_eq_rounded : Icons.mic_none_rounded,
+                              _listening ? Icons.stop_rounded : Icons.mic_none_rounded,
                               size: 32,
                               color: AppColors.highlighter,
                             ),
@@ -113,7 +160,7 @@ class _SpeakingScreenState extends ConsumerState<SpeakingScreen> {
                       ),
                       const SizedBox(height: 14),
                       Text(
-                        _listening ? '듣고 있어요…' : (result == null ? '눌러서 말하기' : '한 번 더 말하기'),
+                        _listening ? '다 말했으면 누르기' : (result == null ? '눌러서 말하기' : '한 번 더 말하기'),
                         style: sans(12, color: AppColors.ink2),
                       ),
                     ],
@@ -254,22 +301,52 @@ class _TipCard extends StatelessWidget {
 }
 
 class _HintCard extends StatelessWidget {
-  const _HintCard({required this.listening});
+  const _HintCard({required this.listening, this.partial = ''});
   final bool listening;
+  final String partial;
 
   @override
   Widget build(BuildContext context) {
     return PaperCard(
-      color: AppColors.card,
       child: Row(
         children: [
           Icon(listening ? Icons.hearing_rounded : Icons.record_voice_over_outlined, color: AppColors.penBlue),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(
-              listening ? '천천히, 또박또박 말해 보세요.' : '문장을 먼저 듣고, 아래 버튼을 눌러 소리 내어 따라 말해 보세요.',
-              style: sans(14, height: 1.55),
-            ),
+            child: listening && partial.isNotEmpty
+                ? Text('"$partial"', style: serif(17, italic: true, height: 1.4))
+                : Text(
+                    listening ? '듣고 있어요. 천천히, 또박또박 말해 보세요.' : '문장을 먼저 듣고, 아래 버튼을 눌러 소리 내어 따라 말해 보세요.',
+                    style: sans(14, height: 1.55),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ErrorCard extends StatelessWidget {
+  const _ErrorCard({required this.message, required this.onSelfCheck, required this.onRetry});
+  final String message;
+  final VoidCallback onSelfCheck;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return PaperCard(
+      color: AppColors.errorTint,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(message, style: sans(14, height: 1.55)),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            children: [
+              TextButton(onPressed: onRetry, child: const Text('다시 말하기')),
+              TextButton(onPressed: onSelfCheck, child: const Text('소리 내어 읽었어요 (넘어가기)')),
+            ],
           ),
         ],
       ),

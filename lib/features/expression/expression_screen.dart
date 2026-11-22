@@ -132,12 +132,12 @@ class _ExpressionScreenState extends ConsumerState<ExpressionScreen> {
   }
 }
 
-class _ExpressionCard extends StatelessWidget {
+class _ExpressionCard extends ConsumerWidget {
   const _ExpressionCard({required this.e});
   final Expression e;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return PaperCard(
       elevated: true,
       radius: AppRadius.sheet,
@@ -164,7 +164,11 @@ class _ExpressionCard extends StatelessWidget {
           Text(e.usage, style: sans(14, color: AppColors.ink2, height: 1.6)),
           const SizedBox(height: 18),
           for (var i = 0; i < e.examples.length; i++)
-            ExampleRow(en: e.examples[i].en, ko: e.examples[i].ko, onListen: () {}),
+            ExampleRow(
+              en: e.examples[i].en,
+              ko: e.examples[i].ko,
+              onListen: () => ref.read(sayProvider)(e.examples[i].en),
+            ),
           if (e.compare != null) ...[
             const SizedBox(height: 4),
             Container(

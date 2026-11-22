@@ -174,6 +174,7 @@ class RoundIconButton extends StatelessWidget {
     return Semantics(
       button: true,
       label: label,
+      excludeSemantics: true,
       child: Material(
         color: filled ? AppColors.penBlue : AppColors.paper,
         shape: CircleBorder(side: filled ? BorderSide.none : const BorderSide(color: AppColors.line)),

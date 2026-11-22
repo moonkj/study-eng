@@ -12,7 +12,9 @@ class SettingsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final level = ref.watch(studyProvider).profile.overall;
+    final st = ref.watch(studyProvider);
+    final level = st.profile.overall;
+    final settings = st.settings;
     return SafeArea(
       child: ListView(
         padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
@@ -31,19 +33,86 @@ class SettingsScreen extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 12),
-          const _Group(
+          _Group(
             children: [
-              _Item(icon: Icons.notifications_none_rounded, title: '아침 알림', value: '오전 7:30', soon: true),
-              _Item(icon: Icons.record_voice_over_outlined, title: '발음 음성', value: '미국 영어', soon: true),
-              _Item(icon: Icons.speed_rounded, title: '듣기 속도', value: '보통', soon: true),
+              _Item(
+                icon: Icons.record_voice_over_outlined,
+                title: '발음 음성',
+                value: voices[settings.voice] ?? settings.voice,
+                onTap: () => _pick<String>(
+                  context,
+                  title: '발음 음성',
+                  options: voices,
+                  selected: settings.voice,
+                  onSelect: (v) {
+                    ref.read(studyProvider.notifier).updateSettings(settings.copyWith(voice: v));
+                    ref.read(sayProvider)("I've been meaning to call you.");
+                  },
+                ),
+              ),
+              _Item(
+                icon: Icons.speed_rounded,
+                title: '듣기 속도',
+                value: speeds[settings.speed] ?? '${settings.speed}배',
+                onTap: () => _pick<double>(
+                  context,
+                  title: '듣기 속도',
+                  options: speeds,
+                  selected: settings.speed,
+                  onSelect: (v) {
+                    ref.read(studyProvider.notifier).updateSettings(settings.copyWith(speed: v));
+                    ref.read(sayProvider)("I've been meaning to call you.");
+                  },
+                ),
+              ),
             ],
           ),
-          const SizedBox(height: 18),
-          Text('알림·음성 설정은 다음 단계에서 연결돼요.', style: sans(12, color: AppColors.ink2)),
         ],
       ),
     );
   }
+}
+
+const voices = {'en-US': '미국 영어', 'en-GB': '영국 영어'};
+final speeds = <double, String>{0.8: '느리게', 1.0: '보통', 1.15: '조금 빠르게'};
+
+void _pick<T>(
+  BuildContext context, {
+  required String title,
+  required Map<T, String> options,
+  required T selected,
+  required void Function(T) onSelect,
+}) {
+  showModalBottomSheet<void>(
+    context: context,
+    backgroundColor: AppColors.card,
+    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.sheet))),
+    builder: (ctx) => SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 20, 12, 12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+              child: Text(title, style: sans(17, weight: FontWeight.w700)),
+            ),
+            for (final e in options.entries)
+              ListTile(
+                minTileHeight: 52,
+                title: Text(e.value, style: sans(15)),
+                trailing: e.key == selected ? const Icon(Icons.check_rounded, color: AppColors.penBlue) : null,
+                onTap: () {
+                  onSelect(e.key);
+                  Navigator.pop(ctx);
+                },
+              ),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 class _Group extends StatelessWidget {
@@ -64,12 +133,11 @@ class _Group extends StatelessWidget {
 }
 
 class _Item extends StatelessWidget {
-  const _Item({required this.icon, required this.title, this.value, this.onTap, this.soon = false});
+  const _Item({required this.icon, required this.title, this.value, this.onTap});
   final IconData icon;
   final String title;
   final String? value;
   final VoidCallback? onTap;
-  final bool soon;
 
   @override
   Widget build(BuildContext context) {
@@ -82,7 +150,6 @@ class _Item extends StatelessWidget {
         children: [
           if (value != null) Text(value!, style: sans(14, color: AppColors.ink2)),
           if (onTap != null) const Icon(Icons.chevron_right_rounded, color: AppColors.ink2),
-          if (soon) ...[const SizedBox(width: 6), const Tag('준비 중', color: AppColors.ink2, background: AppColors.sand)],
         ],
       ),
       onTap: onTap,

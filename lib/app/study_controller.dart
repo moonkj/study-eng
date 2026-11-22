@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/audio/tts.dart';
 import '../data/models.dart';
 import '../data/sample_content.dart';
 import '../data/store.dart';
@@ -29,6 +30,7 @@ class StudyState {
     required this.cards,
     required this.today,
     required this.lastAdjustmentReasons,
+    this.settings = const AppSettings(),
   });
 
   final DateTime now;
@@ -40,6 +42,7 @@ class StudyState {
   final Map<String, ReviewCard> cards;
   final TodayProgress today;
   final List<String> lastAdjustmentReasons;
+  final AppSettings settings;
 
   Set<RoutineStep> get done => {for (final n in today.done) RoutineStep.values.byName(n)};
   Map<String, bool> get expressionKnown => today.expressionKnown;
@@ -88,6 +91,7 @@ class StudyState {
     Map<String, ReviewCard>? cards,
     TodayProgress? today,
     List<String>? lastAdjustmentReasons,
+    AppSettings? settings,
   }) => StudyState(
     now: now,
     pack: pack,
@@ -98,6 +102,7 @@ class StudyState {
     cards: cards ?? this.cards,
     today: today ?? this.today,
     lastAdjustmentReasons: lastAdjustmentReasons ?? this.lastAdjustmentReasons,
+    settings: settings ?? this.settings,
   );
 
   SavedData toSaved() => SavedData(
@@ -108,6 +113,7 @@ class StudyState {
     cards: cards,
     today: today,
     lastReasons: lastAdjustmentReasons,
+    settings: settings,
   );
 }
 
@@ -133,6 +139,7 @@ class StudyController extends Notifier<StudyState> {
       cards: saved?.cards ?? const {},
       today: today,
       lastAdjustmentReasons: saved?.lastReasons ?? const [],
+      settings: saved?.settings ?? const AppSettings(),
     );
   }
 
@@ -208,6 +215,8 @@ class StudyController extends Notifier<StudyState> {
 
   void skipLevelTest() => applyLevelTest(defaultProfile());
 
+  void updateSettings(AppSettings settings) => _set(state.copyWith(settings: settings));
+
   void _finishDay() {
     final s = state;
     final result = DailyResult(
@@ -245,3 +254,13 @@ class StudyController extends Notifier<StudyState> {
 }
 
 final studyProvider = NotifierProvider<StudyController, StudyState>(StudyController.new);
+
+/// 설정(음성·속도)을 반영해 영어 문장을 읽어준다.
+final sayProvider = Provider<Future<void> Function(String text, {bool slow})>((ref) {
+  final speaker = ref.watch(speakerProvider);
+  return (String text, {bool slow = false}) {
+    final st = ref.read(studyProvider).settings;
+    speaker.configure(voice: st.voice, speed: st.speed);
+    return speaker.speak(text, slow: slow);
+  };
+});

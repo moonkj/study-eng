@@ -93,7 +93,11 @@ class HomeScreen extends ConsumerWidget {
                         style: serif(15, italic: true, color: AppColors.inkSoft),
                       ),
                     ),
-                    RoundIconButton(icon: Icons.volume_up_rounded, label: '예문 듣기', onPressed: () {}),
+                    RoundIconButton(
+                      icon: Icons.volume_up_rounded,
+                      label: '예문 듣기',
+                      onPressed: () => ref.read(sayProvider)(exp.examples.first.en),
+                    ),
                   ],
                 ),
               ],

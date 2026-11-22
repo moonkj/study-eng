@@ -107,14 +107,14 @@ class _WordsScreenState extends ConsumerState<WordsScreen> {
   }
 }
 
-class _WordCard extends StatelessWidget {
+class _WordCard extends ConsumerWidget {
   const _WordCard({super.key, required this.word, required this.revealed, required this.onReveal});
   final Word word;
   final bool revealed;
   final VoidCallback onReveal;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Stack(
       clipBehavior: Clip.none,
       children: [
@@ -151,7 +151,12 @@ class _WordCard extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 14),
-                RoundIconButton(icon: Icons.volume_up_rounded, label: '발음 듣기', size: 52, onPressed: () {}),
+                RoundIconButton(
+                  icon: Icons.volume_up_rounded,
+                  label: '발음 듣기',
+                  size: 52,
+                  onPressed: () => ref.read(sayProvider)(word.word),
+                ),
                 const Spacer(),
                 const Divider(),
                 const SizedBox(height: 16),
