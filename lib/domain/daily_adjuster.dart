@@ -37,10 +37,13 @@ class DailyResult {
   /// 며칠 전 배운 것 정답률 (실제로 기억하는지) → 레벨 점수에 더 크게 반영한다
   double? get reviewAccuracy => reviewTotal < 3 ? null : reviewCorrect / reviewTotal;
 
-  /// 레벨 점수용 정답률: 복습 60% + 오늘 40% (한쪽이 3문항 미만이면 전체 정답률)
+  /// 레벨 점수용 정답률: 복습 60% + 오늘 40%.
+  /// 복습 문항이 없으면 방금 본 것만 물은 셈이라 정답률을 15% 깎아 반영한다 (레벨이 쉽게 부풀지 않게).
   double get levelAccuracy {
-    final n = newAccuracy, r = reviewAccuracy;
-    return n != null && r != null ? r * 0.6 + n * 0.4 : accuracy;
+    if (quizTotal == 0) return 0;
+    if (reviewTotal == 0) return accuracy * 0.85;
+    if (newTotal == 0) return reviewCorrect / reviewTotal;
+    return (reviewCorrect / reviewTotal) * 0.6 + (newCorrect / newTotal) * 0.4;
   }
 
   double get accuracy => quizTotal == 0 ? 0 : quizCorrect / quizTotal;
@@ -82,6 +85,10 @@ class DailyAdjustment {
 abstract final class DailyAdjuster {
   static const targetLow = 0.70;
   static const targetHigh = 0.85;
+
+  /// 오늘 배운 것만의 정답률 목표 (직후 재인이라 더 높다)
+  static const newTargetLow = 0.80;
+  static const newTargetHigh = 0.92;
   static const baseSpeakingSentences = 10;
 
   static DailyAdjustment adjust({
@@ -93,6 +100,10 @@ abstract final class DailyAdjuster {
   }) {
     // 난이도는 오늘 배운 것 정답률로, 레벨은 기억(복습) 정답률을 더 크게 본다
     final acc = today.newAccuracy ?? today.accuracy;
+    // 방금 배운 것만의 정답률은 원래 높게 나오므로 목표 구간을 따로 둔다
+    final usesNew = today.newAccuracy != null && today.reviewTotal > 0;
+    final low = usesNew ? newTargetLow : targetLow;
+    final high = usesNew ? newTargetHigh : targetHigh;
     final levelAcc = today.levelAccuracy;
     final reasons = <String>[];
 
@@ -113,10 +124,10 @@ abstract final class DailyAdjuster {
     // 3) 콘텐츠 난이도
     var stepDelta = 0;
     final pct = (acc * 100).round();
-    if (acc > targetHigh && (yesterdayAccuracy == null || yesterdayAccuracy > targetHigh)) {
+    if (acc > high && (yesterdayAccuracy == null || yesterdayAccuracy > high)) {
       stepDelta = 1;
       reasons.add('정답률 $pct% → 표현을 조금 더 어렵게');
-    } else if (acc < targetLow) {
+    } else if (acc < low) {
       stepDelta = -1;
       reasons.add('정답률 $pct% → 난이도를 한 단계 낮추고 복습을 늘려요');
     } else if (today.expressionsKnownRatio >= 2 / 3) {

@@ -97,7 +97,7 @@ void main() {
     expect(r.newAccuracy, 1.0);
     expect(r.reviewAccuracy, 0.25);
     expect(r.levelAccuracy, closeTo(0.55, 0.001));
-    final adj = DailyAdjuster.adjust(profile: profile, currentContentStep: 7, today: r, yesterdayAccuracy: 0.9);
+    final adj = DailyAdjuster.adjust(profile: profile, currentContentStep: 7, today: r, yesterdayAccuracy: 0.95);
     expect(adj.levelDelta, lessThan(0));
     expect(adj.nextContentStep, 8);
   });

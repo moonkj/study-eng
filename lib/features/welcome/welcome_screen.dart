@@ -31,7 +31,7 @@ class WelcomeScreen extends ConsumerWidget {
                   Text('오늘의 영어', style: sans(15, color: AppColors.ink2)),
                   const SizedBox(height: 40),
                   Text(
-                    '매일 10분,\n내 레벨에 딱 맞는 영어 루틴',
+                    '하루 15분,\n내 레벨에 딱 맞는 영어 루틴',
                     style: sans(26, weight: FontWeight.w700, height: 1.35, letterSpacing: -0.5),
                   ),
                   const SizedBox(height: 28),

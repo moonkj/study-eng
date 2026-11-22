@@ -234,6 +234,11 @@ class _CompleteScreenState extends ConsumerState<CompleteScreen> {
             BottomActions(
               children: [
                 FilledButton(onPressed: () => context.go('/'), child: const Text('홈으로')),
+                if (s.dueCount > 0)
+                  OutlinedButton(
+                    onPressed: () => context.pushReplacement('/review-session'),
+                    child: Text('복습 카드 ${s.dueCount.clamp(0, 20)}장도 넘기기'),
+                  ),
                 TextButton(onPressed: () => context.go('/review'), child: const Text('틀린 문제 다시 보기')),
               ],
             ),

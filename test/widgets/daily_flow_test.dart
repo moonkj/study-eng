@@ -103,16 +103,19 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    // ② 단어
-    await tester.tap(find.text('오늘의 단어 10개'));
+    // 홈으로 돌아가지 않고 다음 단계로 이어간다
+    expect(find.text('표현 학습 완료!'), findsOneWidget);
+    await tester.tap(find.text('이어서 하기'));
     await tester.pumpAndSettle();
+
+    // ② 단어
     for (var i = 0; i < 10; i++) {
       await tester.tap(find.text('알아요'));
       await tester.pumpAndSettle();
     }
 
     // ③ 말하기
-    await tester.tap(find.text('예문 따라 말하기'));
+    await tester.tap(find.text('이어서 하기'));
     await tester.pumpAndSettle();
     for (var i = 0; i < 10; i++) {
       await tester.tap(find.bySemanticsLabel('말하기 시작'));
@@ -122,7 +125,10 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    // ④ 퀴즈: 모두 첫 번째 보기 선택
+    // ④ 퀴즈: 모두 정답 선택. 이번엔 '나중에'로 홈에 갔다가 홈에서 시작
+    await tester.tap(find.text('나중에 할게요'));
+    await tester.pumpAndSettle();
+    expect(find.text('남은 시간 약 3분 · 3/4'), findsOneWidget);
     await tester.tap(find.text('복습 퀴즈'));
     await tester.pumpAndSettle();
     final container = ProviderScope.containerOf(tester.element(find.byType(Scaffold).first));

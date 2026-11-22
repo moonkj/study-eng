@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../app/routine_flow.dart';
 import '../../app/study_controller.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/tokens.dart';
@@ -47,8 +48,7 @@ class _WordsScreenState extends ConsumerState<WordsScreen> {
     HapticFeedback.selectionClick();
     if (_index >= words.length - 1) {
       _messenger?.hideCurrentSnackBar();
-      ref.read(studyProvider.notifier).complete(RoutineStep.words);
-      context.pop();
+      finishStep(context, ref, RoutineStep.words);
       return;
     }
     final rated = _index;

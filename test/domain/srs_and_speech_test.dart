@@ -50,7 +50,9 @@ void main() {
       expect(card.graduated, isTrue);
       expect(card.due, DateTime(2026, 11, 22).add(const Duration(days: 90)));
       final d1 = card.due;
-      card = Srs.rate(card, SelfRating.know, d1);
+      // 유지 복습에서 자가 평가 '알아요'는 단계를 지키고, 퀴즈로 맞혀야 다음으로
+      expect(Srs.rate(card, SelfRating.know, d1).stage, card.stage);
+      card = Srs.answer(card, correct: true, today: d1);
       expect(card.due, d1.add(const Duration(days: 180)));
       card = Srs.answer(card, correct: true, today: card.due);
       expect(card.retired, isTrue);
@@ -62,6 +64,7 @@ void main() {
       card = Srs.rate(card, SelfRating.know, today);
       expect(card.stage, 4);
       expect(card.graduated, isFalse);
+      expect(card.due, DateTime(2026, 11, 29)); // 퀴즈로 확인하도록 일주일 뒤
     });
 
     test('복습 카드: 몰라요는 두 단계, 헷갈려요는 한 단계 내린다', () {

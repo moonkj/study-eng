@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../app/routine_flow.dart';
 import '../../app/study_controller.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/tokens.dart';
@@ -22,9 +23,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
   void _next() {
     final total = ref.read(studyProvider).pack.quiz.length;
     if (_index >= total - 1) {
-      ref.read(studyProvider.notifier).complete(RoutineStep.quiz);
-      final done = ref.read(studyProvider).allDone;
-      done ? context.pushReplacement('/complete') : context.pop();
+      finishStep(context, ref, RoutineStep.quiz);
       return;
     }
     setState(() => _index++);
@@ -130,6 +129,8 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                   child: answered
                       ? _Feedback(
                           item: item,
+                          picked: picked,
+                          onListen: () => ref.read(sayProvider)(item.choices[item.answerIndex]),
                           correct: picked == item.answerIndex,
                           onNext: _next,
                           last: _index == quiz.length - 1,
@@ -250,9 +251,18 @@ class _Choice extends StatelessWidget {
 }
 
 class _Feedback extends StatelessWidget {
-  const _Feedback({required this.item, required this.correct, required this.onNext, required this.last});
+  const _Feedback({
+    required this.item,
+    required this.picked,
+    required this.correct,
+    required this.onNext,
+    required this.onListen,
+    required this.last,
+  });
   final QuizItem item;
+  final int? picked;
   final bool correct;
+  final VoidCallback onListen;
   final VoidCallback onNext;
   final bool last;
 
@@ -262,7 +272,9 @@ class _Feedback extends StatelessWidget {
     return Semantics(
       // 스크린리더가 결과를 바로 읽어 주도록
       liveRegion: true,
-      label: correct ? '정답이에요. ${item.explanation}' : '오답이에요. 정답은 $answer. ${item.explanation}',
+      label: correct
+          ? '정답이에요. ${item.explanation}'
+          : '오답이에요. 고른 답 ${picked == null ? '' : item.choices[picked!]}. 정답은 $answer. ${item.explanation}',
       child: ConstrainedBox(
         // 해설이 길거나 글씨가 커도 화면을 다 덮지 않도록
         constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.6),
@@ -272,6 +284,7 @@ class _Feedback extends StatelessWidget {
   }
 
   Widget _sheet(BuildContext context) {
+    final answer = item.choices[item.answerIndex];
     return Container(
       width: double.infinity,
       padding: EdgeInsets.fromLTRB(22, 22, 22, 16 + MediaQuery.paddingOf(context).bottom),
@@ -304,10 +317,33 @@ class _Feedback extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
+            if (!correct && picked != null) ...[
+              // 내 답(취소선) → 정답(굵게) 을 나란히 보여 차이가 바로 보이게
+              Text(
+                item.choices[picked!],
+                style: serif(16, color: AppColors.ink2).copyWith(decoration: TextDecoration.lineThrough),
+              ),
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  Expanded(child: Text(answer, style: serif(18, weight: 600))),
+                  RoundIconButton(icon: Icons.volume_up_rounded, label: '정답 듣기', onPressed: onListen),
+                ],
+              ),
+              const SizedBox(height: 10),
+            ] else if (correct) ...[
+              Row(
+                children: [
+                  Expanded(child: Text(answer, style: serif(18, weight: 600))),
+                  RoundIconButton(icon: Icons.volume_up_rounded, label: '정답 듣기', onPressed: onListen),
+                ],
+              ),
+              const SizedBox(height: 10),
+            ],
             Text(item.explanation, style: sans(14, height: 1.65, color: AppColors.inkSoft)),
             if (!correct) ...[
               const SizedBox(height: 8),
-              Text('이 문제는 내일 한 번 더 나와요.', style: sans(12, color: AppColors.ink2)),
+              Text('틀린 표현은 복습 카드로 곧 다시 만나요.', style: sans(12, color: AppColors.ink2)),
             ],
             const SizedBox(height: 16),
             SizedBox(

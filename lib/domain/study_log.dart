@@ -13,7 +13,7 @@ DateTime parseDateKey(String key) {
 
 /// 하루 루틴을 끝낸 날의 기록
 class DayRecord {
-  const DayRecord({required this.accuracy, required this.levelScore, this.speakingAverage});
+  const DayRecord({required this.accuracy, required this.levelScore, this.speakingAverage, this.newAccuracy});
 
   /// 퀴즈 정답률 0~1
   final double accuracy;
@@ -22,12 +22,21 @@ class DayRecord {
   final int levelScore;
   final double? speakingAverage;
 
-  Map<String, Object?> toJson() => {'accuracy': accuracy, 'levelScore': levelScore, 'speaking': speakingAverage};
+  /// 그날 배운 것만의 퀴즈 정답률 (난이도 판단용, 문항이 적으면 null)
+  final double? newAccuracy;
+
+  Map<String, Object?> toJson() => {
+    'accuracy': accuracy,
+    'levelScore': levelScore,
+    'speaking': speakingAverage,
+    if (newAccuracy != null) 'new': newAccuracy,
+  };
 
   factory DayRecord.fromJson(Map<String, Object?> j) => DayRecord(
     accuracy: (j['accuracy'] as num).toDouble(),
     levelScore: (j['levelScore'] as num).toInt(),
     speakingAverage: (j['speaking'] as num?)?.toDouble(),
+    newAccuracy: (j['new'] as num?)?.toDouble(),
   );
 }
 

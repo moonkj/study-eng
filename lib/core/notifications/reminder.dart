@@ -21,8 +21,8 @@ DateTime nextOccurrence(DateTime now, int minutes) {
 
 /// 알림 문구: 연속 학습일에 따라 조금씩 다르게
 (String, String) reminderText(int streakDays) => switch (streakDays) {
-  0 => ('오늘의 영어', '10분이면 충분해요. 오늘의 표현 3개가 기다리고 있어요.'),
-  < 7 => ('$streakDays일째 이어가는 중', '오늘도 10분, 표현 3개만 입에 붙여 봐요.'),
+  0 => ('오늘의 영어', '15분이면 충분해요. 오늘의 표현 3개가 기다리고 있어요.'),
+  < 7 => ('$streakDays일째 이어가는 중', '오늘도 15분, 표현 3개만 입에 붙여 봐요.'),
   _ => ('$streakDays일 연속 학습 중', '여기까지 온 루틴, 오늘도 이어가요.'),
 };
 

@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../app/routine_flow.dart';
 import '../../app/study_controller.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/tokens.dart';
@@ -25,11 +26,11 @@ class SpeakingScreen extends ConsumerStatefulWidget {
 
 class _SpeakingScreenState extends ConsumerState<SpeakingScreen> {
   bool get _practice => widget.practice != null;
+  bool get _quiet => ref.read(quietModeProvider);
   List<Sentence> get _sentences => widget.practice ?? ref.read(studyProvider).pack.sentences;
 
   late int _index = _practice ? 0 : ref.read(studyProvider).spokenCount.clamp(0, _sentences.length - 1);
   bool _listening = false;
-  bool _quiet = false;
   String _partial = '';
   String? _error;
 
@@ -98,8 +99,7 @@ class _SpeakingScreenState extends ConsumerState<SpeakingScreen> {
     final st = ref.read(studyProvider);
     if (!force && !_done(st, _sentences[_index])) return;
     if (_index >= _sentences.length - 1) {
-      if (!_practice) ref.read(studyProvider.notifier).complete(RoutineStep.speaking);
-      context.pop();
+      _practice ? context.pop() : finishStep(context, ref, RoutineStep.speaking);
       return;
     }
     setState(() {
@@ -112,6 +112,7 @@ class _SpeakingScreenState extends ConsumerState<SpeakingScreen> {
   @override
   Widget build(BuildContext context) {
     final st = ref.watch(studyProvider);
+    ref.watch(quietModeProvider);
     final sentence = _sentences[_index];
     final result = _resultFor(st, sentence);
     final done = _done(st, sentence);
@@ -153,7 +154,7 @@ class _SpeakingScreenState extends ConsumerState<SpeakingScreen> {
                           backgroundColor: AppColors.paper,
                           side: const BorderSide(color: AppColors.line),
                           onSelected: (v) => setState(() {
-                            _quiet = v;
+                            ref.read(quietModeProvider.notifier).set(v);
                             _error = null;
                           }),
                         ),

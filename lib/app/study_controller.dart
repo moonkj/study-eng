@@ -96,7 +96,11 @@ class StudyState {
       if (parseDateKey(k).year == now.year && parseDateKey(k).month == now.month) parseDateKey(k).day,
   };
 
-  double? get yesterdayAccuracy => previousRecord(log, now)?.accuracy;
+  /// 어제 난이도 판단에 쓴 정답률 (오늘과 같은 지표로 비교: 배운 것 정답률이 있으면 그것)
+  double? get yesterdayAccuracy {
+    final r = previousRecord(log, now);
+    return r == null ? null : r.newAccuracy ?? r.accuracy;
+  }
 
   bool get allDone => done.length == RoutineStep.values.length;
 
@@ -107,6 +111,9 @@ class StudyState {
     }
     return null;
   }
+
+  /// 오늘 복습할 카드 수 (배운 항목만)
+  int get dueCount => cards.values.where((c) => learned.containsKey(c.itemId) && c.isDue(now)).length;
 
   int get quizCorrect =>
       quizAnswers.entries.where((e) => e.key < pack.quiz.length && pack.quiz[e.key].answerIndex == e.value).length;
@@ -184,6 +191,16 @@ class ReminderBlocked extends Notifier<bool> {
 
   void set(bool value) => state = value;
 }
+
+/// '소리 내기 어려워요' 모드. 지하철 등에서 켜 두면 앱을 쓰는 동안 말하기 화면에 계속 유지된다.
+class QuietMode extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void set(bool value) => state = value;
+}
+
+final quietModeProvider = NotifierProvider<QuietMode, bool>(QuietMode.new);
 
 final reminderBlockedProvider = NotifierProvider<ReminderBlocked, bool>(ReminderBlocked.new);
 
@@ -467,9 +484,17 @@ class StudyController extends Notifier<StudyState> {
   }
 
   /// 오늘 복습할 표현·단어 (자주 틀린 것, 오래 밀린 것부터)
-  List<LearnedItem> dueReviews({int limit = 20}) => [
+  /// 오늘 퀴즈에 나올 항목은 퀴즈를 마칠 때까지 빼 둔다 (퀴즈로 확인해야 졸업할 수 있게).
+  List<LearnedItem> dueReviews({int limit = 20}) {
+    final inQuiz = state.done.contains(RoutineStep.quiz)
+        ? const <String>{}
+        : {for (final q in state.pack.quiz) ?q.itemId};
+    return _dueReviews(limit, inQuiz);
+  }
+
+  List<LearnedItem> _dueReviews(int limit, Set<String> exclude) => [
     for (final c in Srs.dueToday(
-      state.cards.values.where((c) => state.learned.containsKey(c.itemId)),
+      state.cards.values.where((c) => state.learned.containsKey(c.itemId) && !exclude.contains(c.itemId)),
       _today,
       limit: limit,
     ))
@@ -636,6 +661,7 @@ class StudyController extends Notifier<StudyState> {
             accuracy: result.accuracy,
             levelScore: adj.profile.overall.score,
             speakingAverage: result.speakingAverage,
+            newAccuracy: result.newAccuracy,
           ),
         },
         lastAdjustmentReasons: adj.reasons,

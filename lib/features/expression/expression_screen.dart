@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../app/routine_flow.dart';
 import '../../app/study_controller.dart';
 import '../../core/layout/adaptive.dart';
 import '../../core/theme/app_theme.dart';
@@ -66,8 +67,7 @@ class _ExpressionScreenState extends ConsumerState<ExpressionScreen> {
     if (_index < total - 1) {
       _page.nextPage(duration: const Duration(milliseconds: 320), curve: Curves.easeOutCubic);
     } else {
-      ref.read(studyProvider.notifier).complete(RoutineStep.expressions);
-      context.pop();
+      finishStep(context, ref, RoutineStep.expressions);
     }
   }
 

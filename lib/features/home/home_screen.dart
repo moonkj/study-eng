@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../app/routine_flow.dart';
 import '../../app/study_controller.dart';
 import '../../core/layout/adaptive.dart';
 import '../../core/theme/app_theme.dart';
@@ -19,13 +20,6 @@ String greeting(DateTime d) => switch (d.hour) {
   < 12 => '좋은 아침이에요',
   < 18 => '좋은 오후예요',
   _ => '오늘 하루 수고했어요',
-};
-
-const routinePaths = {
-  RoutineStep.expressions: '/expressions',
-  RoutineStep.words: '/words',
-  RoutineStep.speaking: '/speaking',
-  RoutineStep.quiz: '/quiz',
 };
 
 class HomeScreen extends ConsumerWidget {
@@ -113,7 +107,10 @@ class HomeScreen extends ConsumerWidget {
           children: [
             Text('오늘의 루틴', style: sans(17, weight: FontWeight.w700)),
             const Spacer(),
-            Text('약 12분 · ${s.done.length}/4 완료', style: sans(13, color: AppColors.ink2)),
+            Text(
+              s.allDone ? '4/4 완료' : '남은 시간 약 ${remainingMinutes(s)}분 · ${s.done.length}/4',
+              style: sans(13, color: AppColors.ink2),
+            ),
           ],
         ),
         const SizedBox(height: 10),
@@ -193,6 +190,7 @@ class HomeScreen extends ConsumerWidget {
             heroCard,
             const SizedBox(height: 22),
             routine,
+            if (s.dueCount > 0) ...[_ReviewRow(count: s.dueCount), const SizedBox(height: 8)],
             const SizedBox(height: 6),
             _LevelStrip(state: s),
           ],
@@ -209,7 +207,7 @@ class _ReviewSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final due = state.cards.values.where((c) => state.learned.containsKey(c.itemId) && c.isDue(state.now)).length;
+    final due = state.dueCount;
     return PaperCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -233,7 +231,12 @@ class _ReviewSummary extends StatelessWidget {
           const SizedBox(height: 12),
           Align(
             alignment: Alignment.centerLeft,
-            child: TextButton(onPressed: () => context.go('/review'), child: const Text('복습 탭으로')),
+            child: due > 0
+                ? FilledButton(
+                    onPressed: () => context.push('/review-session'),
+                    child: Text('복습 카드 ${due.clamp(0, 20)}장 넘기기'),
+                  )
+                : TextButton(onPressed: () => context.go('/review'), child: const Text('복습 탭으로')),
           ),
         ],
       ),
@@ -332,16 +335,58 @@ class _DoneCard extends StatelessWidget {
                   style: sans(15, weight: FontWeight.w700, color: AppColors.card),
                 ),
                 const SizedBox(height: 2),
-                Text('내일 만나요. 틈이 나면 복습 카드를 넘겨 보세요.', style: sans(13, color: const Color(0xFFDDD3C1))),
+                Text(
+                  state.dueCount > 0 ? '복습 카드 ${state.dueCount}장이 기다려요. 1~2분이면 돼요.' : '오늘 복습까지 끝! 내일 만나요.',
+                  style: sans(13, color: const Color(0xFFDDD3C1)),
+                ),
               ],
             ),
           ),
-          TextButton(
-            onPressed: () => context.go('/review'),
-            style: TextButton.styleFrom(foregroundColor: AppColors.highlighter),
-            child: const Text('복습'),
-          ),
+          if (state.dueCount > 0)
+            TextButton(
+              onPressed: () => context.push('/review-session'),
+              style: TextButton.styleFrom(foregroundColor: AppColors.highlighter),
+              child: const Text('복습하기'),
+            ),
         ],
+      ),
+    );
+  }
+}
+
+/// 루틴 아래: 오늘 복습할 카드가 있으면 바로 넘길 수 있게
+class _ReviewRow extends StatelessWidget {
+  const _ReviewRow({required this.count});
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.card,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: const BorderSide(color: AppColors.line),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () => context.push('/review-session'),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 56),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            child: Row(
+              children: [
+                const Icon(Icons.replay_rounded, color: AppColors.penBlue, size: 22),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Text('복습 카드 $count장', style: sans(15, weight: FontWeight.w500)),
+                ),
+                Text('${(count / 10).ceil().clamp(1, 3)}분', style: sans(13, color: AppColors.ink2)),
+                const Icon(Icons.chevron_right_rounded, color: AppColors.ink2, size: 20),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -422,13 +467,13 @@ class _RoutineRow extends StatelessWidget {
   final StudyState state;
 
   (String, String) get _texts => switch (step) {
-    RoutineStep.expressions => ('오늘의 표현 ${state.pack.expressions.length}개', '3분'),
-    RoutineStep.words => ('오늘의 단어 ${state.pack.words.length}개', '4분'),
-    RoutineStep.speaking => ('예문 따라 말하기', '${state.pack.sentences.length}문장 · 4분'),
+    RoutineStep.expressions => (stepTitle(step, state), '${stepMinutes(step)}분'),
+    RoutineStep.words => (stepTitle(step, state), '${stepMinutes(step)}분'),
+    RoutineStep.speaking => (stepTitle(step, state), '${state.pack.sentences.length}문장 · ${stepMinutes(step)}분'),
     RoutineStep.quiz => (
-      '복습 퀴즈',
+      stepTitle(step, state),
       state.pack.reviewCount == 0
-          ? '${state.pack.quiz.length}문항 · 3분'
+          ? '${state.pack.quiz.length}문항 · ${stepMinutes(step)}분'
           : '오늘 ${state.pack.quiz.length - state.pack.reviewCount}문항 + 지난 복습 ${state.pack.reviewCount}문항',
     ),
   };

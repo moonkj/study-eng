@@ -67,9 +67,14 @@ abstract final class Srs {
       stage = switch (rating) {
         SelfRating.dontKnow => (card.stage - 2).clamp(0, last),
         SelfRating.confusing => (card.stage - 1).clamp(0, last),
-        // 졸업 전에는 30일 단계에서 멈춘다. 이미 졸업한 카드는 유지 복습 단계로 넘어간다.
-        SelfRating.know => card.graduated ? card.stage + 1 : (card.stage + 1).clamp(0, last),
+        // 졸업(30일 단계 통과)과 유지 복습 통과는 퀴즈 정답으로만. 자가 평가는 단계를 지킨다.
+        SelfRating.know => card.graduated ? card.stage : (card.stage + 1).clamp(0, last),
       };
+    }
+    // 30일 단계에서 '알아요'면 퀴즈로 확인할 수 있도록 일주일 뒤에 다시 (30일씩 미뤄지지 않게)
+    if (rating == SelfRating.know && card.stage == last && stage == last) {
+      final base = _dateOnly(today);
+      return card.copyWith(due: base.add(const Duration(days: 7)), lastReviewed: base);
     }
     return _schedule(card, stage, today, lapse: rating == SelfRating.dontKnow && card.stage >= 0);
   }
@@ -80,6 +85,8 @@ abstract final class Srs {
   static ReviewCard answer(ReviewCard card, {required bool correct, required DateTime today}) {
     final sameDay = card.lastReviewed != null && _dateOnly(card.lastReviewed!) == _dateOnly(today);
     if (correct && sameDay) return card;
+    // 오늘 처음 배운 것을 바로 틀린 것은 '잊은 것'이 아니다: 내일 다시 보되 실수 횟수는 세지 않는다
+    if (!correct && sameDay) return _schedule(card, 0, today);
     final stage = correct
         ? (card.stage < 0 ? 0 : (card.stage + 1).clamp(0, retiredStage))
         : (card.stage - 2).clamp(0, intervals.length - 1);
@@ -117,7 +124,10 @@ abstract final class Srs {
     final due = cards.where((c) => c.isDue(today)).toList()
       ..sort((a, b) {
         final hard = (b.lapses >= 3 ? 1 : 0) - (a.lapses >= 3 ? 1 : 0);
-        return hard != 0 ? hard : a.due.compareTo(b.due);
+        if (hard != 0) return hard;
+        // 졸업 직전(30일 단계)·유지 복습 카드는 퀴즈로 확인해야 하므로 앞에
+        final check = (b.stage >= intervals.length - 1 ? 1 : 0) - (a.stage >= intervals.length - 1 ? 1 : 0);
+        return check != 0 ? check : a.due.compareTo(b.due);
       });
     return due.take(limit).toList();
   }
