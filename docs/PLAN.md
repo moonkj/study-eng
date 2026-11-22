@@ -259,9 +259,11 @@ speaking_attempts(id, item_id, recognized_text, score, at)
 
 ---
 
-## 9. 결정이 필요한 항목 (사용자 확인 필요)
-1. **로그인 방식**: 익명 시작 후 선택 연동(추천) vs 처음부터 소셜 로그인 필수
-2. **백엔드**: Firebase(추천, 위 계획 기준) vs Supabase
-3. **수익 모델**: MVP는 무료로 출시하고 3차에 구독 도입(추천) vs 처음부터 유료 기능
-4. **AI 모델 비용 정책**: 기본 고품질 모델로 시작 후 실제 비용을 보고 조정(추천)
-5. **앱 이름**: 프로젝트명 `todaye`를 그대로 쓸지
+## 9. 확정된 방향 (2026-11-22)
+- **개인용 앱**: 수익 모델·소셜 로그인·스토어 마케팅은 범위에서 제외. 공유 팩 대신 **나만을 위한 맞춤 팩**을 매일 생성.
+- **Claude API 사용**: 콘텐츠 생성, 말하기 피드백, AI 선생님에 사용.
+- **최우선 가치**: 계속 공부하고 싶어지는 유려한 UX/UI + 내 레벨에 맞춘 학습 시스템.
+  - 디자인 시스템: `docs/design/design-system.md`
+  - 레벨 시스템: `docs/level-system.md`
+  - 화면 시안(Claude Design): https://claude.ai/artifact/G2JJ6akobFwcDJM7MwvheE
+- 레퍼런스 스크린샷은 참고용이며 그대로 따르지 않음.
