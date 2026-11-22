@@ -224,16 +224,19 @@ class _Choice extends StatelessWidget {
               child: Row(
                 children: [
                   Expanded(
-                    child: Text(
+                    child: englishSemantics(
                       text,
-                      style:
-                          serif(
-                            18,
-                            color: status == _Status.wrong || status == _Status.dim ? AppColors.ink2 : AppColors.ink,
-                          ).copyWith(
-                            decoration: status == _Status.wrong ? TextDecoration.lineThrough : null,
-                            decorationColor: AppColors.error,
-                          ),
+                      Text(
+                        text,
+                        style:
+                            serif(
+                              18,
+                              color: status == _Status.wrong || status == _Status.dim ? AppColors.ink2 : AppColors.ink,
+                            ).copyWith(
+                              decoration: status == _Status.wrong ? TextDecoration.lineThrough : null,
+                              decorationColor: AppColors.error,
+                            ),
+                      ),
                     ),
                   ),
                   if (status == _Status.correct)

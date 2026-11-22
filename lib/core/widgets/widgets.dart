@@ -1,3 +1,4 @@
+import 'package:flutter/semantics.dart' show AttributedString, LocaleStringAttribute;
 import 'package:material_ui/material_ui.dart';
 import 'package:go_router/go_router.dart';
 
@@ -37,6 +38,21 @@ class PaperCard extends StatelessWidget {
 }
 
 /// 영어 문장에서 [highlight] 부분에 형광펜을 칠한다.
+/// 영어 문장을 스크린리더가 영어 음성으로 읽도록 언어를 표시한다 (한국어 음성으로 읽으면 알아듣기 어렵다).
+Widget englishSemantics(String text, Widget child) => Semantics(
+  attributedLabel: AttributedString(
+    text,
+    attributes: [
+      LocaleStringAttribute(
+        range: TextRange(start: 0, end: text.length),
+        locale: const Locale('en', 'US'),
+      ),
+    ],
+  ),
+  excludeSemantics: true,
+  child: child,
+);
+
 class HighlightText extends StatelessWidget {
   const HighlightText(this.text, {super.key, this.highlight, required this.style, this.maxLines});
 
@@ -50,32 +66,35 @@ class HighlightText extends StatelessWidget {
     final h = highlight;
     final idx = h == null ? -1 : text.toLowerCase().indexOf(h.toLowerCase());
     if (h == null || idx < 0) {
-      return Text(text, style: style, maxLines: maxLines);
+      return englishSemantics(text, Text(text, style: style, maxLines: maxLines));
     }
     // 줄 높이 단위로 반복되는 그라디언트로 글자 아래쪽 45%만 형광펜을 칠한다.
     final lineHeight = (style.fontSize ?? 16) * (style.height ?? 1.2);
-    return Text.rich(
-      TextSpan(
-        children: [
-          TextSpan(text: text.substring(0, idx)),
-          TextSpan(
-            text: text.substring(idx, idx + h.length),
-            style: style.copyWith(
-              background: Paint()
-                ..shader = const LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  stops: [0.55, 0.55, 0.95, 0.95],
-                  colors: [Color(0x00F3DB7A), AppColors.highlighter, AppColors.highlighter, Color(0x00F3DB7A)],
-                  tileMode: TileMode.repeated,
-                ).createShader(Rect.fromLTWH(0, 0, 10, lineHeight)),
+    return englishSemantics(
+      text,
+      Text.rich(
+        TextSpan(
+          children: [
+            TextSpan(text: text.substring(0, idx)),
+            TextSpan(
+              text: text.substring(idx, idx + h.length),
+              style: style.copyWith(
+                background: Paint()
+                  ..shader = const LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    stops: [0.55, 0.55, 0.95, 0.95],
+                    colors: [Color(0x00F3DB7A), AppColors.highlighter, AppColors.highlighter, Color(0x00F3DB7A)],
+                    tileMode: TileMode.repeated,
+                  ).createShader(Rect.fromLTWH(0, 0, 10, lineHeight)),
+              ),
             ),
-          ),
-          TextSpan(text: text.substring(idx + h.length)),
-        ],
+            TextSpan(text: text.substring(idx + h.length)),
+          ],
+        ),
+        style: style,
+        maxLines: maxLines,
       ),
-      style: style,
-      maxLines: maxLines,
     );
   }
 }
@@ -105,9 +124,11 @@ class Tag extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[Icon(icon, size: 13, color: color), const SizedBox(width: 4)],
-          Text(
-            label,
-            style: sans(12, weight: FontWeight.w600, color: color),
+          Flexible(
+            child: Text(
+              label,
+              style: sans(12, weight: FontWeight.w600, color: color),
+            ),
           ),
         ],
       ),
@@ -222,19 +243,26 @@ class StudyTopBar extends StatelessWidget {
         ),
         const SizedBox(width: 4),
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: sans(15, weight: FontWeight.w700)),
-              const SizedBox(height: 6),
-              ThinProgress(total == 0 ? 0 : index / total),
-            ],
+          child: Semantics(
+            // 스크린리더: '오늘의 단어, 10개 중 3개 완료'
+            label: '$title, $total개 중 $index개 완료',
+            excludeSemantics: true,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: sans(15, weight: FontWeight.w700)),
+                const SizedBox(height: 6),
+                ThinProgress(total == 0 ? 0 : index / total),
+              ],
+            ),
           ),
         ),
         const SizedBox(width: 12),
-        Text(
-          '$index/$total',
-          style: sans(13, weight: FontWeight.w600, color: AppColors.ink2),
+        ExcludeSemantics(
+          child: Text(
+            '$index/$total',
+            style: sans(13, weight: FontWeight.w600, color: AppColors.ink2),
+          ),
         ),
         if (trailing != null) trailing! else const SizedBox(width: 8),
       ],
@@ -268,7 +296,7 @@ class ExampleRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(en, style: serif(18, height: 1.35)),
+                englishSemantics(en, Text(en, style: serif(18, height: 1.35))),
                 const SizedBox(height: 3),
                 Text(ko, style: sans(13, color: AppColors.ink2)),
               ],

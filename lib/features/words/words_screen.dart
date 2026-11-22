@@ -200,7 +200,10 @@ class _WordCard extends ConsumerWidget {
                 const Spacer(),
                 FittedBox(
                   fit: BoxFit.scaleDown,
-                  child: Text(word.word, style: serif(52, weight: 500, letterSpacing: -1, height: 1)),
+                  child: englishSemantics(
+                    word.word,
+                    Text(word.word, style: serif(52, weight: 500, letterSpacing: -1, height: 1)),
+                  ),
                 ),
                 const SizedBox(height: 10),
                 Wrap(

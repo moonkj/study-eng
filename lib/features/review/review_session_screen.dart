@@ -88,27 +88,7 @@ class _ReviewSessionScreenState extends ConsumerState<ReviewSessionScreen> {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
                   child: _revealed
-                      ? Row(
-                          children: [
-                            Expanded(
-                              child: OutlinedButton(
-                                onPressed: () => _rate(SelfRating.dontKnow),
-                                child: const Text('몰랐어요'),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: OutlinedButton(
-                                onPressed: () => _rate(SelfRating.confusing),
-                                child: const Text('헷갈렸어요'),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: FilledButton(onPressed: () => _rate(SelfRating.know), child: const Text('알았어요')),
-                            ),
-                          ],
-                        )
+                      ? _RatingButtons(onRate: _rate)
                       : FilledButton(onPressed: () => setState(() => _revealed = true), child: const Text('뜻 확인하기')),
                 )
               else
@@ -119,6 +99,33 @@ class _ReviewSessionScreenState extends ConsumerState<ReviewSessionScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// 평가 버튼 3개. 글씨를 크게 키운 경우(1.3배 초과)에는 세로로 쌓아 글자가 잘리지 않게 한다.
+class _RatingButtons extends StatelessWidget {
+  const _RatingButtons({required this.onRate});
+  final void Function(SelfRating) onRate;
+
+  @override
+  Widget build(BuildContext context) {
+    final vertical = MediaQuery.textScalerOf(context).scale(10) > 13;
+    final buttons = [
+      OutlinedButton(onPressed: () => onRate(SelfRating.dontKnow), child: const Text('몰랐어요')),
+      OutlinedButton(onPressed: () => onRate(SelfRating.confusing), child: const Text('헷갈렸어요')),
+      FilledButton(onPressed: () => onRate(SelfRating.know), child: const Text('알았어요')),
+    ];
+    if (vertical) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [for (final b in buttons.reversed) Padding(padding: const EdgeInsets.only(bottom: 8), child: b)],
+      );
+    }
+    return Row(
+      children: [
+        for (var i = 0; i < buttons.length; i++) ...[if (i > 0) const SizedBox(width: 8), Expanded(child: buttons[i])],
+      ],
     );
   }
 }
@@ -145,43 +152,67 @@ class _Card extends StatelessWidget {
         elevated: true,
         radius: AppRadius.sheet,
         padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                Tag(reviewLabelFor(item, today), color: AppColors.ink, background: AppColors.sand),
-                const Spacer(),
-                RoundIconButton(icon: Icons.volume_up_rounded, label: '발음 듣기', filled: false, onPressed: onListen),
-              ],
-            ),
-            const Spacer(),
-            Text(
-              item.text,
-              textAlign: TextAlign.center,
-              style: serif(item.kind == 'word' ? 44 : 32, weight: 500, height: 1.2, letterSpacing: -0.5),
-            ),
-            const SizedBox(height: 12),
-            Text('뜻을 먼저 떠올려 보세요', style: sans(13, color: AppColors.ink2)),
-            const Spacer(),
-            const Divider(),
-            const SizedBox(height: 16),
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 200),
-              child: revealed
-                  ? Text(
-                      item.meaning,
-                      key: const ValueKey('meaning'),
-                      textAlign: TextAlign.center,
-                      style: sans(20, weight: FontWeight.w700),
-                    )
-                  : TextButton.icon(
-                      key: const ValueKey('hidden'),
-                      onPressed: onReveal,
-                      icon: const Icon(Icons.visibility_outlined, size: 18),
-                      label: const Text('탭해서 뜻 보기'),
+        child: LayoutBuilder(
+          // 큰 글씨에서 내용이 카드보다 길어지면 스크롤 (평소에는 가운데 정렬 그대로)
+          builder: (context, box) => SingleChildScrollView(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: box.maxHeight),
+              child: IntrinsicHeight(
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Tag(reviewLabelFor(item, today), color: AppColors.ink, background: AppColors.sand),
+                        ),
+                        const SizedBox(width: 8),
+                        const Spacer(),
+                        RoundIconButton(
+                          icon: Icons.volume_up_rounded,
+                          label: '발음 듣기',
+                          filled: false,
+                          onPressed: onListen,
+                        ),
+                      ],
                     ),
+                    const Spacer(),
+                    Text(
+                      item.text,
+                      textAlign: TextAlign.center,
+                      style: serif(item.kind == 'word' ? 44 : 32, weight: 500, height: 1.2, letterSpacing: -0.5),
+                    ),
+                    const SizedBox(height: 12),
+                    Text('뜻을 먼저 떠올려 보세요', style: sans(13, color: AppColors.ink2)),
+                    const Spacer(),
+                    const Divider(),
+                    const SizedBox(height: 16),
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 200),
+                      // 뜻이 나타나면 스크린리더가 바로 읽어 준다
+                      layoutBuilder: (current, previous) => Semantics(
+                        liveRegion: true,
+                        child: Stack(alignment: Alignment.center, children: [...previous, ?current]),
+                      ),
+                      child: revealed
+                          ? Text(
+                              item.meaning,
+                              key: const ValueKey('meaning'),
+                              semanticsLabel: '뜻: ${item.meaning}',
+                              textAlign: TextAlign.center,
+                              style: sans(20, weight: FontWeight.w700),
+                            )
+                          : TextButton.icon(
+                              key: const ValueKey('hidden'),
+                              onPressed: onReveal,
+                              icon: const Icon(Icons.visibility_outlined, size: 18),
+                              label: const Text('탭해서 뜻 보기'),
+                            ),
+                    ),
+                  ],
+                ),
+              ),
             ),
-          ],
+          ),
         ),
       ),
     );

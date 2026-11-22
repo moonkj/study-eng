@@ -127,40 +127,43 @@ class TabShell extends StatelessWidget {
           ),
           child: SafeArea(
             top: false,
-            child: SizedBox(
-              height: 64,
-              child: Row(
-                children: [
-                  for (var i = 0; i < tabs.length; i++)
-                    Expanded(
-                      child: Semantics(
-                        selected: shell.currentIndex == i,
-                        button: true,
-                        child: InkWell(
-                          onTap: () => _go(i),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                shell.currentIndex == i ? tabs[i].$2 : tabs[i].$1,
-                                size: 22,
-                                color: shell.currentIndex == i ? AppColors.ink : AppColors.ink2,
-                              ),
-                              const SizedBox(height: 3),
-                              Text(
-                                tabs[i].$3,
-                                style: sans(
-                                  12,
-                                  weight: shell.currentIndex == i ? FontWeight.w700 : FontWeight.w500,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 64),
+              child: IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (var i = 0; i < tabs.length; i++)
+                      Expanded(
+                        child: Semantics(
+                          selected: shell.currentIndex == i,
+                          button: true,
+                          child: InkWell(
+                            onTap: () => _go(i),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  shell.currentIndex == i ? tabs[i].$2 : tabs[i].$1,
+                                  size: 22,
                                   color: shell.currentIndex == i ? AppColors.ink : AppColors.ink2,
                                 ),
-                              ),
-                            ],
+                                const SizedBox(height: 3),
+                                Text(
+                                  tabs[i].$3,
+                                  style: sans(
+                                    12,
+                                    weight: shell.currentIndex == i ? FontWeight.w700 : FontWeight.w500,
+                                    color: shell.currentIndex == i ? AppColors.ink : AppColors.ink2,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -207,51 +210,63 @@ class _SideNav extends StatelessWidget {
                     child: Material(
                       color: current == i ? AppColors.sand : Colors.transparent,
                       borderRadius: BorderRadius.circular(14),
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(14),
-                        onTap: () => onSelect(i),
-                        child: SizedBox(
-                          height: extended ? 48 : 60,
-                          width: extended ? double.infinity : 72,
-                          child: extended
-                              ? Row(
-                                  children: [
-                                    const SizedBox(width: 12),
-                                    Icon(
-                                      current == i ? TabShell.tabs[i].$2 : TabShell.tabs[i].$1,
-                                      size: 22,
-                                      color: current == i ? AppColors.ink : AppColors.ink2,
-                                    ),
-                                    const SizedBox(width: 14),
-                                    Text(
-                                      TabShell.tabs[i].$3,
-                                      style: sans(
-                                        15,
-                                        weight: current == i ? FontWeight.w700 : FontWeight.w500,
+                      child: DecoratedBox(
+                        // 선택 표시를 배경색만이 아니라 왼쪽 막대로도 (배경과 대비가 낮아서)
+                        position: DecorationPosition.foreground,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(14),
+                          border: current == i ? const Border(left: BorderSide(color: AppColors.ink, width: 3)) : null,
+                        ),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(14),
+                          onTap: () => onSelect(i),
+                          // 큰 글씨에서도 넘치지 않게 최소 높이
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(
+                              minHeight: extended ? 48 : 60,
+                              minWidth: extended ? double.infinity : 72,
+                              maxWidth: extended ? double.infinity : 72,
+                            ),
+                            child: extended
+                                ? Row(
+                                    children: [
+                                      const SizedBox(width: 12),
+                                      Icon(
+                                        current == i ? TabShell.tabs[i].$2 : TabShell.tabs[i].$1,
+                                        size: 22,
                                         color: current == i ? AppColors.ink : AppColors.ink2,
                                       ),
-                                    ),
-                                  ],
-                                )
-                              : Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      current == i ? TabShell.tabs[i].$2 : TabShell.tabs[i].$1,
-                                      size: 22,
-                                      color: current == i ? AppColors.ink : AppColors.ink2,
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      TabShell.tabs[i].$3,
-                                      style: sans(
-                                        12,
-                                        weight: current == i ? FontWeight.w700 : FontWeight.w500,
+                                      const SizedBox(width: 14),
+                                      Text(
+                                        TabShell.tabs[i].$3,
+                                        style: sans(
+                                          15,
+                                          weight: current == i ? FontWeight.w700 : FontWeight.w500,
+                                          color: current == i ? AppColors.ink : AppColors.ink2,
+                                        ),
+                                      ),
+                                    ],
+                                  )
+                                : Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        current == i ? TabShell.tabs[i].$2 : TabShell.tabs[i].$1,
+                                        size: 22,
                                         color: current == i ? AppColors.ink : AppColors.ink2,
                                       ),
-                                    ),
-                                  ],
-                                ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        TabShell.tabs[i].$3,
+                                        style: sans(
+                                          12,
+                                          weight: current == i ? FontWeight.w700 : FontWeight.w500,
+                                          color: current == i ? AppColors.ink : AppColors.ink2,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                          ),
                         ),
                       ),
                     ),
