@@ -140,7 +140,7 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    expect(find.text('오늘 루틴 완료!'), findsOneWidget);
+    expect(find.text('최고 기록 경신! 13일 연속'), findsOneWidget); // 어제까지 12일이 최고 기록
     expect(find.textContaining('13', findRichText: true), findsWidgets); // 연속 학습일 +1
     expect(find.text('10/10'), findsOneWidget);
     expect(find.text('내일 몇 시에 알려 드릴까요?'), findsOneWidget); // 첫 완료 때 알림 제안

@@ -88,11 +88,28 @@ class StudyState {
 
   bool hasSpoken(String sentenceId) => today.spoken.containsKey(sentenceId);
 
-  int get streakDays => computeStreak(log.keys, now);
+  /// 연속 학습 (쉬는 날 포함 계산)
+  late final StreakInfo streak = computeStreakInfo(log.keys, now);
+  int get streakDays => streak.days;
+
+  /// 최고 연속 기록 (쉬는 날로 이어진 지금 기록이 더 길면 그것)
+  int get longestStreak {
+    final raw = computeLongestStreak(log.keys);
+    return raw > streakDays ? raw : streakDays;
+  }
+
+  /// 오늘을 빼고 계산한 최고 기록 (오늘 완료로 기록을 새로 세웠는지 보려고)
+  int get previousLongest => computeLongestStreak(log.keys.where((k) => k != dateKey(now)));
 
   /// 이번 달에 루틴을 끝낸 날짜(일)
   Set<int> get studiedDays => {
     for (final k in log.keys)
+      if (parseDateKey(k).year == now.year && parseDateKey(k).month == now.month) parseDateKey(k).day,
+  };
+
+  /// 이번 달 중 쉬는 날로 메운 날
+  Set<int> get restDaysThisMonth => {
+    for (final k in streak.restDays)
       if (parseDateKey(k).year == now.year && parseDateKey(k).month == now.month) parseDateKey(k).day,
   };
 
@@ -112,8 +129,20 @@ class StudyState {
     return null;
   }
 
-  /// 오늘 복습할 카드 수 (배운 항목만)
-  int get dueCount => cards.values.where((c) => learned.containsKey(c.itemId) && c.isDue(now)).length;
+  /// 복습 세션에 한 번에 나오는 최대 카드 수
+  static const reviewSessionSize = 20;
+
+  /// 지금 복습 세션을 열면 나올 카드 수 (오늘 퀴즈에 나올 항목은 퀴즈 전까지 제외, 최대 20장)
+  int get dueCount {
+    final inQuiz = done.contains(RoutineStep.quiz) ? const <String>{} : {for (final q in pack.quiz) ?q.itemId};
+    final n = cards.values
+        .where((c) => learned.containsKey(c.itemId) && !inQuiz.contains(c.itemId) && c.isDue(now))
+        .length;
+    return n > reviewSessionSize ? reviewSessionSize : n;
+  }
+
+  /// 복습 세션 예상 시간(분): 카드 10장에 약 1분
+  int get reviewMinutes => (dueCount / 10).ceil().clamp(1, 3);
 
   int get quizCorrect =>
       quizAnswers.entries.where((e) => e.key < pack.quiz.length && pack.quiz[e.key].answerIndex == e.value).length;
@@ -607,8 +636,8 @@ class StudyController extends Notifier<StudyState> {
       _set(state.copyWith(settings: state.settings.copyWith(reminderMinutes: () => null)));
       return true;
     }
-    final (title, body) = reminderText(state.streakDays);
-    final ok = await reminder.scheduleDaily(minutes, title: title, body: body);
+    final (title, body) = reminderText(state.streakDays, longest: state.longestStreak);
+    final ok = await reminder.scheduleDaily(minutes, title: title, body: body, notBefore: _nextReminderStart());
     if (!ref.mounted) return ok;
     if (ok) {
       ref.read(reminderBlockedProvider.notifier).set(false);
@@ -622,9 +651,18 @@ class StudyController extends Notifier<StudyState> {
   Future<void> syncReminder() async {
     final minutes = state.settings.reminderMinutes;
     if (minutes == null) return;
-    final (title, body) = reminderText(state.streakDays);
-    final ok = await ref.read(reminderProvider).scheduleDaily(minutes, title: title, body: body, askPermission: false);
+    final (title, body) = reminderText(state.streakDays, longest: state.longestStreak);
+    final ok = await ref
+        .read(reminderProvider)
+        .scheduleDaily(minutes, title: title, body: body, askPermission: false, notBefore: _nextReminderStart());
     if (ref.mounted) ref.read(reminderBlockedProvider.notifier).set(!ok);
+  }
+
+  /// 오늘 루틴을 이미 끝냈으면 오늘 남은 알림은 건너뛰고 다음 학습일(새벽 4시 이후)부터 알린다.
+  DateTime? _nextReminderStart() {
+    if (!state.allDone) return null;
+    final d = state.now;
+    return DateTime(d.year, d.month, d.day + 1, dayStartHour);
   }
 
   void _finishDay() {

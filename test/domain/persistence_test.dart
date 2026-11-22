@@ -24,6 +24,22 @@ void main() {
     test('월이 바뀌어도 이어진다', () {
       expect(computeStreak(['2026-10-31', '2026-11-01'], DateTime(2026, 11, 1)), 2);
     });
+
+    test('7일 연속마다 쉬는 날이 생기고, 하루 빠지면 자동으로 써서 기록을 지킨다', () {
+      final week = [for (var d = 1; d <= 7; d++) dateKey(DateTime(2026, 11, d))];
+      // 11/8 빠짐 → 쉬는 날 사용, 11/9 공부
+      var info = computeStreakInfo([...week, '2026-11-09'], DateTime(2026, 11, 9));
+      expect(info.days, 8);
+      expect(info.restsLeft, 0);
+      expect(info.restDays, {'2026-11-08'});
+      // 쉬는 날이 없을 때 또 빠지면 끊긴다
+      info = computeStreakInfo([...week, '2026-11-09', '2026-11-11'], DateTime(2026, 11, 11));
+      expect(info.days, 1);
+      // 오늘 아직 안 했으면 빠진 날로 치지 않는다
+      info = computeStreakInfo(week, DateTime(2026, 11, 8));
+      expect(info.days, 7);
+      expect(info.restsLeft, 1);
+    });
   });
 
   group('저장과 복원', () {

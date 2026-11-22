@@ -50,7 +50,24 @@ RoutineStep? nextStep(StudyState s) {
 
 /// 루틴 단계를 끝낸다. 홈으로 돌아가지 않고 다음 단계로 바로 이어갈 수 있게 묻는다.
 /// 모두 끝났으면 완료 화면으로 간다.
+bool _finishing = false;
+
 Future<void> finishStep(BuildContext context, WidgetRef ref, RoutineStep step) async {
+  if (_finishing) return; // 마지막 버튼을 빠르게 두 번 누른 경우
+  // 이미 끝낸 단계를 다시 본 것이면 축하·이어가기 없이 돌아간다
+  if (ref.read(studyProvider).done.contains(step)) {
+    context.pop();
+    return;
+  }
+  _finishing = true;
+  try {
+    await _finish(context, ref, step);
+  } finally {
+    _finishing = false;
+  }
+}
+
+Future<void> _finish(BuildContext context, WidgetRef ref, RoutineStep step) async {
   ref.read(studyProvider.notifier).complete(step);
   final s = ref.read(studyProvider);
   if (s.allDone) {

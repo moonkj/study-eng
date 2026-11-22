@@ -50,7 +50,7 @@ class HomeScreen extends ConsumerWidget {
             ],
           ),
         ),
-        _StreakChip(days: s.streakDays, doneToday: s.allDone, evening: now.hour >= 18),
+        _StreakChip(days: s.streakDays, longest: s.longestStreak, doneToday: s.allDone, evening: now.hour >= 18),
       ],
     );
 
@@ -190,7 +190,7 @@ class HomeScreen extends ConsumerWidget {
             heroCard,
             const SizedBox(height: 22),
             routine,
-            if (s.dueCount > 0) ...[_ReviewRow(count: s.dueCount), const SizedBox(height: 8)],
+            if (s.dueCount > 0) ...[_ReviewRow(count: s.dueCount, minutes: s.reviewMinutes), const SizedBox(height: 8)],
             const SizedBox(height: 6),
             _LevelStrip(state: s),
           ],
@@ -234,7 +234,7 @@ class _ReviewSummary extends StatelessWidget {
             child: due > 0
                 ? FilledButton(
                     onPressed: () => context.push('/review-session'),
-                    child: Text('복습 카드 ${due.clamp(0, 20)}장 넘기기'),
+                    child: Text('복습 카드 $due장 넘기기 · ${state.reviewMinutes}분'),
                   )
                 : TextButton(onPressed: () => context.go('/review'), child: const Text('복습 탭으로')),
           ),
@@ -336,7 +336,9 @@ class _DoneCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  state.dueCount > 0 ? '복습 카드 ${state.dueCount}장이 기다려요. 1~2분이면 돼요.' : '오늘 복습까지 끝! 내일 만나요.',
+                  state.dueCount > 0
+                      ? '복습 카드 ${state.dueCount}장이 기다려요. ${state.reviewMinutes}분이면 돼요.'
+                      : '오늘 복습까지 끝! 내일 만나요.',
                   style: sans(13, color: const Color(0xFFDDD3C1)),
                 ),
               ],
@@ -356,8 +358,9 @@ class _DoneCard extends StatelessWidget {
 
 /// 루틴 아래: 오늘 복습할 카드가 있으면 바로 넘길 수 있게
 class _ReviewRow extends StatelessWidget {
-  const _ReviewRow({required this.count});
+  const _ReviewRow({required this.count, required this.minutes});
   final int count;
+  final int minutes;
 
   @override
   Widget build(BuildContext context) {
@@ -381,7 +384,7 @@ class _ReviewRow extends StatelessWidget {
                 Expanded(
                   child: Text('복습 카드 $count장', style: sans(15, weight: FontWeight.w500)),
                 ),
-                Text('${(count / 10).ceil().clamp(1, 3)}분', style: sans(13, color: AppColors.ink2)),
+                Text('$minutes분', style: sans(13, color: AppColors.ink2)),
                 const Icon(Icons.chevron_right_rounded, color: AppColors.ink2, size: 20),
               ],
             ),
@@ -417,8 +420,9 @@ class _FallbackNotice extends StatelessWidget {
 
 /// 연속 학습일 칩: 오늘 했는지, 오늘 안 하면 끊기는지를 한눈에
 class _StreakChip extends StatelessWidget {
-  const _StreakChip({required this.days, required this.doneToday, required this.evening});
+  const _StreakChip({required this.days, required this.longest, required this.doneToday, required this.evening});
   final int days;
+  final int longest;
   final bool doneToday;
   final bool evening;
 
@@ -428,10 +432,12 @@ class _StreakChip extends StatelessWidget {
     final label = doneToday
         ? '$days일째'
         : days == 0
-        ? '오늘부터 시작'
+        ? (longest > 0 ? '다시 시작 · 최고 $longest일' : '오늘부터 시작')
         : '오늘 하면 ${days + 1}일';
     return Semantics(
-      label: doneToday ? '연속 $days일, 오늘 완료' : (days == 0 ? '오늘부터 시작' : '연속 $days일, 오늘 하면 ${days + 1}일'),
+      label: doneToday
+          ? '연속 $days일, 오늘 완료'
+          : (days == 0 ? (longest > 0 ? '다시 시작, 최고 기록 $longest일' : '오늘부터 시작') : '연속 $days일, 오늘 하면 ${days + 1}일'),
       excludeSemantics: true,
       child: Container(
         constraints: const BoxConstraints(minHeight: 32),

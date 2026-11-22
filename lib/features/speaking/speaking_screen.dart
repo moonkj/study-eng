@@ -29,7 +29,9 @@ class _SpeakingScreenState extends ConsumerState<SpeakingScreen> {
   bool get _quiet => ref.read(quietModeProvider);
   List<Sentence> get _sentences => widget.practice ?? ref.read(studyProvider).pack.sentences;
 
-  late int _index = _practice ? 0 : ref.read(studyProvider).spokenCount.clamp(0, _sentences.length - 1);
+  late int _index = _practice || ref.read(studyProvider).done.contains(RoutineStep.speaking)
+      ? 0
+      : ref.read(studyProvider).spokenCount.clamp(0, _sentences.length - 1);
   bool _listening = false;
   String _partial = '';
   String? _error;

@@ -91,8 +91,23 @@ class ProgressScreen extends ConsumerWidget {
                     Text('${s.studiedDays.length}일 학습 · 연속 ${s.streakDays}일', style: sans(12, color: AppColors.ink2)),
                   ],
                 ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    const Icon(Icons.weekend_outlined, size: 14, color: AppColors.ink2),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        s.streak.restsLeft > 0
+                            ? '쉬는 날 ${s.streak.restsLeft}개 · 하루 빠져도 연속 기록이 이어져요'
+                            : '7일 연속 공부하면 쉬는 날이 1개 생겨요',
+                        style: sans(12, color: AppColors.ink2),
+                      ),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 10),
-                _MonthGrid(now: now, studied: s.studiedDays),
+                _MonthGrid(now: s.now, studied: s.studiedDays, rested: s.restDaysThisMonth),
               ],
             ),
           ),
@@ -150,9 +165,10 @@ class _Stat extends StatelessWidget {
 }
 
 class _MonthGrid extends StatelessWidget {
-  const _MonthGrid({required this.now, required this.studied});
+  const _MonthGrid({required this.now, required this.studied, required this.rested});
   final DateTime now;
   final Set<int> studied;
+  final Set<int> rested;
 
   @override
   Widget build(BuildContext context) {
@@ -173,17 +189,21 @@ class _MonthGrid extends StatelessWidget {
             child: Text(h, style: sans(10, color: AppColors.ink2)),
           ),
         for (var i = 0; i < lead; i++) const SizedBox.shrink(),
-        for (var d = 1; d <= days; d++) _DayCell(day: d, today: now.day, studied: studied.contains(d)),
+        for (var d = 1; d <= days; d++)
+          _DayCell(day: d, today: now.day, studied: studied.contains(d), rested: rested.contains(d)),
       ],
     );
   }
 }
 
 class _DayCell extends StatelessWidget {
-  const _DayCell({required this.day, required this.today, required this.studied});
+  const _DayCell({required this.day, required this.today, required this.studied, this.rested = false});
   final int day;
   final int today;
   final bool studied;
+
+  /// 쉬는 날로 연속 기록을 지킨 날
+  final bool rested;
 
   @override
   Widget build(BuildContext context) {
@@ -195,6 +215,8 @@ class _DayCell extends StatelessWidget {
         ? (Colors.transparent, AppColors.ink2)
         : studied
         ? (AppColors.penBlue, AppColors.card)
+        : rested
+        ? (AppColors.sand, AppColors.ink)
         : (const Color(0xFFEDE6D8), AppColors.ink2);
     return Semantics(
       label:
@@ -204,7 +226,9 @@ class _DayCell extends StatelessWidget {
               ? ''
               : studied
               ? '학습함'
-              : '쉼'}',
+              : rested
+              ? '쉬는 날 사용'
+              : '안 함'}',
       excludeSemantics: true,
       child: Container(
         alignment: Alignment.center,
@@ -226,7 +250,9 @@ class _DayCell extends StatelessWidget {
                 width: 4,
                 height: 4,
                 decoration: BoxDecoration(color: fg, shape: BoxShape.circle),
-              ),
+              )
+            else if (rested && !isToday)
+              Icon(Icons.weekend_outlined, size: 9, color: fg),
           ],
         ),
       ),

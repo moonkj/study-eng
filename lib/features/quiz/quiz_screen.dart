@@ -18,7 +18,10 @@ class QuizScreen extends ConsumerStatefulWidget {
 }
 
 class _QuizScreenState extends ConsumerState<QuizScreen> {
-  late int _index = ref.read(studyProvider).quizAnswers.length.clamp(0, ref.read(studyProvider).pack.quiz.length - 1);
+  // 끝낸 단계를 다시 보면 처음부터
+  late int _index = ref.read(studyProvider).done.contains(RoutineStep.quiz)
+      ? 0
+      : ref.read(studyProvider).quizAnswers.length.clamp(0, ref.read(studyProvider).pack.quiz.length - 1);
 
   void _next() {
     final total = ref.read(studyProvider).pack.quiz.length;
@@ -133,7 +136,12 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                           onListen: () => ref.read(sayProvider)(item.choices[item.answerIndex]),
                           correct: picked == item.answerIndex,
                           onNext: _next,
-                          last: _index == quiz.length - 1,
+                          nextLabel: _index < quiz.length - 1
+                              ? '다음 문제'
+                              // 다른 단계가 남았으면 결과 화면이 아니라 다음 단계를 묻는다
+                              : s.done.length >= RoutineStep.values.length - 1
+                              ? '결과 보기'
+                              : '퀴즈 마치기',
                         )
                       : const SizedBox(width: double.infinity),
                 ),
@@ -257,14 +265,14 @@ class _Feedback extends StatelessWidget {
     required this.correct,
     required this.onNext,
     required this.onListen,
-    required this.last,
+    required this.nextLabel,
   });
   final QuizItem item;
   final int? picked;
   final bool correct;
   final VoidCallback onListen;
   final VoidCallback onNext;
-  final bool last;
+  final String nextLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -348,7 +356,7 @@ class _Feedback extends StatelessWidget {
             const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
-              child: FilledButton(onPressed: onNext, child: Text(last ? '결과 보기' : '다음 문제')),
+              child: FilledButton(onPressed: onNext, child: Text(nextLabel)),
             ),
           ],
         ),

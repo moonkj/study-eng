@@ -19,7 +19,9 @@ class WordsScreen extends ConsumerStatefulWidget {
 }
 
 class _WordsScreenState extends ConsumerState<WordsScreen> {
-  late int _index = ref.read(studyProvider).wordRatings.length.clamp(0, ref.read(studyProvider).pack.words.length - 1);
+  late int _index = ref.read(studyProvider).done.contains(RoutineStep.words)
+      ? 0
+      : ref.read(studyProvider).wordRatings.length.clamp(0, ref.read(studyProvider).pack.words.length - 1);
   bool _revealed = false;
   ScaffoldMessengerState? _messenger;
 

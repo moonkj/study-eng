@@ -9,7 +9,14 @@ import 'package:timezone/timezone.dart' as tz;
 abstract class Reminder {
   /// 매일 [minutes](자정부터 분) 에 알림을 예약한다. 권한이 없거나 지원하지 않으면 false.
   /// [askPermission] 이 false 면 권한을 묻지 않고, 이미 허용된 경우에만 예약한다 (앱을 열 때 갱신용).
-  Future<bool> scheduleDaily(int minutes, {required String title, required String body, bool askPermission = true});
+  /// [notBefore] 가 있으면 그 시각 이후 첫 알림부터 (오늘 이미 공부했으면 오늘 알림은 건너뛴다).
+  Future<bool> scheduleDaily(
+    int minutes, {
+    required String title,
+    required String body,
+    bool askPermission = true,
+    DateTime? notBefore,
+  });
   Future<void> cancel();
 }
 
@@ -19,8 +26,9 @@ DateTime nextOccurrence(DateTime now, int minutes) {
   return today.isAfter(now) ? today : DateTime(now.year, now.month, now.day + 1, minutes ~/ 60, minutes % 60);
 }
 
-/// 알림 문구: 연속 학습일에 따라 조금씩 다르게
-(String, String) reminderText(int streakDays) => switch (streakDays) {
+/// 알림 문구: 연속 학습일에 따라 조금씩 다르게. 기록이 끊겼으면 탓하지 않고 복귀를 권한다.
+(String, String) reminderText(int streakDays, {int longest = 0}) => switch (streakDays) {
+  0 when longest >= 3 => ('다시 시작해 볼까요?', '최고 기록은 $longest일이었어요. 오늘 표현 3개로 다시 이어가요.'),
   0 => ('오늘의 영어', '15분이면 충분해요. 오늘의 표현 3개가 기다리고 있어요.'),
   < 7 => ('$streakDays일째 이어가는 중', '오늘도 15분, 표현 3개만 입에 붙여 봐요.'),
   _ => ('$streakDays일 연속 학습 중', '여기까지 온 루틴, 오늘도 이어가요.'),
@@ -85,12 +93,14 @@ class DeviceReminder implements Reminder {
     required String title,
     required String body,
     bool askPermission = true,
+    DateTime? notBefore,
   }) async {
     if (!_supported) return false;
     try {
       await _init();
       if (!await (askPermission ? _requestPermission() : _hasPermission())) return false;
-      final next = nextOccurrence(DateTime.now(), minutes);
+      final now = DateTime.now();
+      final next = nextOccurrence(notBefore != null && notBefore.isAfter(now) ? notBefore : now, minutes);
       await _plugin.zonedSchedule(
         id: _id,
         title: title,

@@ -10,6 +10,7 @@ class FakeReminder implements Reminder {
   bool allowed;
   final scheduled = <(int, String)>[];
   int cancels = 0;
+  DateTime? lastNotBefore;
 
   @override
   Future<bool> scheduleDaily(
@@ -17,9 +18,11 @@ class FakeReminder implements Reminder {
     required String title,
     required String body,
     bool askPermission = true,
+    DateTime? notBefore,
   }) async {
     if (!allowed) return false;
     scheduled.add((minutes, title));
+    lastNotBefore = notBefore;
     return true;
   }
 
@@ -38,6 +41,7 @@ void main() {
     expect(reminderText(0).$1, '오늘의 영어');
     expect(reminderText(3).$1, '3일째 이어가는 중');
     expect(reminderText(12).$1, '12일 연속 학습 중');
+    expect(reminderText(0, longest: 9).$1, '다시 시작해 볼까요?'); // 끊겼으면 탓하지 않고 복귀 권유
   });
 
   test('시각 표시', () {
