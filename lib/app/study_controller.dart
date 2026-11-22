@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/audio/tts.dart';
+import '../core/notifications/reminder.dart';
 import '../data/models.dart';
 import '../data/pack_source.dart';
 import '../data/sample_content.dart';
@@ -342,6 +343,7 @@ class StudyController extends Notifier<StudyState> {
     if (state.allDone) {
       _finishDay();
       _prefetchTomorrow();
+      syncReminder();
     }
   }
 
@@ -354,6 +356,28 @@ class StudyController extends Notifier<StudyState> {
   void skipLevelTest() => applyLevelTest(defaultProfile());
 
   void updateSettings(AppSettings settings) => _set(state.copyWith(settings: settings));
+
+  /// 아침 알림을 켜거나(분) 끈다(null). 권한이 없어 예약하지 못하면 false.
+  Future<bool> setReminder(int? minutes) async {
+    final reminder = ref.read(reminderProvider);
+    if (minutes == null) {
+      await reminder.cancel();
+      _set(state.copyWith(settings: state.settings.copyWith(reminderMinutes: () => null)));
+      return true;
+    }
+    final (title, body) = reminderText(state.streakDays);
+    final ok = await reminder.scheduleDaily(minutes, title: title, body: body);
+    if (ok) _set(state.copyWith(settings: state.settings.copyWith(reminderMinutes: () => minutes)));
+    return ok;
+  }
+
+  /// 앱을 열 때·루틴을 끝냈을 때 알림 문구(연속 학습일)를 새로 고친다.
+  Future<void> syncReminder() async {
+    final minutes = state.settings.reminderMinutes;
+    if (minutes == null) return;
+    final (title, body) = reminderText(state.streakDays);
+    await ref.read(reminderProvider).scheduleDaily(minutes, title: title, body: body);
+  }
 
   void _finishDay() {
     final s = state;

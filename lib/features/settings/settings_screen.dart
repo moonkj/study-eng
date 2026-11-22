@@ -46,6 +46,8 @@ class SettingsScreen extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 12),
+          _Group(children: [_ReminderItem(minutes: settings.reminderMinutes)]),
+          const SizedBox(height: 12),
           _Group(
             children: [
               _Item(
@@ -136,10 +138,14 @@ class _Group extends StatelessWidget {
   Widget build(BuildContext context) {
     return PaperCard(
       padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Column(
-        children: [
-          for (var i = 0; i < children.length; i++) ...[if (i > 0) const Divider(indent: 52), children[i]],
-        ],
+      // 목록 항목의 터치 물결 효과가 카드 배경 위에 보이도록
+      child: Material(
+        type: MaterialType.transparency,
+        child: Column(
+          children: [
+            for (var i = 0; i < children.length; i++) ...[if (i > 0) const Divider(indent: 52), children[i]],
+          ],
+        ),
       ),
     );
   }
@@ -166,6 +172,64 @@ class _Item extends StatelessWidget {
         ],
       ),
       onTap: onTap,
+    );
+  }
+}
+
+String formatMinutes(int minutes) {
+  final h = minutes ~/ 60, m = minutes % 60;
+  final period = h < 12 ? '오전' : '오후';
+  final h12 = h % 12 == 0 ? 12 : h % 12;
+  return '$period $h12:${m.toString().padLeft(2, '0')}';
+}
+
+/// 아침 알림 켜기/끄기 + 시각 고르기
+class _ReminderItem extends ConsumerWidget {
+  const _ReminderItem({required this.minutes});
+  final int? minutes;
+
+  Future<void> _set(BuildContext context, WidgetRef ref, int? value) async {
+    final ok = await ref.read(studyProvider.notifier).setReminder(value);
+    if (!ok && context.mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('알림을 켜지 못했어요. 휴대폰 설정에서 알림 권한을 허용해 주세요.')));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final on = minutes != null;
+    return Column(
+      children: [
+        SwitchListTile(
+          secondary: const Icon(Icons.notifications_none_rounded, color: AppColors.penBlue),
+          title: Text('아침 알림', style: sans(15, weight: FontWeight.w500)),
+          subtitle: Text(on ? '매일 ${formatMinutes(minutes!)}' : '꺼짐', style: sans(13, color: AppColors.ink2)),
+          value: on,
+          activeThumbColor: AppColors.card,
+          activeTrackColor: AppColors.penBlue,
+          onChanged: (v) => _set(context, ref, v ? (minutes ?? 7 * 60 + 30) : null),
+        ),
+        if (on)
+          ListTile(
+            minTileHeight: 52,
+            contentPadding: const EdgeInsets.only(left: 72, right: 16),
+            title: Text('알림 시각', style: sans(14)),
+            trailing: Text(
+              formatMinutes(minutes!),
+              style: sans(14, weight: FontWeight.w600, color: AppColors.penBlue),
+            ),
+            onTap: () async {
+              final picked = await showTimePicker(
+                context: context,
+                initialTime: TimeOfDay(hour: minutes! ~/ 60, minute: minutes! % 60),
+                helpText: '알림 받을 시각',
+              );
+              if (picked != null && context.mounted) await _set(context, ref, picked.hour * 60 + picked.minute);
+            },
+          ),
+      ],
     );
   }
 }

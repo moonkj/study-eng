@@ -22,6 +22,13 @@ class _TodayeAppState extends ConsumerState<TodayeApp> {
   );
 
   @override
+  void initState() {
+    super.initState();
+    // 알림 문구를 오늘의 연속 학습일로 갱신
+    Future.microtask(() => ref.read(studyProvider.notifier).syncReminder());
+  }
+
+  @override
   void dispose() {
     _router.dispose();
     super.dispose();

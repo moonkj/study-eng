@@ -282,6 +282,10 @@ speaking_attempts(id, item_id, recognized_text, score, at)
 3. Claude 맞춤 팩 — `functions/` 서버(Cloud Functions), 레벨·약점·복습 항목 반영, 내일 팩 미리 받기,
    실패 시 기본 팩으로 진행. 설정 방법: `docs/server.md`
 
+4. 아침 알림 — 설정에서 켜기/시각 선택, 연속 학습일에 따라 문구가 바뀜, 재부팅 후에도 유지
+
 ### 다음 단계
-4. 아침 알림
-5. 실기기(Android/iOS) 빌드 확인, 앱 아이콘
+- 실기기(Android/iOS) 빌드 확인 — 이 개발 환경에서는 Android SDK 다운로드가 막혀 있어 확인하지 못함
+- 앱 아이콘·스플래시를 A안 디자인으로
+- 말하기 피드백을 Claude 로 (지금은 다르게 들린 단어 안내)
+- 다크 모드

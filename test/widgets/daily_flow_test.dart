@@ -4,10 +4,13 @@ import 'package:material_ui/material_ui.dart';
 import 'package:todaye/app/app.dart';
 import 'package:todaye/app/study_controller.dart';
 import 'package:todaye/core/audio/tts.dart';
+import 'package:todaye/core/notifications/reminder.dart';
 import 'package:todaye/data/store.dart';
 import 'package:todaye/domain/level.dart';
 import 'package:todaye/domain/study_log.dart';
 import 'package:todaye/features/speaking/speech_input.dart';
+
+import '../domain/reminder_test.dart' show FakeReminder;
 
 class _PerfectSpeech implements SpeechInput {
   @override
@@ -51,8 +54,9 @@ SavedData seeded() => SavedData(
   },
 );
 
-Widget app({String initial = '/', AppStore? store, Speaker? speaker}) => ProviderScope(
+Widget app({String initial = '/', AppStore? store, Speaker? speaker, Reminder? reminder}) => ProviderScope(
   overrides: [
+    reminderProvider.overrideWithValue(reminder ?? FakeReminder()),
     speakerProvider.overrideWithValue(speaker ?? FakeSpeaker()),
     storeProvider.overrideWithValue(store ?? MemoryStore(seeded())),
     clockProvider.overrideWithValue(() => DateTime(2026, 11, 22, 8, 0)),
@@ -164,6 +168,7 @@ void main() {
           clockProvider.overrideWithValue(() => DateTime(2026, 11, 22, 8, 0)),
           speakerProvider.overrideWithValue(FakeSpeaker()),
           speechInputProvider.overrideWithValue(_FailingSpeech()),
+          reminderProvider.overrideWithValue(FakeReminder()),
         ],
         child: const TodayeApp(initialLocation: '/speaking'),
       ),
@@ -175,6 +180,19 @@ void main() {
     await tester.tap(find.text('소리 내어 읽었어요 (넘어가기)'));
     await tester.pumpAndSettle();
     expect(find.text('완벽해요'), findsOneWidget);
+  });
+
+  testWidgets('설정에서 아침 알림을 켜면 7:30에 예약된다', (tester) async {
+    await setPhone(tester);
+    final reminder = FakeReminder();
+    await tester.pumpWidget(app(initial: '/settings', reminder: reminder));
+    await tester.pumpAndSettle();
+    expect(find.text('꺼짐'), findsOneWidget);
+    await tester.tap(find.text('아침 알림'));
+    await tester.pumpAndSettle();
+    expect(find.text('매일 오전 7:30'), findsOneWidget);
+    expect(reminder.scheduled.single.$1, 450);
+    expect(reminder.scheduled.single.$2, '12일 연속 학습 중');
   });
 
   testWidgets('첫 실행이면 환영 화면이 나오고, 건너뛰면 B1.1로 시작한다', (tester) async {
