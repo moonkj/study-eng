@@ -8,6 +8,7 @@ import '../../core/theme/tokens.dart';
 import '../../core/widgets/widgets.dart';
 import '../../domain/level.dart';
 import '../../domain/srs.dart';
+import '../settings/settings_screen.dart' show formatMinutes;
 
 class CompleteScreen extends ConsumerWidget {
   const CompleteScreen({super.key});
@@ -20,6 +21,15 @@ class CompleteScreen extends ConsumerWidget {
     final before = delta == null ? now : Level(now.score - delta);
     final speaking = s.speakingAverage;
     final newWords = s.wordRatings.values.where((r) => r != SelfRating.know).length;
+    final levelUp = before.step < now.step;
+    final milestone = switch (s.streakDays) {
+      7 => '일주일 연속! 습관이 되어 가고 있어요',
+      14 => '2주 연속! 정말 대단해요',
+      30 => '한 달 연속! 이제 영어가 일상이에요',
+      50 || 100 => '${s.streakDays}일 연속! 기록을 세웠어요',
+      _ => null,
+    };
+    final askReminder = s.settings.reminderMinutes == null;
 
     return Scaffold(
       body: SafeArea(
@@ -31,39 +41,59 @@ class CompleteScreen extends ConsumerWidget {
                 padding: const EdgeInsets.fromLTRB(24, 48, 24, 0),
                 children: [
                   Center(
-                    child: Container(
-                      width: 112,
-                      height: 112,
-                      decoration: const BoxDecoration(
-                        color: AppColors.ink,
-                        shape: BoxShape.circle,
-                        boxShadow: [BoxShadow(color: AppColors.sand, spreadRadius: 10)],
+                    // 불꽃(또는 레벨 업이면 새 레벨)이 톡 튀어나온다
+                    child: TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0.6, end: 1),
+                      duration: const Duration(milliseconds: 700),
+                      curve: Curves.elasticOut,
+                      builder: (_, v, child) => Transform.scale(scale: v, child: child),
+                      child: Container(
+                        width: 112,
+                        height: 112,
+                        alignment: Alignment.center,
+                        decoration: const BoxDecoration(
+                          color: AppColors.ink,
+                          shape: BoxShape.circle,
+                          boxShadow: [BoxShadow(color: AppColors.sand, spreadRadius: 10)],
+                        ),
+                        child: levelUp
+                            ? Text(now.label, style: serif(34, weight: 600, color: AppColors.highlighter))
+                            : const Icon(Icons.local_fire_department_rounded, size: 46, color: AppColors.highlighter),
                       ),
-                      child: const Icon(Icons.local_fire_department_outlined, size: 46, color: AppColors.highlighter),
                     ),
                   ),
                   const SizedBox(height: 26),
                   Center(
-                    child: Text.rich(
-                      TextSpan(
-                        children: [
-                          TextSpan(text: '${s.streakDays}', style: serif(44, weight: 500, letterSpacing: -1)),
-                          TextSpan(
-                            text: '일 연속',
-                            style: sans(22, weight: FontWeight.w600),
-                          ),
-                        ],
+                    // 연속 학습일이 하나 올라가는 순간을 보여준다
+                    child: TweenAnimationBuilder<double>(
+                      tween: Tween(begin: (s.streakDays - 1).clamp(0, 99999).toDouble(), end: s.streakDays.toDouble()),
+                      duration: const Duration(milliseconds: 900),
+                      curve: Curves.easeOutCubic,
+                      builder: (_, v, _) => Text.rich(
+                        TextSpan(
+                          children: [
+                            TextSpan(text: '${v.round()}', style: serif(44, weight: 500, letterSpacing: -1)),
+                            TextSpan(
+                              text: '일 연속',
+                              style: sans(22, weight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
                   const SizedBox(height: 8),
                   Center(
-                    child: Text('오늘 루틴 완료!', style: sans(22, weight: FontWeight.w700, letterSpacing: -0.4)),
+                    child: Text(
+                      levelUp ? '레벨 업! ${before.label} → ${now.label}' : milestone ?? '오늘 루틴 완료!',
+                      textAlign: TextAlign.center,
+                      style: sans(22, weight: FontWeight.w700, letterSpacing: -0.4),
+                    ),
                   ),
                   const SizedBox(height: 6),
                   Center(
                     child: Text(
-                      '표현 ${s.pack.expressions.length}개, 단어 ${s.pack.words.length}개, 문장 ${s.speaking.length}개를 말했어요',
+                      '표현 ${s.pack.expressions.length}개, 단어 ${s.pack.words.length}개, 문장 ${s.spokenCount}개를 따라 했어요',
                       textAlign: TextAlign.center,
                       style: sans(14, color: AppColors.ink2),
                     ),
@@ -109,6 +139,7 @@ class CompleteScreen extends ConsumerWidget {
                                 borderRadius: BorderRadius.circular(4),
                                 child: SizedBox(
                                   height: 8,
+                                  width: double.infinity,
                                   child: Stack(
                                     children: [
                                       const Positioned.fill(child: ColoredBox(color: AppColors.line)),
@@ -143,6 +174,7 @@ class CompleteScreen extends ConsumerWidget {
                       ],
                     ),
                   ),
+                  if (askReminder) ...[const SizedBox(height: 12), const _ReminderSuggestion()],
                   const SizedBox(height: 12),
                   Container(
                     padding: const EdgeInsets.all(18),
@@ -182,7 +214,7 @@ class CompleteScreen extends ConsumerWidget {
             BottomActions(
               children: [
                 FilledButton(onPressed: () => context.go('/'), child: const Text('홈으로')),
-                TextButton(onPressed: () => context.push('/quiz'), child: const Text('틀린 문제 다시 보기')),
+                TextButton(onPressed: () => context.go('/review'), child: const Text('틀린 문제 다시 보기')),
               ],
             ),
           ],
@@ -210,6 +242,54 @@ class _Stat extends StatelessWidget {
             Text(label, style: sans(12, color: AppColors.ink2)),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// 첫 완료 때: 내일 몇 시에 알려 줄지 바로 고르게 한다 (동기가 가장 높은 순간)
+class _ReminderSuggestion extends ConsumerStatefulWidget {
+  const _ReminderSuggestion();
+
+  @override
+  ConsumerState<_ReminderSuggestion> createState() => _ReminderSuggestionState();
+}
+
+class _ReminderSuggestionState extends ConsumerState<_ReminderSuggestion> {
+  String? _message;
+
+  Future<void> _pick(int minutes) async {
+    final ok = await ref.read(studyProvider.notifier).setReminder(minutes);
+    if (!mounted) return;
+    setState(() => _message = ok ? '내일 ${formatMinutes(minutes)}에 알려 드릴게요.' : '알림 권한을 허용하면 아침마다 알려 드릴게요.');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PaperCard(
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('내일 몇 시에 알려 드릴까요?', style: sans(15, weight: FontWeight.w700)),
+          const SizedBox(height: 10),
+          if (_message != null)
+            Text(_message!, style: sans(14, color: AppColors.ink2))
+          else
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final m in const [7 * 60 + 30, 8 * 60, 12 * 60 + 30, 21 * 60])
+                  ActionChip(
+                    label: Text(formatMinutes(m), style: sans(14, weight: FontWeight.w500)),
+                    backgroundColor: AppColors.paper,
+                    side: const BorderSide(color: AppColors.line),
+                    onPressed: () => _pick(m),
+                  ),
+              ],
+            ),
+        ],
       ),
     );
   }

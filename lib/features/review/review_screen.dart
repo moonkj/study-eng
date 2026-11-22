@@ -3,10 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/study_controller.dart';
+import '../../core/layout/adaptive.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/widgets.dart';
-import '../../domain/srs.dart';
 
 class ReviewScreen extends ConsumerWidget {
   const ReviewScreen({super.key});
@@ -22,11 +22,11 @@ class ReviewScreen extends ConsumerWidget {
     final words = {for (final w in s.pack.words) w.id: w};
     final scheduled = s.cards.values.where((c) => words.containsKey(c.itemId)).toList()
       ..sort((a, b) => a.due.compareTo(b.due));
-    final dueCount = Srs.dueToday(s.cards.values, now, limit: 99).length;
+    final dueCount = ref.read(studyProvider.notifier).dueReviews(limit: 999).length;
 
     return SafeArea(
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+        padding: readablePadding(context, maxWidth: 680),
         children: [
           Text('복습', style: sans(26, weight: FontWeight.w700, letterSpacing: -0.5)),
           const SizedBox(height: 6),
@@ -48,8 +48,8 @@ class ReviewScreen extends ConsumerWidget {
                 ),
                 FilledButton(
                   style: FilledButton.styleFrom(minimumSize: const Size(120, 48)),
-                  onPressed: () => context.push('/quiz'),
-                  child: const Text('복습 퀴즈'),
+                  onPressed: dueCount == 0 ? null : () => context.push('/review-session'),
+                  child: const Text('복습 시작'),
                 ),
               ],
             ),

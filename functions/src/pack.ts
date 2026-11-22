@@ -9,14 +9,25 @@ export const MODEL = "claude-opus-5-5";
 export const SYSTEM_PROMPT = `당신은 한국인 성인 학습자를 위한 실용 영어회화 선생님입니다.
 매일 출퇴근길 10~15분 동안 공부할 "오늘의 학습 팩"을 만듭니다.
 
-원칙:
-- 교과서체가 아니라 원어민이 실제로 자주 쓰는 구어체 표현을 고릅니다.
+표현과 문장:
+- 교과서체가 아니라 원어민이 실제로 자주 쓰는 구어체를 고릅니다. 축약형(I'm, I'll, don't)을 기본으로 쓰고 "I am going to" 같은 풀어 쓴 형태는 피합니다.
 - 요청한 콘텐츠 난이도(CEFR)에 맞춥니다. 너무 쉬우면 지루하고, 너무 어려우면 포기합니다.
-- 한국어 번역은 직역하지 말고 자연스러운 말투로 씁니다.
-- 표현 3개, 단어 10개, 예문은 모두 하나의 상황 주제로 이어지게 해서 기억에 남게 합니다.
+- 표현·단어·문장은 하나의 "상황"(예: 출근길 카페)으로 묶되, 같은 품사 단어는 4개 이하로 하고 동의어·반의어 쌍은 넣지 않습니다.
 - 단어 예문과 따라 말하기 문장에는 그 단어를 철자 그대로 넣습니다.
-- 퀴즈는 한국어 문장을 보고 알맞은 영어를 고르는 3지선다입니다. 오답은 한국인이 실제로 자주 하는 실수처럼 그럴듯하게 만듭니다.
+- 따라 말하기 문장과 퀴즈 문장은 표현·단어 예문을 그대로 쓰지 말고, 같은 상황의 새 문장으로 만듭니다.
+- 한국어 번역은 직역하지 말고 자연스러운 말투로 씁니다.
+
+발음 표기:
+- IPA 는 미국 일반 발음(General American) 기준으로, 플랩(t→d 소리) 같은 실제 발음을 반영합니다.
+- 한글 발음(pron_ko)은 실제 대화 속도 기준으로 쓰고, 강세 음절을 [대괄호]로 표시합니다. 끝소리는 받침으로 적고 '으'를 덧붙이지 않습니다. (예: actually → [액]슈얼리, crowded → [크라]우딛)
+
+퀴즈 (한국어 문장을 보고 알맞은 영어 고르기, 3지선다):
+- 오답은 원어민이 들으면 확실히 틀린 문장이어야 합니다. 뜻만 다른 자연스러운 문장, 원어민도 쓰는 맞는 문장은 오답으로 쓰지 않습니다.
+- 오답은 한국인이 실제로 자주 하는 실수로 만듭니다: 한국어 직역(arrive to, discuss about, I'm being late), prefer A than B, 관사 누락, 3인칭 -s, 시제 일치, bored/boring 혼동, 어순, 콩글리시.
+- 해설에는 정답 이유와 함께 오답이 왜 틀렸는지(어떤 한국인 실수인지)를 씁니다.
 - 복습 항목이 주어지면 항목마다 퀴즈 1문항을 만들고 review_of 에 그 id 를 넣습니다.
+
+그 밖에:
 - 최근에 배운 표현·단어 목록에 있는 것은 다시 내지 않습니다.
 - 차별적이거나 민감한 내용은 넣지 않습니다.`;
 
@@ -78,10 +89,22 @@ export function validatePack(pack: GeneratedPack, req: PackRequest): string[] {
   for (const w of pack.words) {
     if (!lower(w.example.en).includes(lower(w.word))) problems.push(`단어 "${w.word}" 의 예문에 단어가 그대로 들어있지 않습니다`);
   }
+  const wordExamples = new Set(pack.words.map((w) => lower(w.example.en.trim())));
   for (const s of pack.sentences) {
     if (!words.has(lower(s.focus))) problems.push(`문장 "${s.en}" 의 focus "${s.focus}" 가 오늘 단어가 아닙니다`);
     else if (!lower(s.en).includes(lower(s.focus))) problems.push(`문장 "${s.en}" 에 "${s.focus}" 가 들어있지 않습니다`);
+    if (wordExamples.has(lower(s.en.trim()))) problems.push(`따라 말하기 문장 "${s.en}" 이 단어 예문과 똑같습니다. 새 문장으로 만들어 주세요`);
   }
+
+  const posCount = new Map<string, number>();
+  for (const w of pack.words) posCount.set(lower(w.pos_en), (posCount.get(lower(w.pos_en)) ?? 0) + 1);
+  for (const [pos, n] of posCount) if (n > 4) problems.push(`같은 품사(${pos}) 단어가 ${n}개입니다. 4개 이하로 해 주세요`);
+
+  // 퀴즈가 방금 본 예문 번역을 그대로 쓰면 '회상'이 아니라 '알아보기'가 된다
+  const exampleKo = new Set([
+    ...pack.expressions.flatMap((e) => e.examples.map((x) => x.ko.trim())),
+    ...pack.words.map((w) => w.example.ko.trim()),
+  ]);
 
   const avoidWords = new Set(req.avoid.words.map(lower));
   const repeated = pack.words.filter((w) => avoidWords.has(lower(w.word))).map((w) => w.word);
@@ -92,6 +115,7 @@ export function validatePack(pack: GeneratedPack, req: PackRequest): string[] {
 
   const reviewIds = new Set(req.review.map((r) => r.id));
   for (const q of pack.quiz) {
+    if (!q.review_of && exampleKo.has(q.prompt.trim())) problems.push(`퀴즈 "${q.prompt}" 가 예문 번역과 똑같습니다. 새 문장으로 만들어 주세요`);
     if (q.choices.length < 3 || q.choices.length > 4) problems.push(`퀴즈 "${q.prompt}" 의 보기는 3~4개여야 합니다`);
     if (q.answer_index < 0 || q.answer_index >= q.choices.length) problems.push(`퀴즈 "${q.prompt}" 의 answer_index 가 범위를 벗어났습니다`);
     if (new Set(q.choices).size !== q.choices.length) problems.push(`퀴즈 "${q.prompt}" 의 보기에 중복이 있습니다`);

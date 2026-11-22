@@ -53,3 +53,20 @@ DayRecord? previousRecord(Map<String, DayRecord> log, DateTime today) {
   final keys = log.keys.where((k) => k.compareTo(key) < 0).toList()..sort();
   return keys.isEmpty ? null : log[keys.last];
 }
+
+/// 지금까지 가장 길게 이어진 연속 학습일
+int computeLongestStreak(Iterable<String> studiedKeys) {
+  // 서머타임 등으로 하루가 23시간이 되는 경우를 피하려고 UTC 날짜로 비교한다
+  final days = studiedKeys.toSet().map((k) {
+    final d = parseDateKey(k);
+    return DateTime.utc(d.year, d.month, d.day);
+  }).toList()..sort();
+  var best = 0, run = 0;
+  DateTime? prev;
+  for (final d in days) {
+    run = prev != null && d.difference(prev).inDays == 1 ? run + 1 : 1;
+    if (run > best) best = run;
+    prev = d;
+  }
+  return best;
+}

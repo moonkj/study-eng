@@ -45,7 +45,7 @@ class LevelResultScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    '지금 레벨에 딱 맞는\n학습을 준비했어요',
+                    ref.watch(studyProvider).packLoading ? '지금 레벨에 맞는\n학습을 준비하고 있어요' : '지금 레벨에 딱 맞는\n학습을 준비했어요',
                     style: sans(24, weight: FontWeight.w700, height: 1.35, letterSpacing: -0.4),
                   ),
                   const SizedBox(height: 24),
@@ -143,7 +143,10 @@ class LevelResultScreen extends ConsumerWidget {
             ),
             BottomActions(
               children: [
-                FilledButton(onPressed: () => context.go('/'), child: const Text('오늘 학습 시작하기')),
+                FilledButton(
+                  onPressed: () => context.go('/'),
+                  child: Text(ref.watch(studyProvider).allDone ? '홈으로' : '오늘 학습 시작하기'),
+                ),
                 TextButton(onPressed: () => context.pushReplacement('/level-test'), child: const Text('레벨 다시 진단하기')),
               ],
             ),

@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/study_controller.dart';
+import '../../core/layout/adaptive.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/widgets.dart';
@@ -33,99 +36,158 @@ class HomeScreen extends ConsumerWidget {
     final s = ref.watch(studyProvider);
     final now = ref.watch(clockProvider)();
     final exp = s.pack.expressions.first;
+    final wide = context.windowSize == WindowSize.expanded;
 
-    return SafeArea(
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(AppSpace.gutter, AppSpace.xl, AppSpace.gutter, AppSpace.xxl),
-        children: [
-          Row(
+    final header = Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(koreanDate(now), style: sans(13, color: AppColors.ink2, letterSpacing: 0.2)),
-                    const SizedBox(height: 4),
-                    Text(greeting(now), style: sans(26, weight: FontWeight.w700, letterSpacing: -0.5)),
-                  ],
-                ),
-              ),
-              _StreakChip(days: s.streakDays),
+              Text(koreanDate(now), style: sans(13, color: AppColors.ink2, letterSpacing: 0.2)),
+              const SizedBox(height: 4),
+              Text(greeting(now), style: sans(26, weight: FontWeight.w700, letterSpacing: -0.5)),
             ],
           ),
-          const SizedBox(height: AppSpace.lg),
-          if (s.packLoading) ...[
-            const _PreparingCard(),
-            const SizedBox(height: 22),
-            _LevelStrip(state: s),
-          ] else ...[
-            if (s.packError != null && s.untouched) ...[
-              _FallbackNotice(message: s.packError!, onRetry: () => ref.read(studyProvider.notifier).loadTodayPack()),
-              const SizedBox(height: 12),
-            ],
+        ),
+        _StreakChip(days: s.streakDays, doneToday: s.allDone, evening: now.hour >= 18),
+      ],
+    );
 
-            // 오늘의 표현 카드
-            PaperCard(
-              elevated: true,
-              radius: AppRadius.hero,
-              padding: const EdgeInsets.fromLTRB(22, 22, 22, 20),
-              child: Column(
+    final heroCard = PaperCard(
+      elevated: true,
+      radius: AppRadius.hero,
+      padding: const EdgeInsets.fromLTRB(22, 22, 22, 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                "TODAY'S EXPRESSION",
+                style: sans(12, weight: FontWeight.w600, color: AppColors.penBlue, letterSpacing: 1),
+              ),
+              const Spacer(),
+              Text('1 / ${s.pack.expressions.length}', style: sans(12, color: AppColors.ink2)),
+            ],
+          ),
+          const SizedBox(height: 14),
+          HighlightText(
+            exp.pattern,
+            highlight: exp.highlight,
+            style: serif(30, weight: 500, height: 1.15, letterSpacing: -0.3),
+          ),
+          const SizedBox(height: 6),
+          Text(exp.meaning, style: sans(15, color: AppColors.ink2)),
+          const SizedBox(height: 14),
+          const Divider(),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: Text('"${exp.examples.first.en}"', style: serif(15, italic: true, color: AppColors.inkSoft)),
+              ),
+              RoundIconButton(
+                icon: Icons.volume_up_rounded,
+                label: '예문 듣기',
+                onPressed: () => ref.read(sayProvider)(exp.examples.first.en),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+
+    final routine = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          children: [
+            Text('오늘의 루틴', style: sans(17, weight: FontWeight.w700)),
+            const Spacer(),
+            Text('약 12분 · ${s.done.length}/4 완료', style: sans(13, color: AppColors.ink2)),
+          ],
+        ),
+        const SizedBox(height: 10),
+        for (final step in RoutineStep.values) ...[_RoutineRow(step: step, state: s), const SizedBox(height: 8)],
+      ],
+    );
+
+    final notice = s.packError != null && s.untouched
+        ? Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: _FallbackNotice(
+              message: s.packError!,
+              onRetry: () => ref.read(studyProvider.notifier).loadTodayPack(),
+            ),
+          )
+        : null;
+
+    // iPad 가로: 왼쪽(오늘의 표현 + 루틴) / 오른쪽(레벨 · 복습 요약)
+    if (wide) {
+      return SafeArea(
+        child: ListView(
+          padding: readablePadding(context, maxWidth: 1040, top: 28),
+          children: [
+            header,
+            const SizedBox(height: 20),
+            if (s.packLoading)
+              _PreparingCard(onSkip: ref.read(studyProvider.notifier).startWithFallback)
+            else
+              Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Text(
-                        "TODAY'S EXPRESSION",
-                        style: sans(12, weight: FontWeight.w600, color: AppColors.penBlue, letterSpacing: 1),
-                      ),
-                      const Spacer(),
-                      Text('1 / ${s.pack.expressions.length}', style: sans(12, color: AppColors.ink2)),
-                    ],
+                  Expanded(
+                    flex: 3,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        ?notice,
+                        if (s.allDone) ...[_DoneCard(state: s), const SizedBox(height: 16)],
+                        heroCard,
+                        const SizedBox(height: 24),
+                        routine,
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 14),
-                  HighlightText(
-                    exp.pattern,
-                    highlight: exp.highlight,
-                    style: serif(30, weight: 500, height: 1.15, letterSpacing: -0.3),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(exp.meaning, style: sans(15, color: AppColors.ink2)),
-                  const SizedBox(height: 14),
-                  const Divider(),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          '"${exp.examples.first.en}"',
-                          style: serif(15, italic: true, color: AppColors.inkSoft),
-                        ),
-                      ),
-                      RoundIconButton(
-                        icon: Icons.volume_up_rounded,
-                        label: '예문 듣기',
-                        onPressed: () => ref.read(sayProvider)(exp.examples.first.en),
-                      ),
-                    ],
+                  const SizedBox(width: 24),
+                  Expanded(
+                    flex: 2,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _LevelStrip(state: s),
+                        const SizedBox(height: 12),
+                        _ReviewSummary(state: s),
+                      ],
+                    ),
                   ),
                 ],
               ),
-            ),
+          ],
+        ),
+      );
+    }
 
+    return SafeArea(
+      child: ListView(
+        padding: readablePadding(context, maxWidth: 680),
+        children: [
+          header,
+          const SizedBox(height: AppSpace.lg),
+          if (s.packLoading) ...[
+            _PreparingCard(onSkip: ref.read(studyProvider.notifier).startWithFallback),
             const SizedBox(height: 22),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.baseline,
-              textBaseline: TextBaseline.alphabetic,
-              children: [
-                Text('오늘의 루틴', style: sans(17, weight: FontWeight.w700)),
-                const Spacer(),
-                Text('약 12분 · ${s.done.length}/4 완료', style: sans(13, color: AppColors.ink2)),
-              ],
-            ),
-            const SizedBox(height: 10),
-            for (final step in RoutineStep.values) ...[_RoutineRow(step: step, state: s), const SizedBox(height: 8)],
-
+            _LevelStrip(state: s),
+          ] else ...[
+            ?notice,
+            if (s.allDone) ...[_DoneCard(state: s), const SizedBox(height: 16)],
+            heroCard,
+            const SizedBox(height: 22),
+            routine,
             const SizedBox(height: 6),
             _LevelStrip(state: s),
           ],
@@ -135,9 +197,72 @@ class HomeScreen extends ConsumerWidget {
   }
 }
 
-/// Claude 가 오늘의 맞춤 팩을 만드는 동안
-class _PreparingCard extends StatelessWidget {
-  const _PreparingCard();
+/// iPad 가로 화면 오른쪽: 오늘 복습할 카드와 최근 조정 내역
+class _ReviewSummary extends StatelessWidget {
+  const _ReviewSummary({required this.state});
+  final StudyState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final due = state.cards.values.where((c) => state.learned.containsKey(c.itemId) && c.isDue(state.now)).length;
+    return PaperCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('복습', style: sans(14, weight: FontWeight.w600)),
+          const SizedBox(height: 6),
+          Text('$due장', style: serif(32, weight: 500)),
+          Text('오늘 다시 볼 카드', style: sans(13, color: AppColors.ink2)),
+          if (state.lastAdjustmentReasons.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            const Divider(),
+            const SizedBox(height: 12),
+            Text('최근 자동 조정', style: sans(13, weight: FontWeight.w600)),
+            const SizedBox(height: 6),
+            for (final r in state.lastAdjustmentReasons)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Text('· $r', style: sans(13, color: AppColors.ink2, height: 1.5)),
+              ),
+          ],
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton(onPressed: () => context.go('/review'), child: const Text('복습 탭으로')),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Claude 가 오늘의 맞춤 팩을 만드는 동안. 기다리지 않고 기본 학습으로 시작할 수도 있다.
+class _PreparingCard extends StatefulWidget {
+  const _PreparingCard({required this.onSkip});
+  final VoidCallback onSkip;
+
+  @override
+  State<_PreparingCard> createState() => _PreparingCardState();
+}
+
+class _PreparingCardState extends State<_PreparingCard> {
+  Timer? _timer;
+  bool _slow = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // 20초가 넘으면 '바로 시작'을 주 버튼으로 올린다
+    _timer = Timer(const Duration(seconds: 20), () {
+      if (mounted) setState(() => _slow = true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -155,7 +280,10 @@ class _PreparingCard extends StatelessWidget {
           const SizedBox(height: 14),
           Text('내 레벨에 맞춰\n오늘의 학습을 만들고 있어요', style: sans(20, weight: FontWeight.w700, height: 1.4)),
           const SizedBox(height: 8),
-          Text('표현 3개, 단어 10개, 문장과 퀴즈까지 · 30초 정도 걸려요', style: sans(13, color: AppColors.ink2)),
+          Text(
+            _slow ? '조금 오래 걸리고 있어요. 기본 학습으로 먼저 시작해도 돼요.' : '표현 3개, 단어 10개, 문장과 퀴즈까지 · 보통 30초~1분',
+            style: sans(13, color: AppColors.ink2),
+          ),
           const SizedBox(height: 18),
           const ClipRRect(
             borderRadius: BorderRadius.all(Radius.circular(2)),
@@ -164,6 +292,49 @@ class _PreparingCard extends StatelessWidget {
               color: AppColors.highlighter,
               backgroundColor: AppColors.track,
             ),
+          ),
+          const SizedBox(height: 16),
+          if (_slow)
+            FilledButton(onPressed: widget.onSkip, child: const Text('기본 학습으로 바로 시작'))
+          else
+            TextButton(onPressed: widget.onSkip, child: const Text('기다리지 않고 기본 학습으로 시작')),
+        ],
+      ),
+    );
+  }
+}
+
+/// 오늘 루틴을 다 끝낸 날의 홈
+class _DoneCard extends StatelessWidget {
+  const _DoneCard({required this.state});
+  final StudyState state;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 18, 12, 18),
+      decoration: BoxDecoration(color: AppColors.ink, borderRadius: BorderRadius.circular(AppRadius.card)),
+      child: Row(
+        children: [
+          const Icon(Icons.local_fire_department_rounded, color: AppColors.highlighter),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '오늘 루틴 완료 · ${state.streakDays}일째',
+                  style: sans(15, weight: FontWeight.w700, color: AppColors.card),
+                ),
+                const SizedBox(height: 2),
+                Text('내일 만나요. 틈이 나면 복습 카드를 넘겨 보세요.', style: sans(13, color: const Color(0xFFDDD3C1))),
+              ],
+            ),
+          ),
+          TextButton(
+            onPressed: () => context.go('/review'),
+            style: TextButton.styleFrom(foregroundColor: AppColors.highlighter),
+            child: const Text('복습'),
           ),
         ],
       ),
@@ -194,27 +365,47 @@ class _FallbackNotice extends StatelessWidget {
   }
 }
 
+/// 연속 학습일 칩: 오늘 했는지, 오늘 안 하면 끊기는지를 한눈에
 class _StreakChip extends StatelessWidget {
-  const _StreakChip({required this.days});
+  const _StreakChip({required this.days, required this.doneToday, required this.evening});
   final int days;
+  final bool doneToday;
+  final bool evening;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 32,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.line),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.local_fire_department_outlined, size: 16, color: AppColors.ember),
-          const SizedBox(width: 4),
-          Text(days == 0 ? '오늘부터 시작' : '$days일째', style: sans(13, weight: FontWeight.w600)),
-        ],
+    final atRisk = !doneToday && days > 0 && evening;
+    final label = doneToday
+        ? '$days일째'
+        : days == 0
+        ? '오늘부터 시작'
+        : '오늘 하면 ${days + 1}일';
+    return Semantics(
+      label: doneToday ? '연속 $days일, 오늘 완료' : (days == 0 ? '오늘부터 시작' : '연속 $days일, 오늘 하면 ${days + 1}일'),
+      excludeSemantics: true,
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 32),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        decoration: BoxDecoration(
+          color: atRisk ? AppColors.ember : (doneToday ? AppColors.ink : AppColors.card),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: atRisk ? AppColors.ember : (doneToday ? AppColors.ink : AppColors.line)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              doneToday ? Icons.local_fire_department_rounded : Icons.local_fire_department_outlined,
+              size: 16,
+              color: atRisk ? AppColors.card : (doneToday ? AppColors.highlighter : AppColors.ember),
+            ),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: sans(13, weight: FontWeight.w600, color: atRisk || doneToday ? AppColors.card : AppColors.ink),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -239,7 +430,7 @@ class _RoutineRow extends StatelessWidget {
 
   double get _progress => switch (step) {
     RoutineStep.words => state.wordRatings.length / state.pack.words.length,
-    RoutineStep.speaking => state.speaking.length / state.pack.sentences.length,
+    RoutineStep.speaking => state.spokenCount / state.pack.sentences.length,
     RoutineStep.quiz => state.quizAnswers.length / state.pack.quiz.length,
     RoutineStep.expressions => state.expressionKnown.length / state.pack.expressions.length,
   };
@@ -259,8 +450,9 @@ class _RoutineRow extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           onTap: () => context.push(routinePaths[step]!),
           child: Container(
-            height: 64,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            // 큰 글씨에서도 넘치지 않도록 최소 높이 + 세로 여백
+            constraints: const BoxConstraints(minHeight: 64),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             child: Row(
               children: [
                 Container(
@@ -313,10 +505,10 @@ class _RoutineRow extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: () => context.push(routinePaths[step]!),
-        child: SizedBox(
-          height: 60,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 60),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             child: Row(
               children: [
                 if (done)

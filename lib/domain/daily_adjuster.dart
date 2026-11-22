@@ -59,7 +59,7 @@ class DailyAdjustment {
 
 /// 퀴즈 정답률이 목표 구간(70~85%)에 머물도록 난이도를 자동 조절한다.
 abstract final class DailyAdjuster {
-  static const targetLow = 0.65;
+  static const targetLow = 0.70;
   static const targetHigh = 0.85;
   static const baseSpeakingSentences = 10;
 
@@ -72,13 +72,14 @@ abstract final class DailyAdjuster {
     final acc = today.accuracy;
     final reasons = <String>[];
 
-    // 1) 레벨 점수: 완료 보너스 + 정답률 기반
-    final levelDelta = 2 + ((acc - 0.75) * 40).round();
+    // 1) 레벨 점수: 정답률만 반영한다 (출석만으로 레벨이 오르지 않게)
+    final levelDelta = ((acc - 0.75) * 40).round();
 
     // 2) 영역별 점수
     final skillDelta = <Skill, int>{
       Skill.grammar: ((acc - 0.75) * 30).round(),
-      Skill.listening: ((acc - 0.75) * 15).round(),
+      // 듣기 문항이 생기기 전까지는 퀴즈(읽기)로 듣기 점수를 바꾸지 않는다
+      Skill.listening: 0,
       Skill.vocabulary: ((today.wordsKnownRatio - 0.6) * 30).round(),
       Skill.speaking: today.speakingAverage == null ? 0 : ((today.speakingAverage! - 75) * 0.6).round(),
     };

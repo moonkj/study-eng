@@ -30,12 +30,67 @@ class SpeechScore {
   };
 }
 
-String _norm(String w) => w.toLowerCase().replaceAll(RegExp(r"[^a-z0-9']"), '');
+String _norm(String w) => w.toLowerCase().replaceAll('’', "'").replaceAll(RegExp(r"[^a-z0-9']"), '');
+
+/// 풀어 쓴 두 단어 → 축약형. 음성 인식이 어느 쪽으로 돌려줘도 같은 말로 본다.
+const _contractions = {
+  'i am': "i'm",
+  'i will': "i'll",
+  'i have': "i've",
+  'i would': "i'd",
+  'you are': "you're",
+  'you will': "you'll",
+  'you have': "you've",
+  'we are': "we're",
+  'we will': "we'll",
+  'they are': "they're",
+  'he is': "he's",
+  'she is': "she's",
+  'it is': "it's",
+  'that is': "that's",
+  'there is': "there's",
+  'what is': "what's",
+  'let us': "let's",
+  'do not': "don't",
+  'does not': "doesn't",
+  'did not': "didn't",
+  'is not': "isn't",
+  'are not': "aren't",
+  'was not': "wasn't",
+  'can not': "can't",
+  'cannot': "can't",
+  'will not': "won't",
+  'would not': "wouldn't",
+  'should not': "shouldn't",
+  'have not': "haven't",
+  'going to': 'gonna',
+  'want to': 'wanna',
+};
+
+/// (화면에 보일 단어, 비교용 단어) 목록에서 풀어 쓴 형태를 축약형 하나로 합친다.
+List<(String, String)> _canonical(List<String> words) {
+  final out = <(String, String)>[];
+  for (var i = 0; i < words.length; i++) {
+    final n = _norm(words[i]);
+    if (n.isEmpty) continue;
+    if (i + 1 < words.length) {
+      final pair = _contractions['$n ${_norm(words[i + 1])}'];
+      if (pair != null) {
+        out.add(('${words[i]} ${words[i + 1]}', pair));
+        i++;
+        continue;
+      }
+    }
+    out.add((words[i], _contractions[n] ?? n));
+  }
+  return out;
+}
 
 SpeechScore scoreSpeech(String target, String heard) {
-  final targetWords = target.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
-  final t = targetWords.map(_norm).toList();
-  final h = heard.split(RegExp(r'\s+')).map(_norm).where((w) => w.isNotEmpty).toList();
+  final targetPairs = _canonical(target.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList());
+  final targetWords = [for (final p in targetPairs) p.$1];
+  final t = [for (final p in targetPairs) p.$2];
+  final h = [for (final p in _canonical(heard.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList())) p.$2];
 
   // LCS 로 순서를 지키며 일치한 단어를 찾는다.
   final dp = List.generate(t.length + 1, (_) => List.filled(h.length + 1, 0));

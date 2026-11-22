@@ -284,8 +284,12 @@ speaking_attempts(id, item_id, recognized_text, score, at)
 
 4. 아침 알림 — 설정에서 켜기/시각 선택, 연속 학습일에 따라 문구가 바뀜, 재부팅 후에도 유지
 
+### 완료 (페르소나 10인 검토 반영)
+- 검토 결과와 반영 내역: `docs/persona-review.md`
+- iPad 지원: 세로 내비게이션, 홈 2단, 학습 화면 폭 제한, 키보드 단축키, Split View 대응
+
 ### 다음 단계
-- 실기기(Android/iOS) 빌드 확인 — 이 개발 환경에서는 Android SDK 다운로드가 막혀 있어 확인하지 못함
+- 실기기(Android/iOS/iPad) 빌드 확인 — 이 개발 환경에서는 Android SDK 다운로드가 막혀 있어 확인하지 못함
 - 앱 아이콘·스플래시를 A안 디자인으로
 - 말하기 피드백을 Claude 로 (지금은 다르게 들린 단어 안내)
 - 다크 모드

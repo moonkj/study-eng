@@ -62,7 +62,9 @@ ThemeData buildAppTheme() {
       error: AppColors.error,
       outline: AppColors.line,
     ),
-    splashFactory: InkSparkle.splashFactory,
+    // 종이 질감에 맞게 반짝이(InkSparkle) 대신 잔잔한 물결
+    splashFactory: InkRipple.splashFactory,
+    highlightColor: const Color(0x1FF3DB7A),
   );
 
   return base.copyWith(

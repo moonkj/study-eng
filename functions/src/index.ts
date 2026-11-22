@@ -21,7 +21,8 @@ export const dailyPack = onRequest(
     cors: true,
   },
   async (req, res) => {
-    client ??= new Anthropic({ apiKey: anthropicKey.value(), timeout: 150_000 });
+    // 함수 제한 시간(180초) 안에 두 번 시도할 수 있게: 시도당 75초, SDK 자동 재시도는 끈다
+    client ??= new Anthropic({ apiKey: anthropicKey.value(), timeout: 75_000, maxRetries: 0 });
     const result = await handleDailyPack({
       method: req.method,
       authorization: req.get("authorization"),

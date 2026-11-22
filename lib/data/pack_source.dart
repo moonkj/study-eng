@@ -199,7 +199,8 @@ class RemotePackSource implements PackSource {
             headers: {'authorization': 'Bearer $token', 'content-type': 'application/json'},
             body: jsonEncode(request),
           )
-          .timeout(const Duration(seconds: 170));
+          // 서버 함수 제한 시간(180초)보다 길게: 앱이 먼저 포기해 서버 비용만 나가는 일이 없게
+          .timeout(const Duration(seconds: 190));
     } on TimeoutException {
       throw const PackFetchException('학습 팩을 만드는 데 시간이 너무 오래 걸려요.');
     } catch (_) {

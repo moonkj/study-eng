@@ -12,7 +12,12 @@ class FakeReminder implements Reminder {
   int cancels = 0;
 
   @override
-  Future<bool> scheduleDaily(int minutes, {required String title, required String body}) async {
+  Future<bool> scheduleDaily(
+    int minutes, {
+    required String title,
+    required String body,
+    bool askPermission = true,
+  }) async {
     if (!allowed) return false;
     scheduled.add((minutes, title));
     return true;

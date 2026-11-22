@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -21,15 +23,36 @@ class _TodayeAppState extends ConsumerState<TodayeApp> {
     isOnboarded: () => ref.read(studyProvider).onboarded,
   );
 
+  late final AppLifecycleListener _lifecycle;
+  Timer? _midnight;
+
   @override
   void initState() {
     super.initState();
+    // 다음 날 앱으로 돌아오면 오늘 기준으로 새로 고친다
+    _lifecycle = AppLifecycleListener(onResume: _checkDay);
+    _scheduleMidnight();
     // 알림 문구를 오늘의 연속 학습일로 갱신
     Future.microtask(() => ref.read(studyProvider.notifier).syncReminder());
   }
 
+  void _checkDay() => ref.read(studyProvider.notifier).refreshIfNewDay();
+
+  /// 앱을 켜 둔 채 자정을 넘기는 경우
+  void _scheduleMidnight() {
+    _midnight?.cancel();
+    final now = ref.read(clockProvider)();
+    final next = DateTime(now.year, now.month, now.day + 1, 0, 0, 5);
+    _midnight = Timer(next.difference(now), () {
+      _checkDay();
+      _scheduleMidnight();
+    });
+  }
+
   @override
   void dispose() {
+    _midnight?.cancel();
+    _lifecycle.dispose();
     _router.dispose();
     super.dispose();
   }

@@ -85,7 +85,7 @@ void main() {
     expect(find.text('계속 ~하려고 했어'), findsOneWidget);
     expect(find.text('오늘의 표현 3개'), findsOneWidget);
     expect(find.text('B1.2'), findsOneWidget);
-    expect(find.text('12일째'), findsOneWidget);
+    expect(find.text('오늘 하면 13일'), findsOneWidget); // 어제까지 12일 연속, 오늘 아직
   });
 
   testWidgets('하루 루틴 전체를 끝내면 완료 화면과 내일 조정이 나온다', (tester) async {
@@ -137,11 +137,12 @@ void main() {
     expect(find.text('오늘 루틴 완료!'), findsOneWidget);
     expect(find.textContaining('13', findRichText: true), findsWidgets); // 연속 학습일 +1
     expect(find.text('10/10'), findsOneWidget);
-    expect(find.textContaining('정답률 100%'), findsOneWidget);
+    expect(find.text('내일 몇 시에 알려 드릴까요?'), findsOneWidget); // 첫 완료 때 알림 제안
 
     final s = container.read(studyProvider);
     expect(s.allDone, isTrue);
     expect(s.contentStep, 8);
+    expect(s.lastAdjustmentReasons.first, contains('정답률 100%'));
   });
 
   testWidgets('듣기 버튼은 설정한 음성으로 읽어주고, 0.8배는 느리게 읽는다', (tester) async {
@@ -156,7 +157,7 @@ void main() {
     await tester.tap(find.text('예문 따라 말하기'));
     await tester.pumpAndSettle();
     await tester.tap(labeled('천천히 듣기'));
-    expect(speaker.spoken.last, ("Actually, I'm a little tired.", true));
+    expect(speaker.spoken.last, ("Actually, I think I'll take the bus today.", true));
   });
 
   testWidgets('음성 인식이 실패하면 이유를 보여주고, 스스로 체크하고 넘어갈 수 있다', (tester) async {
@@ -201,7 +202,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('레벨 진단 시작하기'), findsOneWidget);
-    await tester.tap(find.text('건너뛰고 B1부터 시작'));
+    await tester.tap(find.text('진단 없이 바로 시작'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('네, 간단한 대화는 돼요 (B1부터)'));
     await tester.pumpAndSettle();
     expect(find.text('오늘의 루틴'), findsOneWidget);
     expect(find.text('B1.1'), findsOneWidget);

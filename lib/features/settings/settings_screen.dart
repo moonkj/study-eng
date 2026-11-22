@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../app/study_controller.dart';
 import '../../data/pack_source.dart';
+import '../../core/layout/adaptive.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/widgets.dart';
@@ -18,7 +19,7 @@ class SettingsScreen extends ConsumerWidget {
     final settings = st.settings;
     return SafeArea(
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+        padding: readablePadding(context, maxWidth: 680),
         children: [
           Text('설정', style: sans(26, weight: FontWeight.w700, letterSpacing: -0.5)),
           const SizedBox(height: 16),
@@ -205,7 +206,17 @@ class _ReminderItem extends ConsumerWidget {
         SwitchListTile(
           secondary: const Icon(Icons.notifications_none_rounded, color: AppColors.penBlue),
           title: Text('아침 알림', style: sans(15, weight: FontWeight.w500)),
-          subtitle: Text(on ? '매일 ${formatMinutes(minutes!)}' : '꺼짐', style: sans(13, color: AppColors.ink2)),
+          subtitle: ValueListenableBuilder(
+            valueListenable: ref.read(studyProvider.notifier).reminderBlocked,
+            builder: (_, blocked, _) => Text(
+              !on
+                  ? '꺼짐'
+                  : blocked
+                  ? '휴대폰 설정에서 알림 권한이 꺼져 있어요'
+                  : '매일 ${formatMinutes(minutes!)}',
+              style: sans(13, color: on && blocked ? AppColors.error : AppColors.ink2),
+            ),
+          ),
           value: on,
           activeThumbColor: AppColors.card,
           activeTrackColor: AppColors.penBlue,

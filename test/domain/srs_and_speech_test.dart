@@ -13,15 +13,35 @@ void main() {
       expect(Srs.rate(card, SelfRating.know, today).due, DateTime(2026, 11, 29));
     });
 
-    test('퀴즈를 맞히면 간격이 늘고, 틀리면 내일로 돌아간다', () {
+    test('퀴즈를 맞히면 간격이 늘고, 틀리면 두 단계 내려간다', () {
       var card = ReviewCard.fresh('q', today);
       card = Srs.answer(card, correct: true, today: today);
       expect(card.stage, 0);
-      card = Srs.answer(card, correct: true, today: today);
-      expect(card.due, DateTime(2026, 11, 25));
-      card = Srs.answer(card, correct: false, today: today);
-      expect(card.due, DateTime(2026, 11, 23));
+      final day2 = today.add(const Duration(days: 1));
+      card = Srs.answer(card, correct: true, today: day2);
+      expect(card.due, DateTime(2026, 11, 26)); // 3일 뒤
+      final day5 = today.add(const Duration(days: 4));
+      card = Srs.answer(card, correct: true, today: day5);
+      expect(card.stage, 2);
+      card = Srs.answer(card, correct: false, today: day5.add(const Duration(days: 7)));
+      expect(card.stage, 0);
       expect(card.lapses, 1);
+    });
+
+    test('같은 날 다시 맞힌 것은 단계를 올리지 않는다 (방금 본 것이라서)', () {
+      var card = Srs.rate(ReviewCard.fresh('w', today), SelfRating.know, today);
+      expect(card.stage, 2);
+      card = Srs.answer(card, correct: true, today: today.add(const Duration(hours: 1)));
+      expect(card.stage, 2);
+      expect(card.due, DateTime(2026, 11, 29));
+    });
+
+    test('세 번 이상 틀린 카드를 먼저 복습한다', () {
+      final cards = [
+        ReviewCard(itemId: 'old', stage: 1, due: DateTime(2026, 11, 1)),
+        ReviewCard(itemId: 'hard', stage: 0, due: DateTime(2026, 11, 20), lapses: 3),
+      ];
+      expect(Srs.dueToday(cards, today).first.itemId, 'hard');
     });
 
     test('30일 단계 다음은 졸업', () {
@@ -55,6 +75,12 @@ void main() {
       expect(s.score, 80 - 3);
       expect(s.missed, ['little']);
       expect(s.words.map((w) => w.word), ['Actually,', "I'm", 'a', 'little', 'tired.']);
+    });
+
+    test('축약형과 풀어 쓴 형태를 같은 말로 본다', () {
+      expect(scoreSpeech("I'll definitely try it.", 'I will definitely try it').score, 100);
+      expect(scoreSpeech('I do not know.', "I don't know").score, 100);
+      expect(scoreSpeech("Don't worry, I'll figure it out.", "don't worry I'll figure it out").missed, isEmpty);
     });
 
     test('아무것도 인식되지 않으면 0점', () {

@@ -98,8 +98,8 @@ class Tag extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 26,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
+      constraints: const BoxConstraints(minHeight: 26),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
       decoration: BoxDecoration(color: background, borderRadius: BorderRadius.circular(13)),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -136,6 +136,8 @@ class ThinProgress extends StatelessWidget {
       borderRadius: BorderRadius.circular(height / 2),
       child: SizedBox(
         height: height,
+        // 폭을 꽉 채워야 빈 트랙이 끝까지 그려진다 (Stack 은 채워진 부분 크기로 줄어든다)
+        width: double.infinity,
         child: Stack(
           children: [
             Positioned.fill(child: ColoredBox(color: track)),
@@ -290,6 +292,37 @@ class BottomActions extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(AppSpace.xl, AppSpace.md, AppSpace.xl, AppSpace.lg),
       child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: children),
+    );
+  }
+}
+
+/// 한글 발음 표기. [대괄호] 로 표시한 강세 음절을 굵고 진하게 보여준다. 예: "[액]슈얼리"
+class PronText extends StatelessWidget {
+  const PronText(this.pron, {super.key, required this.style});
+  final String pron;
+  final TextStyle style;
+
+  @override
+  Widget build(BuildContext context) {
+    final spans = <TextSpan>[];
+    final re = RegExp(r'\[([^\]]+)\]');
+    var last = 0;
+    for (final m in re.allMatches(pron)) {
+      if (m.start > last) spans.add(TextSpan(text: pron.substring(last, m.start)));
+      spans.add(
+        TextSpan(
+          text: m.group(1),
+          style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.ink),
+        ),
+      );
+      last = m.end;
+    }
+    if (last < pron.length) spans.add(TextSpan(text: pron.substring(last)));
+    final plain = pron.replaceAll('[', '').replaceAll(']', '');
+    return Semantics(
+      label: '발음 $plain',
+      excludeSemantics: true,
+      child: Text.rich(TextSpan(style: style, children: spans)),
     );
   }
 }

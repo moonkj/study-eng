@@ -58,8 +58,8 @@ export const GeneratedPack = z.object({
         pos_en: z.string().describe("noun, verb, adjective, adverb, phrasal verb, phrase 중 하나"),
         pos_ko: z.string().describe("명사, 동사, 형용사, 부사, 구동사, 표현 중 하나"),
         meaning: z.string().describe("한국어 뜻, 쉼표로 1~2개"),
-        ipa: z.string().describe("IPA 발음기호, 슬래시 포함 (예: /ˈæk.tʃu.ə.li/)"),
-        pron_ko: z.string().describe("한글 발음 표기 (예: 액츄얼리)"),
+        ipa: z.string().describe("미국 일반 발음(GA) IPA, 슬래시 포함 (예: /ˈæk.ʃu.ə.li/)"),
+        pron_ko: z.string().describe("실제 대화 속도의 한글 발음, 강세 음절은 [대괄호] (예: [액]슈얼리)"),
         example: Example.describe("word 를 그대로 포함한 예문"),
         level: z.string().describe("CEFR (A1~C1)"),
       }),
@@ -68,7 +68,7 @@ export const GeneratedPack = z.object({
   sentences: z
     .array(
       z.object({
-        en: z.string().describe("오늘 단어 하나를 포함한 실생활 짧은 문장 (12단어 이하)"),
+        en: z.string().describe("오늘 단어 하나를 포함한 실생활 짧은 문장 (12단어 이하, 단어 예문과 다른 새 문장)"),
         ko: z.string(),
         focus: z.string().describe("문장에 쓰인 오늘 단어 (words[].word 중 하나와 정확히 같게)"),
       }),
@@ -78,7 +78,7 @@ export const GeneratedPack = z.object({
     .array(
       z.object({
         prompt: z.string().describe("한국어 문장"),
-        choices: z.array(z.string()).describe("영어 보기 3개. 정답 1개 + 그럴듯하지만 틀린 오답 2개"),
+        choices: z.array(z.string()).describe("영어 보기 3개. 정답 1개 + 한국인이 자주 하는 실수로 만든, 확실히 틀린 오답 2개"),
         answer_index: z.number().int().describe("정답 보기 index (0부터)"),
         explanation: z.string().describe("왜 정답인지, 오답은 왜 틀렸는지 1~2문장 한국어"),
         review_of: z.string().describe("복습 문제면 review 항목의 id, 오늘 내용이면 빈 문자열"),

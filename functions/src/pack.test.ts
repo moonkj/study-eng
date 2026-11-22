@@ -32,9 +32,9 @@ function goodPack(): GeneratedPack {
       compare_en: "I want ~",
       compare_ko: "는 조금 직설적이에요.",
     })),
-    words: words.map((w) => ({
+    words: words.map((w, i) => ({
       word: w,
-      pos_en: "verb",
+      pos_en: ["verb", "noun", "adjective"][i % 3],
       pos_ko: "동사",
       meaning: "뜻",
       ipa: "/x/",
@@ -74,6 +74,17 @@ test("개수, 단어 포함 여부, 중복, 복습 누락을 잡아낸다", () =
   assert.match(problems, /최근에 배운 단어를 다시 냈습니다: commute/);
   assert.match(problems, /복습 항목 w-actually 의 퀴즈가 없습니다/);
   assert.match(problems, /answer_index 가 범위를 벗어났습니다/);
+});
+
+test("따라 말하기가 예문 복사, 같은 품사 과다, 퀴즈가 예문 번역 그대로면 잡아낸다", () => {
+  const p = goodPack();
+  p.sentences[0].en = p.words[0].example.en;
+  p.words.forEach((w) => (w.pos_en = "adverb"));
+  p.quiz[0].prompt = p.expressions[0].examples[0].ko;
+  const problems = validatePack(p, req).join("\n");
+  assert.match(problems, /단어 예문과 똑같습니다/);
+  assert.match(problems, /같은 품사\(adverb\) 단어가 10개/);
+  assert.match(problems, /예문 번역과 똑같습니다/);
 });
 
 test("앱 형식으로 바꿀 때 내용 기반 id 를 만든다", () => {

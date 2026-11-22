@@ -8,7 +8,8 @@ import 'package:timezone/timezone.dart' as tz;
 /// 매일 같은 시각의 학습 알림
 abstract class Reminder {
   /// 매일 [minutes](자정부터 분) 에 알림을 예약한다. 권한이 없거나 지원하지 않으면 false.
-  Future<bool> scheduleDaily(int minutes, {required String title, required String body});
+  /// [askPermission] 이 false 면 권한을 묻지 않고, 이미 허용된 경우에만 예약한다 (앱을 열 때 갱신용).
+  Future<bool> scheduleDaily(int minutes, {required String title, required String body, bool askPermission = true});
   Future<void> cancel();
 }
 
@@ -54,6 +55,18 @@ class DeviceReminder implements Reminder {
     _initialized = true;
   }
 
+  Future<bool> _hasPermission() async {
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      final android = _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+      return await android?.areNotificationsEnabled() ?? false;
+    }
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
+      final ios = _plugin.resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>();
+      return (await ios?.checkPermissions())?.isEnabled ?? false;
+    }
+    return false;
+  }
+
   Future<bool> _requestPermission() async {
     if (defaultTargetPlatform == TargetPlatform.android) {
       final android = _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
@@ -67,11 +80,16 @@ class DeviceReminder implements Reminder {
   }
 
   @override
-  Future<bool> scheduleDaily(int minutes, {required String title, required String body}) async {
+  Future<bool> scheduleDaily(
+    int minutes, {
+    required String title,
+    required String body,
+    bool askPermission = true,
+  }) async {
     if (!_supported) return false;
     try {
       await _init();
-      if (!await _requestPermission()) return false;
+      if (!await (askPermission ? _requestPermission() : _hasPermission())) return false;
       final next = nextOccurrence(DateTime.now(), minutes);
       await _plugin.zonedSchedule(
         id: _id,

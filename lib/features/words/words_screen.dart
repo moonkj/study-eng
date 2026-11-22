@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -23,17 +24,46 @@ class _WordsScreenState extends ConsumerState<WordsScreen> {
   void _rate(SelfRating r) {
     final s = ref.read(studyProvider);
     final words = s.pack.words;
-    ref.read(studyProvider.notifier).rateWord(words[_index].id, r);
+    final id = words[_index].id;
+    final previous = s.cards[id];
+    ref.read(studyProvider.notifier).rateWord(id, r);
+    HapticFeedback.selectionClick();
     if (_index >= words.length - 1) {
       ref.read(studyProvider.notifier).complete(RoutineStep.words);
       context.pop();
       return;
     }
+    final rated = _index;
     setState(() {
       _index++;
       _revealed = false;
     });
+    // 실수로 누른 평가는 3초 안에 되돌릴 수 있다
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          duration: const Duration(seconds: 3),
+          // 평가 버튼을 가리지 않도록 버튼 위에 띄운다
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.fromLTRB(20, 0, 20, 150),
+          content: Text('${words[rated].word} → ${_ratingLabel(r)}'),
+          action: SnackBarAction(
+            label: '되돌리기',
+            onPressed: () {
+              ref.read(studyProvider.notifier).undoWordRating(id, previous);
+              if (mounted) setState(() => _index = rated);
+            },
+          ),
+        ),
+      );
   }
+
+  static String _ratingLabel(SelfRating r) => switch (r) {
+    SelfRating.dontKnow => '몰라요 (내일 다시)',
+    SelfRating.confusing => '헷갈려요 (3일 뒤)',
+    SelfRating.know => '알아요 (7일 뒤)',
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -43,64 +73,78 @@ class _WordsScreenState extends ConsumerState<WordsScreen> {
 
     return Scaffold(
       body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(8, 8, 12, 0),
-              child: StudyTopBar(title: '오늘의 단어', index: _index, total: words.length),
-            ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 22, 20, 0),
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 280),
-                  transitionBuilder: (child, anim) => SlideTransition(
-                    position: Tween(
-                      begin: const Offset(0.15, 0),
-                      end: Offset.zero,
-                    ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
-                    child: FadeTransition(opacity: anim, child: child),
-                  ),
-                  child: _WordCard(
-                    key: ValueKey(w.id),
-                    word: w,
-                    revealed: _revealed,
-                    onReveal: () => setState(() => _revealed = true),
+        // iPad 하드웨어 키보드: Space 뜻 보기, 1·2·3 평가, L 발음 듣기, Esc 닫기
+        child: CallbackShortcuts(
+          bindings: {
+            const SingleActivator(LogicalKeyboardKey.space): () => setState(() => _revealed = true),
+            const SingleActivator(LogicalKeyboardKey.digit1): () => _rate(SelfRating.dontKnow),
+            const SingleActivator(LogicalKeyboardKey.digit2): () => _rate(SelfRating.confusing),
+            const SingleActivator(LogicalKeyboardKey.digit3): () => _rate(SelfRating.know),
+            const SingleActivator(LogicalKeyboardKey.keyL): () => ref.read(sayProvider)(w.word),
+            const SingleActivator(LogicalKeyboardKey.escape): () => context.pop(),
+          },
+          child: Focus(
+            autofocus: true,
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 8, 12, 0),
+                  child: StudyTopBar(title: '오늘의 단어', index: _index, total: words.length),
+                ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 22, 20, 0),
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 280),
+                      transitionBuilder: (child, anim) => SlideTransition(
+                        position: Tween(
+                          begin: const Offset(0.15, 0),
+                          end: Offset.zero,
+                        ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
+                        child: FadeTransition(opacity: anim, child: child),
+                      ),
+                      child: _WordCard(
+                        key: ValueKey(w.id),
+                        word: w,
+                        revealed: _revealed,
+                        onReveal: () => setState(() => _revealed = true),
+                      ),
+                    ),
                   ),
                 ),
-              ),
+                const SizedBox(height: 18),
+                Text('이 단어, 얼마나 알고 있었나요?', style: sans(13, color: AppColors.ink2)),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _RateButton(
+                          label: '몰라요',
+                          sub: '내일 다시',
+                          color: AppColors.error,
+                          onTap: () => _rate(SelfRating.dontKnow),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _RateButton(
+                          label: '헷갈려요',
+                          sub: '3일 뒤',
+                          color: AppColors.caution,
+                          onTap: () => _rate(SelfRating.confusing),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _RateButton(label: '알아요', sub: '7일 뒤', dark: true, onTap: () => _rate(SelfRating.know)),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 18),
-            Text('이 단어, 얼마나 알고 있었나요?', style: sans(13, color: AppColors.ink2)),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _RateButton(
-                      label: '몰라요',
-                      sub: '내일 다시',
-                      color: AppColors.error,
-                      onTap: () => _rate(SelfRating.dontKnow),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _RateButton(
-                      label: '헷갈려요',
-                      sub: '3일 뒤',
-                      color: AppColors.caution,
-                      onTap: () => _rate(SelfRating.confusing),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _RateButton(label: '알아요', sub: '7일 뒤', dark: true, onTap: () => _rate(SelfRating.know)),
-                  ),
-                ],
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -147,7 +191,7 @@ class _WordCard extends ConsumerWidget {
                   children: [
                     Text(word.ipa, style: serif(16, italic: true, color: AppColors.ink2)),
                     const CircleAvatar(radius: 1.5, backgroundColor: AppColors.lineStrong),
-                    Text(word.pronKo, style: sans(14, color: AppColors.ink2)),
+                    PronText(word.pronKo, style: sans(14, color: AppColors.ink2)),
                   ],
                 ),
                 const SizedBox(height: 14),
@@ -238,9 +282,11 @@ class _RateButton extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: onTap,
-        child: SizedBox(
-          height: 64,
+        child: ConstrainedBox(
+          // 큰 글씨에서도 넘치지 않도록 최소 높이만 정한다
+          constraints: const BoxConstraints(minHeight: 64),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
@@ -248,7 +294,7 @@ class _RateButton extends StatelessWidget {
                 style: sans(15, weight: FontWeight.w600, color: dark ? AppColors.card : color),
               ),
               const SizedBox(height: 2),
-              Text(sub, style: sans(11, color: dark ? const Color(0xFFCFC5B2) : AppColors.ink2)),
+              Text(sub, style: sans(12, color: dark ? const Color(0xFFCFC5B2) : AppColors.ink2)),
             ],
           ),
         ),

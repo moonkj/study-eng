@@ -16,6 +16,15 @@ AI 영어 선생님이 매일 회화 표현 3개·단어 10개·실생활 예문
 
 기능 하나는 planner → (content, ux, architect) → developer/ai-backend → qa 순서로 진행한다.
 
+## 검토 페르소나 10인 (`.claude/agents/persona-*.md`, 읽기 전용)
+SLA 연구자 · 원어민 강사 · 한국인 학습 코치 · UX · UI · 접근성 · 습관 형성 · iPad · Flutter 엔지니어 · PM/QA.
+큰 변경 뒤에는 관련 페르소나에게 검토를 맡긴다. 지난 검토와 반영 내역: `docs/persona-review.md`
+
+## iPad
+- 폭 구간: `lib/core/layout/adaptive.dart` (compact < 600 ≤ medium < 1024 ≤ expanded)
+- 탭 화면은 `readablePadding`, 학습 화면은 라우터의 `_focused()` 가 680 폭으로 감싼다
+- 학습 화면에는 하드웨어 키보드 단축키(`CallbackShortcuts`)를 단다
+
 ## 개발 명령
 - `flutter analyze` / `flutter test` / `flutter run -d chrome`
 - 서버: `cd functions && npm test` (가짜 Claude 클라이언트, 비용 없음). 서버 JSON 형식을 바꾸면 `npm run fixture` 로 앱 계약 테스트 픽스처도 갱신

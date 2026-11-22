@@ -1,12 +1,15 @@
+import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/study_controller.dart';
+import '../../core/layout/adaptive.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/widgets.dart';
 import '../../data/models.dart';
+import '../speaking/speaking_screen.dart';
 
 class ExpressionScreen extends ConsumerStatefulWidget {
   const ExpressionScreen({super.key});
@@ -16,8 +19,42 @@ class ExpressionScreen extends ConsumerStatefulWidget {
 }
 
 class _ExpressionScreenState extends ConsumerState<ExpressionScreen> {
-  final _page = PageController();
-  int _index = 0;
+  /// 아직 평가하지 않은 첫 표현부터 이어서 연다
+  late int _index = () {
+    final s = ref.read(studyProvider);
+    final i = s.pack.expressions.indexWhere((e) => !s.expressionKnown.containsKey(e.id));
+    return i < 0 ? 0 : i;
+  }();
+  late final _page = PageController(initialPage: _index);
+
+  void _go(int delta) {
+    final total = ref.read(studyProvider).pack.expressions.length;
+    final target = (_index + delta).clamp(0, total - 1);
+    if (target != _index) {
+      _page.animateToPage(target, duration: const Duration(milliseconds: 320), curve: Curves.easeOutCubic);
+    }
+  }
+
+  /// 지금 표현의 예문만 따라 말해 보기 (오늘 진행률에는 넣지 않는다)
+  void _practice(Expression e) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ColoredBox(
+          color: AppColors.paper,
+          child: ReadableWidth(
+            maxWidth: 680,
+            child: SpeakingScreen(
+              title: '표현 말해보기',
+              practice: [
+                for (var i = 0; i < e.examples.length; i++)
+                  Sentence(id: '${e.id}-ex$i', en: e.examples[i].en, ko: e.examples[i].ko, focus: e.highlight),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   void dispose() {
@@ -42,90 +79,105 @@ class _ExpressionScreenState extends ConsumerState<ExpressionScreen> {
     final known = s.expressionKnown[current.id];
     final isLast = _index == items.length - 1;
 
+    final notifier = ref.read(studyProvider.notifier);
     return Scaffold(
       body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(8, 8, 16, 0),
-              child: Row(
-                children: [
-                  IconButton(
-                    tooltip: '홈으로',
-                    onPressed: () => context.pop(),
-                    icon: const Icon(Icons.chevron_left_rounded, size: 26),
-                  ),
-                  const Spacer(),
-                  _Dots(count: items.length, index: _index),
-                  const Spacer(),
-                  SizedBox(
-                    width: 44,
-                    child: Text(
-                      '${_index + 1}/${items.length}',
-                      textAlign: TextAlign.right,
-                      style: sans(13, color: AppColors.ink2),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: PageView.builder(
-                controller: _page,
-                itemCount: items.length,
-                onPageChanged: (i) => setState(() => _index = i),
-                itemBuilder: (_, i) => SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-                  child: _ExpressionCard(e: items[i]),
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(top: 12),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text('이 표현은', style: sans(13, color: AppColors.ink2)),
-                  const SizedBox(width: 8),
-                  _ChoicePill(
-                    label: '이미 알아요',
-                    selected: known == true,
-                    onTap: () => ref.read(studyProvider.notifier).setExpressionKnown(current.id, true),
-                  ),
-                  const SizedBox(width: 8),
-                  _ChoicePill(
-                    label: '처음 봐요',
-                    selected: known == false,
-                    onTap: () => ref.read(studyProvider.notifier).setExpressionKnown(current.id, false),
-                  ),
-                ],
-              ),
-            ),
-            BottomActions(
+        // iPad 하드웨어 키보드: ←·→ 이동, 1 이미 알아요, 2 처음 봐요, Enter 다음, Esc 닫기
+        child: CallbackShortcuts(
+          bindings: {
+            const SingleActivator(LogicalKeyboardKey.arrowLeft): () => _go(-1),
+            const SingleActivator(LogicalKeyboardKey.arrowRight): () => _go(1),
+            const SingleActivator(LogicalKeyboardKey.digit1): () => notifier.setExpressionKnown(current.id, true),
+            const SingleActivator(LogicalKeyboardKey.digit2): () => notifier.setExpressionKnown(current.id, false),
+            const SingleActivator(LogicalKeyboardKey.enter): () => _next(items.length),
+            const SingleActivator(LogicalKeyboardKey.escape): () => context.pop(),
+          },
+          child: Focus(
+            autofocus: true,
+            child: Column(
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      flex: 10,
-                      child: OutlinedButton.icon(
-                        onPressed: () => context.push('/speaking'),
-                        icon: const Icon(Icons.mic_none_rounded, size: 20),
-                        label: const Text('말해보기'),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 8, 16, 0),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        tooltip: '홈으로',
+                        onPressed: () => context.pop(),
+                        icon: const Icon(Icons.chevron_left_rounded, size: 26),
                       ),
+                      const Spacer(),
+                      _Dots(count: items.length, index: _index),
+                      const Spacer(),
+                      SizedBox(
+                        width: 44,
+                        child: Text(
+                          '${_index + 1}/${items.length}',
+                          textAlign: TextAlign.right,
+                          style: sans(13, color: AppColors.ink2),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: PageView.builder(
+                    controller: _page,
+                    itemCount: items.length,
+                    onPageChanged: (i) => setState(() => _index = i),
+                    itemBuilder: (_, i) => SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+                      child: _ExpressionCard(e: items[i]),
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      flex: 14,
-                      child: FilledButton(
-                        onPressed: () => _next(items.length),
-                        child: Text(isLast ? '표현 학습 완료' : '다음 표현'),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text('이 표현은', style: sans(13, color: AppColors.ink2)),
+                      const SizedBox(width: 8),
+                      _ChoicePill(
+                        label: '이미 알아요',
+                        selected: known == true,
+                        onTap: () => ref.read(studyProvider.notifier).setExpressionKnown(current.id, true),
                       ),
+                      const SizedBox(width: 8),
+                      _ChoicePill(
+                        label: '처음 봐요',
+                        selected: known == false,
+                        onTap: () => ref.read(studyProvider.notifier).setExpressionKnown(current.id, false),
+                      ),
+                    ],
+                  ),
+                ),
+                BottomActions(
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          flex: 10,
+                          child: OutlinedButton.icon(
+                            onPressed: () => _practice(current),
+                            icon: const Icon(Icons.mic_none_rounded, size: 20),
+                            label: const Text('말해보기'),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          flex: 14,
+                          child: FilledButton(
+                            onPressed: () => _next(items.length),
+                            child: Text(isLast ? '표현 학습 완료' : '다음 표현'),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -247,7 +299,7 @@ class _ChoicePill extends StatelessWidget {
           customBorder: const StadiumBorder(),
           onTap: onTap,
           child: Container(
-            height: 40,
+            constraints: const BoxConstraints(minHeight: 44),
             padding: const EdgeInsets.symmetric(horizontal: 14),
             alignment: Alignment.center,
             child: Text(label, style: sans(13, color: selected ? AppColors.card : AppColors.ink)),

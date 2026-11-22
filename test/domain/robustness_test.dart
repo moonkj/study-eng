@@ -1,0 +1,207 @@
+import 'dart:async';
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:todaye/app/study_controller.dart';
+import 'package:todaye/data/pack_source.dart';
+import 'package:todaye/data/store.dart';
+import 'package:todaye/domain/level.dart';
+import 'package:todaye/domain/srs.dart';
+import 'package:todaye/domain/study_log.dart';
+
+import 'pack_source_test.dart' show serverFixture, profile;
+
+/// 응답 시점을 테스트가 정하는 서버
+class ControlledSource implements PackSource {
+  final pending = <(Map<String, Object?>, Completer<Map<String, Object?>>)>[];
+
+  @override
+  Future<Map<String, Object?>> fetch(Map<String, Object?> request) {
+    final c = Completer<Map<String, Object?>>();
+    pending.add((request, c));
+    return c.future;
+  }
+
+  void reply(int i, {String topic = '카페 · 아침'}) =>
+      pending[i].$2.complete({...serverFixture(), 'date': pending[i].$1['date'], 'topic': topic});
+}
+
+SavedData onboarded({Map<String, Map<String, Object?>> packs = const {}}) =>
+    SavedData(profile: profile, contentStep: 8, onboarded: true, packs: packs);
+
+void main() {
+  final day = DateTime(2026, 11, 23, 23, 50);
+
+  test('자정을 넘기면 오늘 기준으로 새로 고친다', () {
+    var now = day;
+    final c = ProviderContainer(
+      overrides: [
+        storeProvider.overrideWithValue(MemoryStore(onboarded())),
+        clockProvider.overrideWithValue(() => now),
+      ],
+    );
+    final ctl = c.read(studyProvider.notifier);
+    ctl.rateWord('w-actually', SelfRating.know);
+    expect(c.read(studyProvider).today.date, '2026-11-23');
+
+    ctl.refreshIfNewDay(); // 같은 날이면 그대로
+    expect(c.read(studyProvider).wordRatings, isNotEmpty);
+
+    now = DateTime(2026, 11, 24, 0, 1);
+    ctl.refreshIfNewDay();
+    final s = c.read(studyProvider);
+    expect(s.today.date, '2026-11-24');
+    expect(s.wordRatings, isEmpty);
+    expect(s.cards['w-actually'], isNotNull); // 복습 카드는 남는다
+    c.dispose();
+  });
+
+  test('저장된 팩이 깨져 있어도 앱이 멈추지 않고 기본 팩으로 시작한다', () {
+    final store = MemoryStore(
+      onboarded(
+        packs: {
+          '2026-11-23': {'date': '2026-11-23', 'topic': 'x', 'expressions': 'broken'},
+        },
+      ),
+    );
+    final c = ProviderContainer(
+      overrides: [storeProvider.overrideWithValue(store), clockProvider.overrideWithValue(() => day)],
+    );
+    final s = c.read(studyProvider);
+    expect(s.pack.fromClaude, isFalse);
+    expect(s.packs, isEmpty);
+    c.dispose();
+  });
+
+  test('팩 요청이 겹치면 최신 요청만 반영한다 (재진단 직후 옛 응답이 덮어쓰지 않게)', () async {
+    final source = ControlledSource();
+    final c = ProviderContainer(
+      overrides: [
+        storeProvider.overrideWithValue(MemoryStore(onboarded())),
+        clockProvider.overrideWithValue(() => day),
+        packSourceProvider.overrideWithValue(source),
+      ],
+    );
+    c.read(studyProvider);
+    await Future<void>.delayed(Duration.zero);
+    expect(source.pending.length, 1); // 앱 시작 시 요청
+
+    c.read(studyProvider.notifier).applyLevelTest(defaultProfile(step: 4));
+    expect(source.pending.length, 2);
+    expect(source.pending[1].$1['level'], 'A2.2');
+
+    source.reply(1, topic: '새 레벨 팩');
+    await Future<void>.delayed(Duration.zero);
+    source.reply(0, topic: '옛 레벨 팩');
+    await Future<void>.delayed(Duration.zero);
+    expect(c.read(studyProvider).pack.topic, '새 레벨 팩');
+    c.dispose();
+  });
+
+  test('기다리지 않고 기본 팩으로 시작하면 늦게 온 응답은 오늘 팩을 바꾸지 않는다', () async {
+    final source = ControlledSource();
+    final c = ProviderContainer(
+      overrides: [
+        storeProvider.overrideWithValue(MemoryStore(onboarded())),
+        clockProvider.overrideWithValue(() => day),
+        packSourceProvider.overrideWithValue(source),
+      ],
+    );
+    c.read(studyProvider);
+    await Future<void>.delayed(Duration.zero);
+    final ctl = c.read(studyProvider.notifier);
+    ctl.startWithFallback();
+    var s = c.read(studyProvider);
+    expect(s.packLoading, isFalse);
+    expect(s.learned.keys, contains('w-actually')); // 기본 팩도 배운 항목으로 등록
+
+    source.reply(0);
+    await Future<void>.delayed(Duration.zero);
+    s = c.read(studyProvider);
+    expect(s.pack.fromClaude, isFalse);
+    c.dispose();
+  });
+
+  test('재진단하면 이전 레벨로 미리 받은 내일 팩을 버린다', () {
+    final store = MemoryStore(
+      onboarded(
+        packs: {
+          '2026-11-24': {...serverFixture(), 'date': '2026-11-24'},
+        },
+      ),
+    );
+    final c = ProviderContainer(
+      overrides: [storeProvider.overrideWithValue(store), clockProvider.overrideWithValue(() => day)],
+    );
+    c.read(studyProvider.notifier).applyLevelTest(defaultProfile());
+    expect(c.read(studyProvider).packs, isEmpty);
+    c.dispose();
+  });
+
+  test('저장 데이터의 한 부분이 깨져도 레벨과 기록은 살아남는다', () {
+    final json = SavedData(
+      profile: profile,
+      contentStep: 7,
+      onboarded: true,
+      log: {'2026-11-22': const DayRecord(accuracy: 0.9, levelScore: 770)},
+    ).toJson();
+    json['cards'] = 'broken';
+    json['learned'] = 42;
+    final loaded = SavedData.fromJson(json);
+    expect(loaded.profile.overall, const Level(764));
+    expect(loaded.log.keys, ['2026-11-22']);
+    expect(loaded.cards, isEmpty);
+    expect(loaded.learned, isEmpty);
+  });
+
+  test('최고 연속 학습일', () {
+    expect(computeLongestStreak([]), 0);
+    expect(computeLongestStreak(['2026-11-01', '2026-11-02', '2026-11-03', '2026-11-05', '2026-11-06']), 3);
+    expect(computeLongestStreak(['2026-10-30', '2026-10-31', '2026-11-01']), 3);
+  });
+
+  test('복습 세션: 오늘 복습할 배운 항목만 보여주고, 평가하면 다음 복습일이 정해진다', () {
+    final c = ProviderContainer(
+      overrides: [
+        storeProvider.overrideWithValue(MemoryStore(onboarded())),
+        clockProvider.overrideWithValue(() => day),
+      ],
+    );
+    final ctl = c.read(studyProvider.notifier);
+    ctl.rateWord('w-actually', SelfRating.dontKnow); // 내일 복습
+    expect(ctl.dueReviews(), isEmpty);
+    final saved = c.read(studyProvider).toSaved();
+    c.dispose();
+
+    final next = ProviderContainer(
+      overrides: [
+        storeProvider.overrideWithValue(MemoryStore(saved)),
+        clockProvider.overrideWithValue(() => DateTime(2026, 11, 24, 8)),
+      ],
+    );
+    final ctl2 = next.read(studyProvider.notifier);
+    expect(ctl2.dueReviews().map((i) => i.text), ['actually']);
+    ctl2.reviewCard('w-actually', SelfRating.know);
+    expect(next.read(studyProvider).cards['w-actually']!.due, DateTime(2026, 12, 1));
+    expect(ctl2.dueReviews(), isEmpty);
+    next.dispose();
+  });
+
+  test('소리 내기 어려운 모드: 진행은 되지만 말하기 평균에는 넣지 않는다', () {
+    final c = ProviderContainer(
+      overrides: [
+        storeProvider.overrideWithValue(MemoryStore(onboarded())),
+        clockProvider.overrideWithValue(() => day),
+      ],
+    );
+    final ctl = c.read(studyProvider.notifier);
+    final sentences = c.read(studyProvider).pack.sentences;
+    ctl.recordSilent(sentences[0]);
+    ctl.recordSpeaking(sentences[1], sentences[1].en);
+    final s = c.read(studyProvider);
+    expect(s.spokenCount, 2);
+    expect(s.speaking.length, 1);
+    expect(s.speakingAverage, 100);
+    c.dispose();
+  });
+}

@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:go_router/go_router.dart';
 
 import '../core/theme/app_theme.dart';
+import '../core/layout/adaptive.dart';
 import '../core/theme/tokens.dart';
 import '../features/complete/complete_screen.dart';
 import '../features/expression/expression_screen.dart';
@@ -11,6 +12,7 @@ import '../features/level_test/level_test_screen.dart';
 import '../features/progress/progress_screen.dart';
 import '../features/quiz/quiz_screen.dart';
 import '../features/review/review_screen.dart';
+import '../features/review/review_session_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/speaking/speaking_screen.dart';
 import '../features/welcome/welcome_screen.dart';
@@ -27,7 +29,7 @@ GoRouter buildRouter({String initialLocation = '/', bool Function()? isOnboarded
     return null;
   },
   routes: [
-    GoRoute(path: '/welcome', builder: (_, _) => const WelcomeScreen()),
+    _focused('/welcome', const WelcomeScreen()),
     StatefulShellRoute.indexedStack(
       builder: (context, state, shell) => TabShell(shell: shell),
       branches: [
@@ -45,13 +47,14 @@ GoRouter buildRouter({String initialLocation = '/', bool Function()? isOnboarded
         ),
       ],
     ),
-    GoRoute(path: '/expressions', builder: (_, _) => const ExpressionScreen()),
-    GoRoute(path: '/words', builder: (_, _) => const WordsScreen()),
-    GoRoute(path: '/speaking', builder: (_, _) => const SpeakingScreen()),
-    GoRoute(path: '/quiz', builder: (_, _) => const QuizScreen()),
-    GoRoute(path: '/complete', builder: (_, _) => const CompleteScreen()),
-    GoRoute(path: '/level-test', builder: (_, _) => const LevelTestScreen()),
-    GoRoute(path: '/level-result', builder: (_, _) => const LevelResultScreen()),
+    _focused('/expressions', const ExpressionScreen()),
+    _focused('/words', const WordsScreen()),
+    _focused('/speaking', const SpeakingScreen()),
+    _focused('/quiz', const QuizScreen()),
+    _focused('/complete', const CompleteScreen()),
+    _focused('/review-session', const ReviewSessionScreen()),
+    _focused('/level-test', const LevelTestScreen()),
+    _focused('/level-result', const LevelResultScreen()),
   ],
 );
 
@@ -59,15 +62,30 @@ class TabShell extends StatelessWidget {
   const TabShell({super.key, required this.shell});
   final StatefulNavigationShell shell;
 
-  static const _tabs = [
+  static const tabs = [
     (Icons.wb_sunny_outlined, Icons.wb_sunny_rounded, '오늘'),
     (Icons.replay_rounded, Icons.replay_rounded, '복습'),
     (Icons.bar_chart_rounded, Icons.bar_chart_rounded, '기록'),
     (Icons.settings_outlined, Icons.settings_rounded, '설정'),
   ];
 
+  void _go(int i) => shell.goBranch(i, initialLocation: i == shell.currentIndex);
+
   @override
   Widget build(BuildContext context) {
+    final size = context.windowSize;
+    if (size.isWide) {
+      // iPad: 왼쪽 세로 내비게이션 + 내용
+      return Scaffold(
+        body: Row(
+          children: [
+            _SideNav(current: shell.currentIndex, onSelect: _go, extended: size == WindowSize.expanded),
+            const VerticalDivider(width: 1, thickness: 1, color: AppColors.line),
+            Expanded(child: shell),
+          ],
+        ),
+      );
+    }
     return Scaffold(
       body: shell,
       bottomNavigationBar: DecoratedBox(
@@ -81,26 +99,26 @@ class TabShell extends StatelessWidget {
             height: 64,
             child: Row(
               children: [
-                for (var i = 0; i < _tabs.length; i++)
+                for (var i = 0; i < tabs.length; i++)
                   Expanded(
                     child: Semantics(
                       selected: shell.currentIndex == i,
                       button: true,
                       child: InkWell(
-                        onTap: () => shell.goBranch(i, initialLocation: i == shell.currentIndex),
+                        onTap: () => _go(i),
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(
-                              shell.currentIndex == i ? _tabs[i].$2 : _tabs[i].$1,
+                              shell.currentIndex == i ? tabs[i].$2 : tabs[i].$1,
                               size: 22,
                               color: shell.currentIndex == i ? AppColors.ink : AppColors.ink2,
                             ),
                             const SizedBox(height: 3),
                             Text(
-                              _tabs[i].$3,
+                              tabs[i].$3,
                               style: sans(
-                                11,
+                                12,
                                 weight: shell.currentIndex == i ? FontWeight.w700 : FontWeight.w500,
                                 color: shell.currentIndex == i ? AppColors.ink : AppColors.ink2,
                               ),
@@ -118,3 +136,133 @@ class TabShell extends StatelessWidget {
     );
   }
 }
+
+/// iPad 용 세로 내비게이션. 가로(넓은) 화면에서는 글자를 옆에 펼친다.
+class _SideNav extends StatelessWidget {
+  const _SideNav({required this.current, required this.onSelect, required this.extended});
+  final int current;
+  final ValueChanged<int> onSelect;
+  final bool extended;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: extended ? 220 : 88,
+      color: AppColors.paper,
+      child: SafeArea(
+        right: false,
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: extended ? 16 : 8, vertical: 20),
+          child: Column(
+            crossAxisAlignment: extended ? CrossAxisAlignment.start : CrossAxisAlignment.center,
+            children: [
+              Padding(
+                padding: EdgeInsets.only(left: extended ? 12 : 0, bottom: 28),
+                child: Text(
+                  extended ? 'todaye' : 't.',
+                  style: serif(extended ? 28 : 26, weight: 500, letterSpacing: -0.5),
+                ),
+              ),
+              for (var i = 0; i < TabShell.tabs.length; i++)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Semantics(
+                    selected: current == i,
+                    button: true,
+                    label: TabShell.tabs[i].$3,
+                    excludeSemantics: true,
+                    child: Material(
+                      color: current == i ? AppColors.sand : Colors.transparent,
+                      borderRadius: BorderRadius.circular(14),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(14),
+                        onTap: () => onSelect(i),
+                        child: SizedBox(
+                          height: extended ? 48 : 60,
+                          width: extended ? double.infinity : 72,
+                          child: extended
+                              ? Row(
+                                  children: [
+                                    const SizedBox(width: 12),
+                                    Icon(
+                                      current == i ? TabShell.tabs[i].$2 : TabShell.tabs[i].$1,
+                                      size: 22,
+                                      color: current == i ? AppColors.ink : AppColors.ink2,
+                                    ),
+                                    const SizedBox(width: 14),
+                                    Text(
+                                      TabShell.tabs[i].$3,
+                                      style: sans(
+                                        15,
+                                        weight: current == i ? FontWeight.w700 : FontWeight.w500,
+                                        color: current == i ? AppColors.ink : AppColors.ink2,
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              : Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      current == i ? TabShell.tabs[i].$2 : TabShell.tabs[i].$1,
+                                      size: 22,
+                                      color: current == i ? AppColors.ink : AppColors.ink2,
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      TabShell.tabs[i].$3,
+                                      style: sans(
+                                        12,
+                                        weight: current == i ? FontWeight.w700 : FontWeight.w500,
+                                        color: current == i ? AppColors.ink : AppColors.ink2,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 학습 화면처럼 한 가지에 집중하는 화면: iPad 에서는 읽기 좋은 폭으로 가운데 둔다.
+class _Focused extends StatelessWidget {
+  const _Focused({required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      color: AppColors.paper,
+      child: ReadableWidth(maxWidth: 680, child: child),
+    );
+  }
+}
+
+/// 학습 화면 전환: 살짝 위로 떠오르며 나타난다 (240ms)
+GoRoute _focused(String path, Widget screen) => GoRoute(
+  path: path,
+  pageBuilder: (_, state) => CustomTransitionPage<void>(
+    key: state.pageKey,
+    transitionDuration: const Duration(milliseconds: 240),
+    reverseTransitionDuration: const Duration(milliseconds: 200),
+    child: _Focused(child: screen),
+    transitionsBuilder: (_, animation, _, child) {
+      final curved = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+      return FadeTransition(
+        opacity: curved,
+        child: SlideTransition(
+          position: Tween(begin: const Offset(0, 0.02), end: Offset.zero).animate(curved),
+          child: child,
+        ),
+      );
+    },
+  ),
+);

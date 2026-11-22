@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/study_controller.dart';
+import '../../core/layout/adaptive.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/widgets.dart';
@@ -27,7 +28,7 @@ class ProgressScreen extends ConsumerWidget {
 
     return SafeArea(
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+        padding: readablePadding(context, maxWidth: 680),
         children: [
           Text('기록', style: sans(26, weight: FontWeight.w700, letterSpacing: -0.5)),
           const SizedBox(height: 14),
@@ -74,7 +75,7 @@ class ProgressScreen extends ConsumerWidget {
               const SizedBox(width: 8),
               _Stat(label: '퀴즈 정답률', value: accuracy == null ? '-' : '${(accuracy * 100).round()}%'),
               const SizedBox(width: 8),
-              _Stat(label: '연속 학습', value: '${s.streakDays}일'),
+              _Stat(label: '최고 연속', value: '${computeLongestStreak(s.log.keys)}일'),
             ],
           ),
           const SizedBox(height: 12),
@@ -191,20 +192,43 @@ class _DayCell extends StatelessWidget {
     final (bg, fg) = isToday
         ? (AppColors.ink, AppColors.highlighter)
         : future
-        ? (Colors.transparent, const Color(0xFF8A8273))
+        ? (Colors.transparent, AppColors.ink2)
         : studied
         ? (AppColors.penBlue, AppColors.card)
         : (const Color(0xFFEDE6D8), AppColors.ink2);
-    return Container(
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(8),
-        border: future ? Border.all(color: AppColors.track) : null,
-      ),
-      child: Text(
-        '$day',
-        style: sans(11, weight: isToday ? FontWeight.w700 : FontWeight.w400, color: fg),
+    return Semantics(
+      label:
+          '$day일, ${isToday
+              ? '오늘'
+              : future
+              ? ''
+              : studied
+              ? '학습함'
+              : '쉼'}',
+      excludeSemantics: true,
+      child: Container(
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(8),
+          border: future ? Border.all(color: AppColors.track) : null,
+        ),
+        // 색만으로 구분하지 않도록 학습한 날에는 점을 찍는다
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              '$day',
+              style: sans(12, weight: isToday ? FontWeight.w700 : FontWeight.w400, color: fg),
+            ),
+            if (studied && !isToday)
+              Container(
+                width: 4,
+                height: 4,
+                decoration: BoxDecoration(color: fg, shape: BoxShape.circle),
+              ),
+          ],
+        ),
       ),
     );
   }

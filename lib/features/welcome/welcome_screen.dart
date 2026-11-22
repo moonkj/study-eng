@@ -44,13 +44,7 @@ class WelcomeScreen extends ConsumerWidget {
             BottomActions(
               children: [
                 FilledButton(onPressed: () => context.push('/level-test'), child: const Text('레벨 진단 시작하기')),
-                TextButton(
-                  onPressed: () {
-                    ref.read(studyProvider.notifier).skipLevelTest();
-                    context.go('/');
-                  },
-                  child: const Text('건너뛰고 B1부터 시작'),
-                ),
+                TextButton(onPressed: () => _askLevel(context, ref), child: const Text('진단 없이 바로 시작')),
               ],
             ),
           ],
@@ -58,6 +52,39 @@ class WelcomeScreen extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// 진단을 건너뛸 때 한 가지만 물어 시작 레벨을 고른다 (초보자가 첫날 너무 어려워 포기하지 않게)
+void _askLevel(BuildContext context, WidgetRef ref) {
+  void start(bool beginner) {
+    Navigator.pop(context);
+    ref.read(studyProvider.notifier).skipLevelTest(beginner: beginner);
+    context.go('/');
+  }
+
+  showModalBottomSheet<void>(
+    context: context,
+    backgroundColor: AppColors.card,
+    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.sheet))),
+    builder: (_) => SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('영어로 짧은 대화를 할 수 있나요?', style: sans(18, weight: FontWeight.w700)),
+            const SizedBox(height: 6),
+            Text('나중에 설정에서 언제든 진단받을 수 있어요.', style: sans(13, color: AppColors.ink2)),
+            const SizedBox(height: 20),
+            FilledButton(onPressed: () => start(false), child: const Text('네, 간단한 대화는 돼요 (B1부터)')),
+            const SizedBox(height: 8),
+            OutlinedButton(onPressed: () => start(true), child: const Text('아직 어려워요 (A2부터)')),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 class _Point extends StatelessWidget {

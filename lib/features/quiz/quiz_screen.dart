@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -29,6 +30,14 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
     setState(() => _index++);
   }
 
+  void _answer(int choice) {
+    final s = ref.read(studyProvider);
+    final item = s.pack.quiz[_index];
+    if (s.quizAnswers.containsKey(_index) || choice >= item.choices.length) return;
+    ref.read(studyProvider.notifier).answerQuiz(_index, choice);
+    choice == item.answerIndex ? HapticFeedback.lightImpact() : HapticFeedback.mediumImpact();
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = ref.watch(studyProvider);
@@ -40,77 +49,96 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
     return Scaffold(
       body: SafeArea(
         bottom: false,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(8, 8, 20, 0),
-              child: Row(
-                children: [
-                  IconButton(tooltip: '닫기', onPressed: () => context.pop(), icon: const Icon(Icons.close_rounded)),
-                  const SizedBox(width: 4),
-                  Expanded(child: _Segments(state: s)),
-                  const SizedBox(width: 12),
-                  Text(
-                    '${_index + 1}/${quiz.length}',
-                    style: sans(13, weight: FontWeight.w600, color: AppColors.ink2),
+        // iPad 하드웨어 키보드: 1~4 보기 선택, Enter 다음, Esc 닫기
+        child: CallbackShortcuts(
+          bindings: {
+            for (final (i, key) in [
+              LogicalKeyboardKey.digit1,
+              LogicalKeyboardKey.digit2,
+              LogicalKeyboardKey.digit3,
+              LogicalKeyboardKey.digit4,
+            ].indexed)
+              SingleActivator(key): () => _answer(i),
+            const SingleActivator(LogicalKeyboardKey.enter): () {
+              if (answered) _next();
+            },
+            const SingleActivator(LogicalKeyboardKey.escape): () => context.pop(),
+          },
+          child: Focus(
+            autofocus: true,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 8, 20, 0),
+                  child: Row(
+                    children: [
+                      IconButton(tooltip: '닫기', onPressed: () => context.pop(), icon: const Icon(Icons.close_rounded)),
+                      const SizedBox(width: 4),
+                      Expanded(child: _Segments(state: s)),
+                      const SizedBox(width: 12),
+                      Text(
+                        '${_index + 1}/${quiz.length}',
+                        style: sans(13, weight: FontWeight.w600, color: AppColors.ink2),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
-                children: [
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: item.isReview
-                        ? Tag(
-                            '복습 · ${item.reviewLabel}',
-                            icon: Icons.replay_rounded,
-                            color: AppColors.ink,
-                            background: AppColors.sand,
-                          )
-                        : const Tag('오늘 배운 내용'),
+                ),
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
+                    children: [
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: item.isReview
+                            ? Tag(
+                                '복습 · ${item.reviewLabel}',
+                                icon: Icons.replay_rounded,
+                                color: AppColors.ink,
+                                background: AppColors.sand,
+                              )
+                            : const Tag('오늘 배운 내용'),
+                      ),
+                      const SizedBox(height: 14),
+                      Text(
+                        '알맞은 영어 문장을 골라주세요',
+                        style: sans(15, weight: FontWeight.w500, color: AppColors.ink2),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(item.prompt, style: sans(26, weight: FontWeight.w700, letterSpacing: -0.5, height: 1.35)),
+                      const SizedBox(height: 22),
+                      for (var i = 0; i < item.choices.length; i++) ...[
+                        _Choice(
+                          text: item.choices[i],
+                          status: !answered
+                              ? _Status.idle
+                              : i == item.answerIndex
+                              ? _Status.correct
+                              : i == picked
+                              ? _Status.wrong
+                              : _Status.dim,
+                          onTap: answered ? null : () => _answer(i),
+                        ),
+                        const SizedBox(height: 8),
+                      ],
+                    ],
                   ),
-                  const SizedBox(height: 14),
-                  Text(
-                    '알맞은 영어 문장을 골라주세요',
-                    style: sans(15, weight: FontWeight.w500, color: AppColors.ink2),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(item.prompt, style: sans(26, weight: FontWeight.w700, letterSpacing: -0.5, height: 1.35)),
-                  const SizedBox(height: 22),
-                  for (var i = 0; i < item.choices.length; i++) ...[
-                    _Choice(
-                      text: item.choices[i],
-                      status: !answered
-                          ? _Status.idle
-                          : i == item.answerIndex
-                          ? _Status.correct
-                          : i == picked
-                          ? _Status.wrong
-                          : _Status.dim,
-                      onTap: answered ? null : () => ref.read(studyProvider.notifier).answerQuiz(_index, i),
-                    ),
-                    const SizedBox(height: 8),
-                  ],
-                ],
-              ),
+                ),
+                AnimatedSize(
+                  duration: const Duration(milliseconds: 260),
+                  curve: Curves.easeOutCubic,
+                  child: answered
+                      ? _Feedback(
+                          item: item,
+                          correct: picked == item.answerIndex,
+                          onNext: _next,
+                          last: _index == quiz.length - 1,
+                        )
+                      : const SizedBox(width: double.infinity),
+                ),
+              ],
             ),
-            AnimatedSize(
-              duration: const Duration(milliseconds: 260),
-              curve: Curves.easeOutCubic,
-              child: answered
-                  ? _Feedback(
-                      item: item,
-                      correct: picked == item.answerIndex,
-                      onNext: _next,
-                      last: _index == quiz.length - 1,
-                    )
-                  : const SizedBox(width: double.infinity),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -128,16 +156,25 @@ class _Segments extends StatelessWidget {
       children: [
         for (var i = 0; i < quiz.length; i++)
           Expanded(
-            child: Container(
-              height: 4,
-              margin: EdgeInsets.only(right: i == quiz.length - 1 ? 0 : 3),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(2),
-                color: !state.quizAnswers.containsKey(i)
-                    ? AppColors.track
-                    : state.quizAnswers[i] == quiz[i].answerIndex
-                    ? AppColors.success
-                    : AppColors.error,
+            child: Semantics(
+              label:
+                  '${i + 1}번 ${!state.quizAnswers.containsKey(i)
+                      ? '아직'
+                      : state.quizAnswers[i] == quiz[i].answerIndex
+                      ? '정답'
+                      : '오답'}',
+              child: Container(
+                // 색만으로 구분하지 않도록 오답 칸은 더 두껍게
+                height: state.quizAnswers.containsKey(i) && state.quizAnswers[i] != quiz[i].answerIndex ? 8 : 4,
+                margin: EdgeInsets.only(right: i == quiz.length - 1 ? 0 : 3),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(2),
+                  color: !state.quizAnswers.containsKey(i)
+                      ? AppColors.track
+                      : state.quizAnswers[i] == quiz[i].answerIndex
+                      ? AppColors.success
+                      : AppColors.error,
+                ),
               ),
             ),
           ),
@@ -161,8 +198,9 @@ class _Choice extends StatelessWidget {
       _Status.wrong => (AppColors.errorTint, AppColors.error, 2.0),
       _ => (AppColors.card, AppColors.line, 1.0),
     };
-    return Opacity(
-      opacity: status == _Status.dim ? 0.55 : 1,
+    // 답한 뒤 나머지 보기: 흐리게(Opacity) 대신 글자색으로 구분해 대비를 지킨다
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
       child: Material(
         color: bg,
         shape: RoundedRectangleBorder(
@@ -181,10 +219,14 @@ class _Choice extends StatelessWidget {
                   Expanded(
                     child: Text(
                       text,
-                      style: serif(18, color: status == _Status.wrong ? AppColors.ink2 : AppColors.ink).copyWith(
-                        decoration: status == _Status.wrong ? TextDecoration.lineThrough : null,
-                        decorationColor: AppColors.error,
-                      ),
+                      style:
+                          serif(
+                            18,
+                            color: status == _Status.wrong || status == _Status.dim ? AppColors.ink2 : AppColors.ink,
+                          ).copyWith(
+                            decoration: status == _Status.wrong ? TextDecoration.lineThrough : null,
+                            decorationColor: AppColors.error,
+                          ),
                     ),
                   ),
                   if (status == _Status.correct)
@@ -216,6 +258,20 @@ class _Feedback extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final answer = item.choices[item.answerIndex];
+    return Semantics(
+      // 스크린리더가 결과를 바로 읽어 주도록
+      liveRegion: true,
+      label: correct ? '정답이에요. ${item.explanation}' : '오답이에요. 정답은 $answer. ${item.explanation}',
+      child: ConstrainedBox(
+        // 해설이 길거나 글씨가 커도 화면을 다 덮지 않도록
+        constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.6),
+        child: _sheet(context),
+      ),
+    );
+  }
+
+  Widget _sheet(BuildContext context) {
     return Container(
       width: double.infinity,
       padding: EdgeInsets.fromLTRB(22, 22, 22, 16 + MediaQuery.paddingOf(context).bottom),
@@ -225,39 +281,41 @@ class _Feedback extends StatelessWidget {
         border: Border(top: BorderSide(color: AppColors.line)),
         boxShadow: [BoxShadow(color: Color(0x4D3C2D14), offset: Offset(0, -12), blurRadius: 30, spreadRadius: -20)],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 14,
-                backgroundColor: correct ? AppColors.successTint : AppColors.errorTint,
-                child: Icon(
-                  correct ? Icons.check_rounded : Icons.priority_high_rounded,
-                  size: 16,
-                  color: correct ? AppColors.success : AppColors.error,
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 14,
+                  backgroundColor: correct ? AppColors.successTint : AppColors.errorTint,
+                  child: Icon(
+                    correct ? Icons.check_rounded : Icons.priority_high_rounded,
+                    size: 16,
+                    color: correct ? AppColors.success : AppColors.error,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(correct ? '정답이에요!' : '아깝다! 비슷한 표현이랑 헷갈렸어요', style: sans(16, weight: FontWeight.w700)),
-              ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(correct ? '정답이에요!' : '아깝다! 비슷한 표현이랑 헷갈렸어요', style: sans(16, weight: FontWeight.w700)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(item.explanation, style: sans(14, height: 1.65, color: AppColors.inkSoft)),
+            if (!correct) ...[
+              const SizedBox(height: 8),
+              Text('이 문제는 내일 한 번 더 나와요.', style: sans(12, color: AppColors.ink2)),
             ],
-          ),
-          const SizedBox(height: 12),
-          Text(item.explanation, style: sans(14, height: 1.65, color: AppColors.inkSoft)),
-          if (!correct) ...[
-            const SizedBox(height: 8),
-            Text('이 문제는 내일 한 번 더 나와요.', style: sans(12, color: AppColors.ink2)),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(onPressed: onNext, child: Text(last ? '결과 보기' : '다음 문제')),
+            ),
           ],
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton(onPressed: onNext, child: Text(last ? '결과 보기' : '다음 문제')),
-          ),
-        ],
+        ),
       ),
     );
   }

@@ -18,7 +18,7 @@ if (!appToken) {
 if (!process.env.ANTHROPIC_API_KEY && !process.env.ANTHROPIC_AUTH_TOKEN) {
   console.warn("경고: ANTHROPIC_API_KEY 가 없어요. `ant auth login` 프로필이 없다면 팩 생성이 실패합니다.");
 }
-const client = new Anthropic({ timeout: 150_000 });
+const client = new Anthropic({ timeout: 75_000, maxRetries: 0 });
 
 createServer(async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");

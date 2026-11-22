@@ -36,7 +36,7 @@ void main() {
       ctl.rateWord('w-actually', SelfRating.know);
       ctl.setExpressionKnown('exp-running-late', true);
       ctl.answerQuiz(0, 1);
-      ctl.recordSpeaking(c1.read(studyProvider).pack.sentences.first, "Actually I'm a liddle tired");
+      ctl.recordSpeaking(c1.read(studyProvider).pack.sentences.first, "Actually I think I'll take the buss today");
       c1.dispose();
 
       final c2 = containerAt(day.add(const Duration(hours: 3)), store);
@@ -45,7 +45,7 @@ void main() {
       expect(s.wordRatings['w-actually'], SelfRating.know);
       expect(s.expressionKnown['exp-running-late'], isTrue);
       expect(s.quizAnswers[0], 1);
-      expect(s.speaking.values.single.missed, ['little']);
+      expect(s.speaking.values.single.missed, ['bus']);
       expect(s.cards['w-actually']!.due, DateTime(2026, 11, 29));
       c2.dispose();
     });
@@ -93,7 +93,8 @@ void main() {
       SharedPreferences.setMockInitialValues({'todaye.v1': '{broken'});
       final prefs = await SharedPreferences.getInstance();
       expect(PrefsStore(prefs).load(), isNull);
-      expect(prefs.getString('todaye.v1.corrupt'), '{broken');
+      final backup = prefs.getKeys().where((k) => k.startsWith('todaye.v1.corrupt.')).single;
+      expect(prefs.getString(backup), '{broken');
     });
   });
 }

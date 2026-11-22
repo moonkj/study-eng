@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -133,40 +134,71 @@ class SavedData {
     'settings': settings.toJson(),
   };
 
+  /// 섹션별로 따로 읽는다. 기록·카드·팩 중 하나가 깨져도 나머지(특히 레벨과 연속 기록)는 살린다.
+  /// 레벨·진단 여부 같은 핵심 값이 깨졌을 때만 예외를 던진다.
   factory SavedData.fromJson(Map<String, Object?> j) {
+    T section<T>(T Function() read, T fallback) {
+      try {
+        return read();
+      } catch (_) {
+        return fallback;
+      }
+    }
+
     final p = j['profile'] as Map<String, Object?>;
+    final overall = Level((p['overall'] as num).toInt());
     return SavedData(
       profile: LearnerProfile(
-        overall: Level((p['overall'] as num).toInt()),
-        skills: {
-          for (final e in (p['skills'] as Map).entries)
-            Skill.values.byName(e.key as String): Level((e.value as num).toInt()),
-        },
+        overall: overall,
+        skills: section(
+          () => {
+            for (final e in (p['skills'] as Map).entries)
+              Skill.values.byName(e.key as String): Level((e.value as num).toInt()),
+          },
+          {for (final s in Skill.values) s: overall},
+        ),
       ),
-      contentStep: (j['contentStep'] as num).toInt(),
+      contentStep: section(() => (j['contentStep'] as num).toInt(), overall.step),
       onboarded: j['onboarded'] as bool,
-      log: (j['log'] as Map).map((k, v) => MapEntry(k as String, DayRecord.fromJson((v as Map).cast()))),
-      cards: (j['cards'] as Map).map((k, v) {
-        final m = (v as Map).cast<String, Object?>();
-        return MapEntry(
-          k as String,
-          ReviewCard(
-            itemId: k,
-            stage: (m['stage'] as num).toInt(),
-            due: parseDateKey(m['due'] as String),
-            lapses: (m['lapses'] as num).toInt(),
-          ),
-        );
-      }),
-      today: j['today'] == null ? null : TodayProgress.fromJson((j['today'] as Map).cast()),
-      lastReasons: (j['lastReasons'] as List).cast<String>(),
-      packs: ((j['packs'] as Map?) ?? const {}).map(
-        (k, v) => MapEntry(k as String, (v as Map).cast<String, Object?>()),
+      log: section(
+        () => (j['log'] as Map).map((k, v) => MapEntry(k as String, DayRecord.fromJson((v as Map).cast()))),
+        const {},
       ),
-      learned: ((j['learned'] as Map?) ?? const {}).map(
-        (k, v) => MapEntry(k as String, LearnedItem.fromJson(k, (v as Map).cast())),
+      cards: section(() {
+        final cards = <String, ReviewCard>{};
+        for (final e in (j['cards'] as Map).entries) {
+          try {
+            final m = (e.value as Map).cast<String, Object?>();
+            cards[e.key as String] = ReviewCard(
+              itemId: e.key as String,
+              stage: (m['stage'] as num).toInt(),
+              due: parseDateKey(m['due'] as String),
+              lapses: (m['lapses'] as num).toInt(),
+              lastReviewed: m['last'] == null ? null : parseDateKey(m['last'] as String),
+            );
+          } catch (_) {
+            // 카드 하나가 깨졌으면 그 카드만 버린다
+          }
+        }
+        return cards;
+      }, const {}),
+      today: section(() => j['today'] == null ? null : TodayProgress.fromJson((j['today'] as Map).cast()), null),
+      lastReasons: section(() => (j['lastReasons'] as List).cast<String>(), const []),
+      packs: section(
+        () =>
+            ((j['packs'] as Map?) ?? const {}).map((k, v) => MapEntry(k as String, (v as Map).cast<String, Object?>())),
+        const {},
       ),
-      settings: AppSettings.fromJson((j['settings'] as Map?)?.cast<String, Object?>()),
+      learned: section(
+        () => ((j['learned'] as Map?) ?? const {}).map(
+          (k, v) => MapEntry(k as String, LearnedItem.fromJson(k, (v as Map).cast())),
+        ),
+        const {},
+      ),
+      settings: section(
+        () => AppSettings.fromJson((j['settings'] as Map?)?.cast<String, Object?>()),
+        const AppSettings(),
+      ),
     );
   }
 }
@@ -184,19 +216,36 @@ class PrefsStore implements AppStore {
 
   @override
   SavedData? load() {
-    final raw = _prefs.getString(_key);
+    final String? raw;
+    try {
+      raw = _prefs.getString(_key);
+    } catch (_) {
+      // 문자열이 아닌 값이 들어 있으면(외부 도구로 건드린 경우 등) 처음부터 시작한다
+      _prefs.remove(_key);
+      return null;
+    }
     if (raw == null) return null;
     try {
       return SavedData.fromJson(jsonDecode(raw) as Map<String, Object?>);
     } catch (_) {
-      // 저장 형식이 깨졌으면 처음부터 시작한다 (원본은 백업 키에 남긴다)
-      _prefs.setString('$_key.corrupt', raw);
+      // 핵심 값이 깨졌으면 처음부터 시작한다. 원본은 시각을 붙인 백업 키에 남겨 덮어쓰지 않는다.
+      _prefs.setString('$_key.corrupt.${DateTime.now().millisecondsSinceEpoch}', raw);
       return null;
     }
   }
 
   @override
-  Future<void> save(SavedData data) => _prefs.setString(_key, jsonEncode(data.toJson()));
+  Future<void> save(SavedData data) async {
+    try {
+      await _prefs.setString(_key, jsonEncode(data.toJson()));
+    } catch (e) {
+      // 저장 공간 부족 등: 앱은 계속 쓰고, 다음 저장 때 다시 시도한다.
+      assert(() {
+        debugPrint('todaye: 저장 실패 $e');
+        return true;
+      }());
+    }
+  }
 }
 
 class MemoryStore implements AppStore {
