@@ -4,4 +4,6 @@
          to allow setting breakpoints, to provide hot reload, etc.
     -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- 디버그 빌드에서만: 로컬 개발 서버(http://PC-IP:8787)에 연결 허용 -->
+    <application android:usesCleartextTraffic="true" />
 </manifest>

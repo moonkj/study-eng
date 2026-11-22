@@ -17,6 +17,13 @@ flutter test           # 레벨 엔진·SRS·채점 단위 테스트 + 하루 �
 
 Flutter 3.50 이상 (Material은 `package:material_ui` 사용).
 
+### Claude 맞춤 학습 연결 (선택)
+서버 주소와 토큰을 넣어 빌드하면 매일 내 레벨에 맞춘 팩을 Claude 로 만듭니다. 없으면 기본 샘플로 동작합니다.
+```bash
+flutter run --dart-define=CONTENT_API_URL=<서버 URL> --dart-define=CONTENT_API_TOKEN=<토큰>
+```
+서버 설정·배포: `docs/server.md`
+
 ## 구조
 
 ```
@@ -26,5 +33,6 @@ lib/
   domain/     레벨·적응형 진단·일일 난이도 조정·SRS·말하기 채점 (순수 Dart, 테스트 대상)
   data/       모델, 샘플 콘텐츠
   features/   home, expression, words, speaking, quiz, complete,
-              level_test, level_result, progress, review, settings
+              level_test, level_result, progress, review, settings, welcome
+functions/    학습 팩 생성 서버 (Cloud Functions + Claude API, TypeScript)
 ```

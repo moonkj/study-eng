@@ -1,0 +1,88 @@
+{
+  "date": "2026-11-23",
+  "topic": "카페 · 아침",
+  "contentLevel": "B1.3",
+  "expressions": [
+    {
+      "id": "exp-could-i-get",
+      "pattern": "Could I get ~?",
+      "highlight": "Could I get",
+      "meaning": "~ 주시겠어요?",
+      "usage": "카페나 식당에서 정중하게 주문할 때 써요.",
+      "examples": [
+        {
+          "en": "Could I get an iced latte?",
+          "ko": "아이스 라떼 주시겠어요?"
+        },
+        {
+          "en": "Could I get the receipt, please?",
+          "ko": "영수증 좀 주시겠어요?"
+        }
+      ],
+      "compare": {
+        "en": "Give me ~",
+        "ko": "는 명령처럼 들릴 수 있어요."
+      },
+      "level": "B1",
+      "topic": "카페 · 아침"
+    }
+  ],
+  "words": [
+    {
+      "id": "w-refill",
+      "word": "refill",
+      "posEn": "noun",
+      "posKo": "명사",
+      "meaning": "리필, 다시 채움",
+      "ipa": "/ˈriː.fɪl/",
+      "pronKo": "리필",
+      "example": {
+        "en": "Can I get a refill?",
+        "ko": "리필해 주실 수 있어요?"
+      },
+      "level": "A2"
+    }
+  ],
+  "sentences": [
+    {
+      "id": "s-2026-11-23-1",
+      "en": "Can I get a refill?",
+      "ko": "리필해 주실 수 있어요?",
+      "focus": "refill"
+    },
+    {
+      "id": "s-2026-11-23-2",
+      "en": "Free refills here.",
+      "ko": "여기 리필 무료예요.",
+      "focus": "refill"
+    }
+  ],
+  "quiz": [
+    {
+      "id": "q-2026-11-23-1",
+      "prompt": "아이스 라떼 주시겠어요?",
+      "choices": [
+        "Could I get an iced latte?",
+        "Can I getting an iced latte?",
+        "Could get I an iced latte?"
+      ],
+      "answerIndex": 0,
+      "explanation": "Could I get ~? 은 정중한 주문 표현이에요.",
+      "reviewOf": null,
+      "itemId": "exp-could-i-get"
+    },
+    {
+      "id": "q-w-actually",
+      "prompt": "사실 나 조금 피곤해.",
+      "choices": [
+        "Actual, I'm tired.",
+        "Actually, I'm a little tired.",
+        "In actually I tired."
+      ],
+      "answerIndex": 1,
+      "explanation": "actually 는 문장 앞에서 '사실은'.",
+      "reviewOf": "w-actually",
+      "itemId": "w-actually"
+    }
+  ]
+}

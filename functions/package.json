@@ -1,0 +1,26 @@
+{
+  "name": "todaye-functions",
+  "private": true,
+  "description": "todaye 학습 팩 생성 서버 (Firebase Cloud Functions + Claude API)",
+  "type": "module",
+  "main": "lib/index.js",
+  "engines": {
+    "node": "22"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "tsc && node --test \"lib/**/*.test.js\"",
+    "dev": "tsc && node lib/dev.js",
+    "fixture": "tsc && node lib/fixture.js ../test/fixtures/server_pack.json",
+    "deploy": "npm run build && firebase deploy --only functions"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.12.0",
+    "firebase-functions": "^7.4.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "typescript": "^7.0.2"
+  }
+}

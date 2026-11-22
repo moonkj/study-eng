@@ -78,6 +78,7 @@ class QuizItem {
     required this.answerIndex,
     required this.explanation,
     this.reviewLabel,
+    this.itemId,
   });
 
   final String id;
@@ -88,8 +89,11 @@ class QuizItem {
   final int answerIndex;
   final String explanation;
 
-  /// 복습 문제면 "3일 전에 배운 표현" 같은 라벨
+  /// 복습 문제면 "3일 전에 배운 단어" 같은 라벨
   final String? reviewLabel;
+
+  /// 이 문제가 다루는 표현·단어 id. 틀리면 이 항목의 복습이 당겨진다.
+  final String? itemId;
 
   bool get isReview => reviewLabel != null;
 }
@@ -103,9 +107,13 @@ class DailyPack {
     required this.words,
     required this.sentences,
     required this.quiz,
+    this.fromClaude = false,
   });
 
   final DateTime date;
+
+  /// Claude 로 만든 맞춤 팩인지 (아니면 기본 샘플)
+  final bool fromClaude;
   final String topic;
   final int contentStep;
   final List<Expression> expressions;

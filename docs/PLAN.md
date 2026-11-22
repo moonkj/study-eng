@@ -276,8 +276,12 @@ speaking_attempts(id, item_id, recognized_text, score, at)
 - 레벨 시스템 도메인 로직 + 단위 테스트: 15단계 레벨, 적응형 진단(계단식, 영역별 보정), 일일 난이도 자동 조정, SRS, 말하기 단어 비교 채점
 - 하루 루틴 전체를 도는 위젯 테스트
 
+### 완료 (2026-11-22, 2차)
+1. 로컬 저장 — shared_preferences + JSON (ADR 001), 첫 실행 환영 화면 → 레벨 진단
+2. 음성 — flutter_tts(미국/영국 음성, 속도, 0.8배) + speech_to_text(실시간 인식, 실패 시 스스로 체크)
+3. Claude 맞춤 팩 — `functions/` 서버(Cloud Functions), 레벨·약점·복습 항목 반영, 내일 팩 미리 받기,
+   실패 시 기본 팩으로 진행. 설정 방법: `docs/server.md`
+
 ### 다음 단계
-1. 로컬 저장 (Drift): 레벨·학습 기록·SRS 카드가 앱 재시작 후에도 유지
-2. 음성: flutter_tts(듣기 버튼) + speech_to_text(따라 말하기, 지금은 데모 모드)
-3. Claude 콘텐츠 생성: 내 레벨·약점·복습 대상을 넣어 매일 나만의 팩 생성 (지금은 샘플 데이터)
-4. 아침 알림, 첫 실행 시 레벨 진단으로 시작
+4. 아침 알림
+5. 실기기(Android/iOS) 빌드 확인, 앱 아이콘

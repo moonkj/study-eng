@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/study_controller.dart';
+import '../../data/pack_source.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/widgets.dart';
@@ -30,6 +31,18 @@ class SettingsScreen extends ConsumerWidget {
                 onTap: () => context.push('/level-result'),
               ),
               _Item(icon: Icons.quiz_outlined, title: '레벨 다시 진단하기', onTap: () => context.push('/level-test')),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _Group(
+            children: [
+              _Item(
+                icon: Icons.auto_awesome_outlined,
+                title: '학습 내용',
+                value: ref.watch(packSourceProvider) == null
+                    ? '기본 샘플 (서버 미연결)'
+                    : (st.pack.fromClaude ? 'Claude 맞춤 생성' : '기본 샘플'),
+              ),
             ],
           ),
           const SizedBox(height: 12),

@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../domain/level.dart';
 import '../domain/srs.dart';
 import '../domain/study_log.dart';
+import 'pack_source.dart';
 
 /// 오늘 하루의 진행 상태 (날짜가 바뀌면 새로 시작)
 class TodayProgress {
@@ -94,7 +95,8 @@ class SavedData {
     this.cards = const {},
     this.today,
     this.lastReasons = const [],
-    this.packJson,
+    this.packs = const {},
+    this.learned = const {},
     this.settings = const AppSettings(),
   });
 
@@ -108,8 +110,11 @@ class SavedData {
   final TodayProgress? today;
   final List<String> lastReasons;
 
-  /// 오늘 받은 학습 팩 (다시 생성하지 않도록 저장)
-  final Map<String, Object?>? packJson;
+  /// 받아 둔 학습 팩 (날짜 → 서버 응답 JSON). 오늘과 내일 것만 남긴다.
+  final Map<String, Map<String, Object?>> packs;
+
+  /// 지금까지 배운 표현·단어
+  final Map<String, LearnedItem> learned;
   final AppSettings settings;
 
   static const version = 1;
@@ -123,7 +128,8 @@ class SavedData {
     'cards': cards.map((k, c) => MapEntry(k, {'stage': c.stage, 'due': dateKey(c.due), 'lapses': c.lapses})),
     'today': today?.toJson(),
     'lastReasons': lastReasons,
-    'pack': packJson,
+    'packs': packs,
+    'learned': learned.map((k, v) => MapEntry(k, v.toJson())),
     'settings': settings.toJson(),
   };
 
@@ -154,7 +160,12 @@ class SavedData {
       }),
       today: j['today'] == null ? null : TodayProgress.fromJson((j['today'] as Map).cast()),
       lastReasons: (j['lastReasons'] as List).cast<String>(),
-      packJson: (j['pack'] as Map?)?.cast<String, Object?>(),
+      packs: ((j['packs'] as Map?) ?? const {}).map(
+        (k, v) => MapEntry(k as String, (v as Map).cast<String, Object?>()),
+      ),
+      learned: ((j['learned'] as Map?) ?? const {}).map(
+        (k, v) => MapEntry(k as String, LearnedItem.fromJson(k, (v as Map).cast())),
+      ),
       settings: AppSettings.fromJson((j['settings'] as Map?)?.cast<String, Object?>()),
     );
   }

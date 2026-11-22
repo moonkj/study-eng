@@ -177,6 +177,7 @@ DailyPack samplePack(DateTime date) => DailyPack(
   quiz: const [
     QuizItem(
       id: 'q1',
+      itemId: 'exp-been-meaning-to',
       prompt: '너한테 계속 전화하려고 했어.',
       choices: ["I'm in the mood for calling you.", "I've been meaning to call you.", "I'm trying to call you."],
       answerIndex: 1,
@@ -184,14 +185,15 @@ DailyPack samplePack(DateTime date) => DailyPack(
     ),
     QuizItem(
       id: 'q2',
+      itemId: 'exp-in-the-mood-for',
       prompt: '오늘은 커피가 당겨.',
       choices: ["I'm in the mood for coffee.", "I've been meaning to coffee.", "I'm trying to coffee."],
       answerIndex: 0,
       explanation: 'in the mood for + 명사 는 "~이 당기다". been meaning to 뒤에는 동사가 와요.',
-      reviewLabel: '3일 전에 배운 표현',
     ),
     QuizItem(
       id: 'q3',
+      itemId: 'exp-running-late',
       prompt: '미안, 나 조금 늦을 것 같아.',
       choices: ["Sorry, I'm a bit late running.", "Sorry, I'm running a bit late.", "Sorry, I late a bit."],
       answerIndex: 1,
@@ -199,6 +201,7 @@ DailyPack samplePack(DateTime date) => DailyPack(
     ),
     QuizItem(
       id: 'q4',
+      itemId: 'w-probably',
       prompt: '아마 오늘은 집에 있을 것 같아.',
       choices: ["I'll probably stay home today.", "I probably will home today.", "I'll stay probably at home today."],
       answerIndex: 0,
@@ -206,6 +209,7 @@ DailyPack samplePack(DateTime date) => DailyPack(
     ),
     QuizItem(
       id: 'q5',
+      itemId: 'w-prefer',
       prompt: '나는 커피보다 차를 더 좋아해.',
       choices: ['I prefer tea than coffee.', 'I prefer tea to coffee.', 'I more prefer tea coffee.'],
       answerIndex: 1,
@@ -213,6 +217,7 @@ DailyPack samplePack(DateTime date) => DailyPack(
     ),
     QuizItem(
       id: 'q6',
+      itemId: 'w-definitely',
       prompt: '꼭 한번 해볼게.',
       choices: ["I'll definitely try it.", "I definitely will to try it.", "I'll try definitely it."],
       answerIndex: 0,
@@ -220,6 +225,7 @@ DailyPack samplePack(DateTime date) => DailyPack(
     ),
     QuizItem(
       id: 'q7',
+      itemId: 'w-crowded',
       prompt: '오늘 아침 지하철 너무 붐빈다.',
       choices: [
         'The subway is so crowd this morning.',
@@ -231,14 +237,15 @@ DailyPack samplePack(DateTime date) => DailyPack(
     ),
     QuizItem(
       id: 'q8',
+      itemId: 'w-figure-out',
       prompt: '내가 알아서 해결해 볼게.',
       choices: ["I'll figure out it.", "I'll figure it out.", "I'll out figure it."],
       answerIndex: 1,
       explanation: '대명사 it 은 figure 와 out 사이에 넣어요.',
-      reviewLabel: '1주 전에 배운 표현',
     ),
     QuizItem(
       id: 'q9',
+      itemId: 'w-on-time',
       prompt: '회사에 제시간에 도착했어?',
       choices: ['Did you get to work in time?', 'Did you get to work on time?', 'Did you get work on time?'],
       answerIndex: 1,
@@ -246,11 +253,11 @@ DailyPack samplePack(DateTime date) => DailyPack(
     ),
     QuizItem(
       id: 'q10',
+      itemId: 'w-usually',
       prompt: '나는 보통 자기 전에 책을 읽어.',
       choices: ['I usually read before bed.', 'I read usually before bed.', 'Usually I am read before bed.'],
       answerIndex: 0,
       explanation: 'usually 는 일반동사 앞에 와요.',
-      reviewLabel: '어제 틀린 문제',
     ),
   ],
 );

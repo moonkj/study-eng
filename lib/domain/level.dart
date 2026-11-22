@@ -40,6 +40,15 @@ class Level implements Comparable<Level> {
 
   final int score;
 
+  /// "B1.2" → Level. 형식이 틀리면 null.
+  static Level? parse(String label) {
+    final m = RegExp(r'^([ABC][12])\.([123])$').firstMatch(label.trim().toUpperCase());
+    if (m == null) return null;
+    final cefr = Cefr.values.indexWhere((c) => c.label == m.group(1));
+    if (cefr < 0) return null;
+    return Level.fromStep(cefr * 3 + int.parse(m.group(2)!) - 1);
+  }
+
   /// 0(A1.1) ~ 14(C1.3)
   int get step => score ~/ pointsPerStep;
 

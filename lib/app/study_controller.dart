@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/audio/tts.dart';
 import '../data/models.dart';
+import '../data/pack_source.dart';
 import '../data/sample_content.dart';
 import '../data/store.dart';
 import '../domain/daily_adjuster.dart';
@@ -16,8 +17,8 @@ enum RoutineStep { expressions, words, speaking, quiz }
 /// 테스트에서 날짜를 고정할 수 있도록 시계를 주입한다.
 final clockProvider = Provider<DateTime Function()>((ref) => DateTime.now);
 
-/// 오늘의 학습 팩을 만든다. (3단계에서 Claude 생성 팩으로 교체)
-final packBuilderProvider = Provider<DailyPack Function(DateTime)>((ref) => samplePack);
+/// 서버를 쓸 수 없을 때의 기본 팩
+final fallbackPackProvider = Provider<DailyPack Function(DateTime)>((ref) => samplePack);
 
 class StudyState {
   StudyState({
@@ -31,6 +32,10 @@ class StudyState {
     required this.today,
     required this.lastAdjustmentReasons,
     this.settings = const AppSettings(),
+    this.learned = const {},
+    this.packs = const {},
+    this.packLoading = false,
+    this.packError,
   });
 
   final DateTime now;
@@ -43,6 +48,22 @@ class StudyState {
   final TodayProgress today;
   final List<String> lastAdjustmentReasons;
   final AppSettings settings;
+  final Map<String, LearnedItem> learned;
+  final Map<String, Map<String, Object?>> packs;
+
+  /// 오늘의 맞춤 팩을 만드는 중
+  final bool packLoading;
+
+  /// 맞춤 팩을 받지 못한 이유 (기본 팩으로 진행 중)
+  final String? packError;
+
+  /// 오늘 아직 아무것도 시작하지 않았는지 (팩을 바꿔도 되는지)
+  bool get untouched =>
+      today.done.isEmpty &&
+      today.expressionKnown.isEmpty &&
+      today.wordRatings.isEmpty &&
+      today.spoken.isEmpty &&
+      today.quizAnswers.isEmpty;
 
   Set<RoutineStep> get done => {for (final n in today.done) RoutineStep.values.byName(n)};
   Map<String, bool> get expressionKnown => today.expressionKnown;
@@ -84,6 +105,11 @@ class StudyState {
   }
 
   StudyState copyWith({
+    DailyPack? pack,
+    Map<String, LearnedItem>? learned,
+    Map<String, Map<String, Object?>>? packs,
+    bool? packLoading,
+    String? Function()? packError,
     LearnerProfile? profile,
     int? contentStep,
     bool? onboarded,
@@ -94,7 +120,11 @@ class StudyState {
     AppSettings? settings,
   }) => StudyState(
     now: now,
-    pack: pack,
+    pack: pack ?? this.pack,
+    learned: learned ?? this.learned,
+    packs: packs ?? this.packs,
+    packLoading: packLoading ?? this.packLoading,
+    packError: packError == null ? this.packError : packError(),
     profile: profile ?? this.profile,
     contentStep: contentStep ?? this.contentStep,
     onboarded: onboarded ?? this.onboarded,
@@ -114,6 +144,8 @@ class StudyState {
     today: today,
     lastReasons: lastAdjustmentReasons,
     settings: settings,
+    packs: packs,
+    learned: learned,
   );
 }
 
@@ -129,18 +161,111 @@ class StudyController extends Notifier<StudyState> {
     final todayKey = dateKey(now);
     final today = saved?.today?.date == todayKey ? saved!.today! : TodayProgress(date: todayKey);
     final profile = saved?.profile ?? defaultProfile();
+    final onboarded = saved?.onboarded ?? false;
+    final learned = saved?.learned ?? const <String, LearnedItem>{};
+    // 지난 날짜의 팩은 버린다
+    final packs = {
+      for (final e in (saved?.packs ?? const <String, Map<String, Object?>>{}).entries)
+        if (e.key.compareTo(todayKey) >= 0) e.key: e.value,
+    };
+
+    final source = ref.read(packSourceProvider);
+    final cached = packs[todayKey];
+    DailyPack pack;
+    var loading = false;
+    if (cached != null) {
+      pack = packFromJson(cached, learned: learned, today: now);
+    } else {
+      pack = ref.read(fallbackPackProvider)(now);
+      if (source != null && onboarded && today.done.isEmpty) {
+        loading = true;
+        Future.microtask(loadTodayPack);
+      }
+    }
+
     return StudyState(
       now: now,
-      pack: ref.read(packBuilderProvider)(now),
+      pack: pack,
       profile: profile,
       contentStep: saved?.contentStep ?? profile.overall.step,
-      onboarded: saved?.onboarded ?? false,
+      onboarded: onboarded,
       log: saved?.log ?? const {},
       cards: saved?.cards ?? const {},
       today: today,
       lastAdjustmentReasons: saved?.lastReasons ?? const [],
       settings: saved?.settings ?? const AppSettings(),
+      learned: loading ? learned : registerLearned(learned, pack),
+      packs: packs,
+      packLoading: loading,
     );
+  }
+
+  /// 오늘의 맞춤 팩을 서버(Claude)에서 받아온다. 실패하면 기본 팩으로 계속한다.
+  Future<void> loadTodayPack() async {
+    final source = ref.read(packSourceProvider);
+    if (source == null) return;
+    final s0 = state;
+    if (!s0.untouched || s0.pack.fromClaude) {
+      if (s0.packLoading) state = s0.copyWith(packLoading: false);
+      return;
+    }
+    state = s0.copyWith(packLoading: true, packError: () => null);
+    try {
+      final json = await source.fetch(
+        buildPackRequest(
+          date: s0.now,
+          profile: s0.profile,
+          contentStep: s0.contentStep,
+          learned: s0.learned,
+          cards: s0.cards,
+        ),
+      );
+      final pack = packFromJson(json, learned: state.learned, today: state.now);
+      if (!state.untouched) {
+        // 기다리는 동안 기본 팩으로 이미 시작했다면 오늘 팩은 바꾸지 않는다.
+        state = state.copyWith(packLoading: false);
+        return;
+      }
+      _set(
+        state.copyWith(
+          pack: pack,
+          learned: registerLearned(state.learned, pack),
+          packs: {...state.packs, dateKey(state.now): json},
+          packLoading: false,
+        ),
+      );
+    } catch (e) {
+      final message = e is PackFetchException ? e.message : '맞춤 학습을 만들지 못했어요.';
+      _set(
+        state.copyWith(
+          packLoading: false,
+          packError: () => message,
+          learned: registerLearned(state.learned, state.pack),
+        ),
+      );
+    }
+  }
+
+  /// 루틴을 끝낸 뒤 내일 팩을 미리 받아 둔다 (아침에 기다리지 않고 바로 시작할 수 있게).
+  Future<void> _prefetchTomorrow() async {
+    final source = ref.read(packSourceProvider);
+    if (source == null) return;
+    final s = state;
+    final tomorrow = DateTime(s.now.year, s.now.month, s.now.day + 1);
+    try {
+      final json = await source.fetch(
+        buildPackRequest(
+          date: tomorrow,
+          profile: s.profile,
+          contentStep: s.contentStep,
+          learned: s.learned,
+          cards: s.cards,
+        ),
+      );
+      _set(state.copyWith(packs: {...state.packs, dateKey(tomorrow): json}));
+    } catch (_) {
+      // 내일 아침 앱을 열 때 다시 시도한다.
+    }
   }
 
   DateTime get _today => state.now;
@@ -171,7 +296,13 @@ class StudyController extends Notifier<StudyState> {
   }
 
   void setExpressionKnown(String id, bool known) {
-    _set(state.copyWith(today: _progress(expressionKnown: {...state.expressionKnown, id: known})));
+    final card = state.cards[id] ?? ReviewCard.fresh(id, _today);
+    _set(
+      state.copyWith(
+        today: _progress(expressionKnown: {...state.expressionKnown, id: known}),
+        cards: {...state.cards, id: Srs.rate(card, known ? SelfRating.know : SelfRating.dontKnow, _today)},
+      ),
+    );
   }
 
   void rateWord(String id, SelfRating rating) {
@@ -191,13 +322,15 @@ class StudyController extends Notifier<StudyState> {
   void answerQuiz(int index, int choice) {
     if (state.quizAnswers.containsKey(index)) return;
     final item = state.pack.quiz[index];
-    final card = state.cards[item.id] ?? ReviewCard.fresh(item.id, _today);
+    // 문제가 다루는 표현·단어의 복습 일정을 바꾼다
+    final cardId = item.itemId ?? item.id;
+    final card = state.cards[cardId] ?? ReviewCard.fresh(cardId, _today);
     _set(
       state.copyWith(
         today: _progress(quizAnswers: {...state.quizAnswers, index: choice}),
         cards: {
           ...state.cards,
-          item.id: Srs.answer(card, correct: item.answerIndex == choice, today: _today),
+          cardId: Srs.answer(card, correct: item.answerIndex == choice, today: _today),
         },
       ),
     );
@@ -206,11 +339,16 @@ class StudyController extends Notifier<StudyState> {
   void complete(RoutineStep step) {
     if (state.done.contains(step)) return;
     _set(state.copyWith(today: _progress(done: {...state.today.done, step.name})));
-    if (state.allDone) _finishDay();
+    if (state.allDone) {
+      _finishDay();
+      _prefetchTomorrow();
+    }
   }
 
   void applyLevelTest(LearnerProfile profile) {
     _set(state.copyWith(profile: profile, contentStep: profile.overall.step, onboarded: true));
+    // 진단 결과에 맞춰 오늘의 팩을 만든다
+    if (state.untouched && !state.pack.fromClaude) loadTodayPack();
   }
 
   void skipLevelTest() => applyLevelTest(defaultProfile());

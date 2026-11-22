@@ -55,70 +55,139 @@ class HomeScreen extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: AppSpace.lg),
+          if (s.packLoading) ...[
+            const _PreparingCard(),
+            const SizedBox(height: 22),
+            _LevelStrip(state: s),
+          ] else ...[
+            if (s.packError != null && s.untouched) ...[
+              _FallbackNotice(message: s.packError!, onRetry: () => ref.read(studyProvider.notifier).loadTodayPack()),
+              const SizedBox(height: 12),
+            ],
 
-          // 오늘의 표현 카드
-          PaperCard(
-            elevated: true,
-            radius: AppRadius.hero,
-            padding: const EdgeInsets.fromLTRB(22, 22, 22, 20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      "TODAY'S EXPRESSION",
-                      style: sans(12, weight: FontWeight.w600, color: AppColors.penBlue, letterSpacing: 1),
-                    ),
-                    const Spacer(),
-                    Text('1 / ${s.pack.expressions.length}', style: sans(12, color: AppColors.ink2)),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                HighlightText(
-                  exp.pattern,
-                  highlight: exp.highlight,
-                  style: serif(30, weight: 500, height: 1.15, letterSpacing: -0.3),
-                ),
-                const SizedBox(height: 6),
-                Text(exp.meaning, style: sans(15, color: AppColors.ink2)),
-                const SizedBox(height: 14),
-                const Divider(),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        '"${exp.examples.first.en}"',
-                        style: serif(15, italic: true, color: AppColors.inkSoft),
+            // 오늘의 표현 카드
+            PaperCard(
+              elevated: true,
+              radius: AppRadius.hero,
+              padding: const EdgeInsets.fromLTRB(22, 22, 22, 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        "TODAY'S EXPRESSION",
+                        style: sans(12, weight: FontWeight.w600, color: AppColors.penBlue, letterSpacing: 1),
                       ),
-                    ),
-                    RoundIconButton(
-                      icon: Icons.volume_up_rounded,
-                      label: '예문 듣기',
-                      onPressed: () => ref.read(sayProvider)(exp.examples.first.en),
-                    ),
-                  ],
-                ),
+                      const Spacer(),
+                      Text('1 / ${s.pack.expressions.length}', style: sans(12, color: AppColors.ink2)),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  HighlightText(
+                    exp.pattern,
+                    highlight: exp.highlight,
+                    style: serif(30, weight: 500, height: 1.15, letterSpacing: -0.3),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(exp.meaning, style: sans(15, color: AppColors.ink2)),
+                  const SizedBox(height: 14),
+                  const Divider(),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          '"${exp.examples.first.en}"',
+                          style: serif(15, italic: true, color: AppColors.inkSoft),
+                        ),
+                      ),
+                      RoundIconButton(
+                        icon: Icons.volume_up_rounded,
+                        label: '예문 듣기',
+                        onPressed: () => ref.read(sayProvider)(exp.examples.first.en),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 22),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                Text('오늘의 루틴', style: sans(17, weight: FontWeight.w700)),
+                const Spacer(),
+                Text('약 12분 · ${s.done.length}/4 완료', style: sans(13, color: AppColors.ink2)),
               ],
             ),
-          ),
+            const SizedBox(height: 10),
+            for (final step in RoutineStep.values) ...[_RoutineRow(step: step, state: s), const SizedBox(height: 8)],
 
-          const SizedBox(height: 22),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              Text('오늘의 루틴', style: sans(17, weight: FontWeight.w700)),
-              const Spacer(),
-              Text('약 12분 · ${s.done.length}/4 완료', style: sans(13, color: AppColors.ink2)),
-            ],
-          ),
-          const SizedBox(height: 10),
-          for (final step in RoutineStep.values) ...[_RoutineRow(step: step, state: s), const SizedBox(height: 8)],
+            const SizedBox(height: 6),
+            _LevelStrip(state: s),
+          ],
+        ],
+      ),
+    );
+  }
+}
 
-          const SizedBox(height: 6),
-          _LevelStrip(state: s),
+/// Claude 가 오늘의 맞춤 팩을 만드는 동안
+class _PreparingCard extends StatelessWidget {
+  const _PreparingCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return PaperCard(
+      elevated: true,
+      radius: AppRadius.hero,
+      padding: const EdgeInsets.fromLTRB(22, 26, 22, 26),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "TODAY'S PACK",
+            style: sans(12, weight: FontWeight.w600, color: AppColors.penBlue, letterSpacing: 1),
+          ),
+          const SizedBox(height: 14),
+          Text('내 레벨에 맞춰\n오늘의 학습을 만들고 있어요', style: sans(20, weight: FontWeight.w700, height: 1.4)),
+          const SizedBox(height: 8),
+          Text('표현 3개, 단어 10개, 문장과 퀴즈까지 · 30초 정도 걸려요', style: sans(13, color: AppColors.ink2)),
+          const SizedBox(height: 18),
+          const ClipRRect(
+            borderRadius: BorderRadius.all(Radius.circular(2)),
+            child: LinearProgressIndicator(
+              minHeight: 4,
+              color: AppColors.highlighter,
+              backgroundColor: AppColors.track,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 맞춤 팩을 못 받아 기본 팩으로 진행할 때
+class _FallbackNotice extends StatelessWidget {
+  const _FallbackNotice({required this.message, required this.onRetry});
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
+      decoration: BoxDecoration(color: AppColors.sand, borderRadius: BorderRadius.circular(16)),
+      child: Row(
+        children: [
+          const Icon(Icons.cloud_off_rounded, size: 18, color: AppColors.ink2),
+          const SizedBox(width: 10),
+          Expanded(child: Text('$message 오늘은 기본 학습으로 진행할 수 있어요.', style: sans(13, height: 1.45))),
+          TextButton(onPressed: onRetry, child: const Text('다시 시도')),
         ],
       ),
     );
@@ -162,7 +231,9 @@ class _RoutineRow extends StatelessWidget {
     RoutineStep.speaking => ('예문 따라 말하기', '${state.pack.sentences.length}문장 · 4분'),
     RoutineStep.quiz => (
       '복습 퀴즈',
-      '오늘 ${state.pack.quiz.length - state.pack.reviewCount}문항 + 지난 복습 ${state.pack.reviewCount}문항',
+      state.pack.reviewCount == 0
+          ? '${state.pack.quiz.length}문항 · 3분'
+          : '오늘 ${state.pack.quiz.length - state.pack.reviewCount}문항 + 지난 복습 ${state.pack.reviewCount}문항',
     ),
   };
 
