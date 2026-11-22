@@ -1,8 +1,8 @@
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
+import '../../app/routine_flow.dart';
 import '../../app/study_controller.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/tokens.dart';
@@ -19,7 +19,7 @@ class ReviewSessionScreen extends ConsumerStatefulWidget {
   ConsumerState<ReviewSessionScreen> createState() => _ReviewSessionScreenState();
 }
 
-class _ReviewSessionScreenState extends ConsumerState<ReviewSessionScreen> {
+class _ReviewSessionScreenState extends ConsumerState<ReviewSessionScreen> with StudyScreenGuard {
   late final List<LearnedItem> _items = ref.read(studyProvider.notifier).dueReviews();
 
   /// 처음 세션에 나온 카드 수 (몰라요 카드를 끝에 한 번 더 보여 주기 전)
@@ -57,7 +57,7 @@ class _ReviewSessionScreenState extends ConsumerState<ReviewSessionScreen> {
             const SingleActivator(LogicalKeyboardKey.digit1): () => _rate(SelfRating.dontKnow),
             const SingleActivator(LogicalKeyboardKey.digit2): () => _rate(SelfRating.confusing),
             const SingleActivator(LogicalKeyboardKey.digit3): () => _rate(SelfRating.know),
-            const SingleActivator(LogicalKeyboardKey.escape): () => context.pop(),
+            const SingleActivator(LogicalKeyboardKey.escape): () => popOrHome(context),
           },
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -93,7 +93,7 @@ class _ReviewSessionScreenState extends ConsumerState<ReviewSessionScreen> {
                 )
               else
                 BottomActions(
-                  children: [FilledButton(onPressed: () => context.pop(), child: const Text('닫기'))],
+                  children: [FilledButton(onPressed: () => popOrHome(context), child: const Text('닫기'))],
                 ),
             ],
           ),

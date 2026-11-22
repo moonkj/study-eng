@@ -23,15 +23,23 @@ DailyResult result({int correct = 8, double? speaking = 80, int wordsKnown = 6, 
 );
 
 void main() {
-  test('이틀 연속 정답률 85% 초과면 난이도를 한 단계 올린다', () {
-    final adj = DailyAdjuster.adjust(
+  test('오늘 배운 것만 물은 날은 92% 초과가 이틀 이어져야 난이도를 올린다 (직후 재인이라 원래 높게 나옴)', () {
+    var adj = DailyAdjuster.adjust(
+      profile: profile,
+      currentContentStep: 7,
+      today: result(correct: 10),
+      yesterdayAccuracy: 0.95,
+    );
+    expect(adj.nextContentStep, 8);
+    expect(adj.reasons.first, contains('정답률 100%'));
+    // 90% 는 직후 재인 기준으로는 목표 구간 안: 그대로
+    adj = DailyAdjuster.adjust(
       profile: profile,
       currentContentStep: 7,
       today: result(correct: 9),
-      yesterdayAccuracy: 0.88,
+      yesterdayAccuracy: 0.95,
     );
-    expect(adj.nextContentStep, 8);
-    expect(adj.reasons.first, contains('정답률 90%'));
+    expect(adj.nextContentStep, 7);
   });
 
   test('어제 정답률이 낮았으면 하루 높았다고 바로 올리지 않는다', () {

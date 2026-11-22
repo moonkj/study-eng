@@ -1,7 +1,6 @@
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../app/routine_flow.dart';
 import '../../app/study_controller.dart';
@@ -20,7 +19,7 @@ class ExpressionScreen extends ConsumerStatefulWidget {
   ConsumerState<ExpressionScreen> createState() => _ExpressionScreenState();
 }
 
-class _ExpressionScreenState extends ConsumerState<ExpressionScreen> {
+class _ExpressionScreenState extends ConsumerState<ExpressionScreen> with StudyScreenGuard {
   /// 아직 평가하지 않은 첫 표현부터 이어서 연다
   late int _index = () {
     final s = ref.read(studyProvider);
@@ -83,6 +82,8 @@ class _ExpressionScreenState extends ConsumerState<ExpressionScreen> {
   Widget build(BuildContext context) {
     final s = ref.watch(studyProvider);
     final items = s.pack.expressions;
+    // 팩이 바뀌어 개수가 줄었으면 범위 안으로
+    if (_index >= items.length) _index = items.length - 1;
     final current = items[_index];
     final known = s.expressionKnown[current.id];
     final isLast = _index == items.length - 1;
@@ -98,7 +99,7 @@ class _ExpressionScreenState extends ConsumerState<ExpressionScreen> {
             const SingleActivator(LogicalKeyboardKey.digit1): () => notifier.setExpressionKnown(current.id, true),
             const SingleActivator(LogicalKeyboardKey.digit2): () => notifier.setExpressionKnown(current.id, false),
             const SingleActivator(LogicalKeyboardKey.enter): () => _next(items.length),
-            const SingleActivator(LogicalKeyboardKey.escape): () => context.pop(),
+            const SingleActivator(LogicalKeyboardKey.escape): () => popOrHome(context),
           },
           child: Column(
             children: [
@@ -108,7 +109,7 @@ class _ExpressionScreenState extends ConsumerState<ExpressionScreen> {
                   children: [
                     IconButton(
                       tooltip: '홈으로',
-                      onPressed: () => context.pop(),
+                      onPressed: () => popOrHome(context),
                       icon: const Icon(Icons.chevron_left_rounded, size: 26),
                     ),
                     const Spacer(),
@@ -138,17 +139,19 @@ class _ExpressionScreenState extends ConsumerState<ExpressionScreen> {
               ),
               Padding(
                 padding: const EdgeInsets.only(top: 12),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                // 좁은 화면·큰 글씨에서는 줄을 바꾼다
+                child: Wrap(
+                  alignment: WrapAlignment.center,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 8,
+                  runSpacing: 8,
                   children: [
                     Text('이 표현은', style: sans(13, color: AppColors.ink2)),
-                    const SizedBox(width: 8),
                     _ChoicePill(
                       label: '이미 알아요',
                       selected: known == true,
                       onTap: () => ref.read(studyProvider.notifier).setExpressionKnown(current.id, true),
                     ),
-                    const SizedBox(width: 8),
                     _ChoicePill(
                       label: '처음 봐요',
                       selected: known == false,

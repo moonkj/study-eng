@@ -3,6 +3,13 @@ library;
 
 DateTime dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
 
+/// 날짜에 n일을 더한다 (달력 기준. 서머타임으로 하루가 23·25시간인 날에도 날짜가 밀리지 않게)
+DateTime addDays(DateTime d, int n) => DateTime(d.year, d.month, d.day + n);
+
+/// 두 날짜 사이의 일수 (달력 기준, 서머타임 영향 없음)
+int daysBetween(DateTime from, DateTime to) =>
+    DateTime.utc(to.year, to.month, to.day).difference(DateTime.utc(from.year, from.month, from.day)).inDays;
+
 String dateKey(DateTime d) =>
     '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
@@ -128,7 +135,7 @@ int computeStreak(Iterable<String> studiedKeys, DateTime today) {
   final days = studiedKeys.toSet();
   var cursor = dateOnly(today);
   if (!days.contains(dateKey(cursor))) {
-    cursor = cursor.subtract(const Duration(days: 1));
+    cursor = addDays(cursor, -1);
   }
   var streak = 0;
   while (days.contains(dateKey(cursor))) {

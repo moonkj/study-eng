@@ -74,7 +74,7 @@ abstract final class Srs {
     // 30일 단계에서 '알아요'면 퀴즈로 확인할 수 있도록 일주일 뒤에 다시 (30일씩 미뤄지지 않게)
     if (rating == SelfRating.know && card.stage == last && stage == last) {
       final base = _dateOnly(today);
-      return card.copyWith(due: base.add(const Duration(days: 7)), lastReviewed: base);
+      return card.copyWith(due: _plusDays(base, 7), lastReviewed: base);
     }
     return _schedule(card, stage, today, lapse: rating == SelfRating.dontKnow && card.stage >= 0);
   }
@@ -102,18 +102,18 @@ abstract final class Srs {
   static ReviewCard _schedule(ReviewCard card, int stage, DateTime today, {bool lapse = false}) {
     final base = _dateOnly(today);
     if (stage >= retiredStage) {
-      return card.copyWith(stage: retiredStage, due: base.add(const Duration(days: 3650)), lastReviewed: base);
+      return card.copyWith(stage: retiredStage, due: _plusDays(base, 3650), lastReviewed: base);
     }
     if (stage >= intervals.length) {
       return card.copyWith(
         stage: stage,
-        due: base.add(Duration(days: maintenance[stage - intervals.length])),
+        due: _plusDays(base, maintenance[stage - intervals.length]),
         lastReviewed: base,
       );
     }
     return card.copyWith(
       stage: stage,
-      due: base.add(Duration(days: intervals[stage])),
+      due: _plusDays(base, intervals[stage]),
       lapses: card.lapses + (lapse ? 1 : 0),
       lastReviewed: base,
     );
@@ -134,3 +134,6 @@ abstract final class Srs {
 }
 
 DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
+
+/// 달력 기준 날짜 더하기 (서머타임 전환일에도 날짜가 밀리지 않게)
+DateTime _plusDays(DateTime d, int n) => DateTime(d.year, d.month, d.day + n);

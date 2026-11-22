@@ -1,4 +1,5 @@
 import 'level.dart';
+import 'study_log.dart';
 
 /// 하루 학습 결과.
 class DailyResult {
@@ -101,7 +102,8 @@ abstract final class DailyAdjuster {
     // 난이도는 오늘 배운 것 정답률로, 레벨은 기억(복습) 정답률을 더 크게 본다
     final acc = today.newAccuracy ?? today.accuracy;
     // 방금 배운 것만의 정답률은 원래 높게 나오므로 목표 구간을 따로 둔다
-    final usesNew = today.newAccuracy != null && today.reviewTotal > 0;
+    // 오늘 배운 것만으로 판단할 때(복습 문항이 없는 날 포함)는 직후 재인용 목표 구간을 쓴다
+    final usesNew = today.newAccuracy != null;
     final low = usesNew ? newTargetLow : targetLow;
     final high = usesNew ? newTargetHigh : targetHigh;
     final levelAcc = today.levelAccuracy;
@@ -141,7 +143,7 @@ abstract final class DailyAdjuster {
     );
 
     // 4) 약점 보강
-    final focus = newProfile.focusSkillFor((date ?? DateTime.now()).add(const Duration(days: 1)));
+    final focus = newProfile.focusSkillFor(addDays(date ?? DateTime.now(), 1));
     final speaking = baseSpeakingSentences + (focus == Skill.speaking ? 2 : 0);
     reasons.add(
       focus == Skill.speaking ? '말하기 보강 → 말하기 문장 $baseSpeakingSentences개 → $speaking개' : '${focus.ko} 영역을 조금 더 출제해요',

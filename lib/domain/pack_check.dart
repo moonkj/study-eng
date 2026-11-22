@@ -17,5 +17,7 @@ List<String> checkPack(DailyPack p) {
   }
   final ids = [...p.expressions.map((e) => e.id), ...p.words.map((w) => w.id), ...p.sentences.map((s) => s.id)];
   if (ids.toSet().length != ids.length) problems.add('id 가 겹쳐요');
+  final quizIds = p.quiz.map((q) => q.id).toList();
+  if (quizIds.toSet().length != quizIds.length) problems.add('퀴즈 id 가 겹쳐요');
   return problems;
 }

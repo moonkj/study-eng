@@ -77,6 +77,8 @@ class DeviceSpeechInput implements SpeechInput {
         _initError == null ? '이 기기에서는 음성 인식을 쓸 수 없어요. 마이크 권한을 확인해 주세요.' : '음성 인식을 시작하지 못했어요.',
       );
     }
+    // 이전 듣기가 끝나지 않았으면 먼저 끝낸다 (두 번 시작해도 앞 요청이 20초 동안 매달리지 않게)
+    _finish(const SpeechAttempt.failed('다시 듣기를 시작했어요.'));
     final pending = _pending = Completer<SpeechAttempt>();
     await _stt.listen(
       onResult: (r) {

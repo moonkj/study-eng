@@ -192,7 +192,32 @@ class StudyState {
     settings: settings ?? this.settings,
   );
 
-  SavedData toSaved() => SavedData(
+  /// 서버 팩이 아닌 기본 팩이고, 그 내용을 오늘 이전에 이미 배웠는지 (오프라인으로 같은 팩을 다시 하는 날)
+  bool get isRepeatPack {
+    if (pack.fromClaude) return false;
+    final key = dateKey(now);
+    return pack.expressions.any((e) {
+      final item = learned[e.id];
+      return item != null && item.firstSeen != key;
+    });
+  }
+
+  /// 저장할 때 더 이상 쓰지 않는 데이터를 정리한다 (저장 공간이 끝없이 늘지 않게)
+  /// - 완전히 익힌 카드
+  /// - 180일 넘게 지났고 복습할 카드도 없는 배운 항목 (중복 회피는 최근 90일만 쓴다)
+  SavedData toSaved() {
+    final keptCards = {
+      for (final e in cards.entries)
+        if (!e.value.retired) e.key: e.value,
+    };
+    final keptLearned = {
+      for (final e in learned.entries)
+        if (keptCards.containsKey(e.key) || daysBetween(parseDateKey(e.value.firstSeen), now) <= 180) e.key: e.value,
+    };
+    return _toSaved(keptCards, keptLearned);
+  }
+
+  SavedData _toSaved(Map<String, ReviewCard> cards, Map<String, LearnedItem> learned) => SavedData(
     profile: profile,
     contentStep: contentStep,
     onboarded: onboarded,
@@ -214,10 +239,9 @@ LearnerProfile defaultProfile({int step = 6}) =>
 const dayStartHour = 4;
 
 /// [now] 가 속한 '학습일' (새벽 4시 전이면 전날)
-DateTime studyDay(DateTime now) {
-  final shifted = now.subtract(const Duration(hours: dayStartHour));
-  return DateTime(shifted.year, shifted.month, shifted.day);
-}
+DateTime studyDay(DateTime now) =>
+    // 시각으로 판단한다 (4시간을 빼는 방식은 서머타임 전환일에 하루가 어긋난다)
+    now.hour < dayStartHour ? DateTime(now.year, now.month, now.day - 1) : DateTime(now.year, now.month, now.day);
 
 /// 팩을 구분하는 값. 오늘 진행이 어느 팩에 대한 것인지 확인하는 데 쓴다.
 String packIdOf(DailyPack p) => '${dateKey(p.date)}|${p.topic}|${p.fromClaude ? 'c' : 's'}|${p.quiz.length}';
@@ -308,7 +332,8 @@ class StudyController extends Notifier<StudyState> {
       today: today,
       lastAdjustmentReasons: saved?.lastReasons ?? const [],
       settings: saved?.settings ?? const AppSettings(),
-      learned: loading ? learned : registerLearned(learned, pack),
+      // 진단 전에는 등록하지 않는다 (보지도 않은 기본 팩이 '배운 항목'으로 남지 않게)
+      learned: loading || !onboarded ? learned : registerLearned(learned, pack),
       packs: packs,
       packLoading: loading,
     );
@@ -355,11 +380,17 @@ class StudyController extends Notifier<StudyState> {
     if (source == null) return;
     final s0 = state;
     if (!s0.untouched || (s0.pack.fromClaude && !force)) {
-      if (s0.packLoading) state = s0.copyWith(packLoading: false);
+      if (s0.packLoading) _set(s0.copyWith(packLoading: false, learned: registerLearned(s0.learned, s0.pack)));
       return;
     }
     if (s0.today.regenCount >= maxFetchPerDay) {
-      _set(s0.copyWith(packLoading: false, packError: () => '오늘은 맞춤 학습을 충분히 만들었어요. 기본 학습으로 진행해요.'));
+      _set(
+        s0.copyWith(
+          packLoading: false,
+          packError: () => '오늘은 맞춤 학습을 충분히 만들었어요. 기본 학습으로 진행해요.',
+          learned: registerLearned(s0.learned, s0.pack),
+        ),
+      );
       return;
     }
     final request = ++_packRequest;
@@ -490,6 +521,8 @@ class StudyController extends Notifier<StudyState> {
   /// 오늘 루틴에서의 자가 평가. 평가를 바꾸면 '오늘 처음 평가하기 전 카드'에서 다시 계산해
   /// 여러 번 눌러도 단계가 계속 오르지 않게 한다.
   ({Map<String, ReviewCard> cards, Map<String, ReviewCard?> before}) _rateFromBaseline(String id, SelfRating rating) {
+    // 예전에 이미 배운 기본 팩을 다시 보는 날은 복습 일정을 바꾸지 않는다 (같은 내용 반복으로 단계가 부풀지 않게)
+    if (state.isRepeatPack) return (cards: state.cards, before: state.today.cardsBefore);
     final before = {...state.today.cardsBefore};
     if (!before.containsKey(id)) before[id] = state.cards[id];
     final base = before[id] ?? ReviewCard.fresh(id, _today);
@@ -568,6 +601,8 @@ class StudyController extends Notifier<StudyState> {
   }
 
   void recordSpeaking(Sentence s, String heard) {
+    // 끝낸 말하기를 다시 하는 것은 연습: 기록(완료 화면·평균)은 바꾸지 않는다
+    if (state.done.contains(RoutineStep.speaking)) return;
     _set(state.copyWith(today: _progress(spoken: {...state.today.spoken, s.id: heard})));
   }
 
@@ -576,11 +611,14 @@ class StudyController extends Notifier<StudyState> {
     final item = state.pack.quiz[index];
     // 문제가 다루는 표현·단어의 복습 일정을 바꾼다
     // 어느 항목인지 모르는 문제는 복습 카드를 만들지 않는다 (복습에 나오지 않는 카드가 쌓이지 않게)
-    final cardId = item.itemId;
+    final cardId = state.isRepeatPack ? null : item.itemId;
     final card = cardId == null ? null : state.cards[cardId] ?? ReviewCard.fresh(cardId, _today);
+    // 퀴즈로 바뀌는 카드도 오늘 첫 상태를 남겨 둔다 (진행을 지울 때 함께 되돌리도록)
+    final before = {...state.today.cardsBefore};
+    if (cardId != null && !before.containsKey(cardId)) before[cardId] = state.cards[cardId];
     _set(
       state.copyWith(
-        today: _progress(quizAnswers: {...state.quizAnswers, index: choice}),
+        today: _progress(quizAnswers: {...state.quizAnswers, index: choice}, cardsBefore: before),
         cards: card == null
             ? null
             : {...state.cards, cardId!: Srs.answer(card, correct: item.answerIndex == choice, today: _today)},
@@ -712,6 +750,7 @@ class StudyController extends Notifier<StudyState> {
           if (e.key < s.pack.quiz.length && s.pack.quiz[e.key].isReview && s.pack.quiz[e.key].answerIndex == e.value) e,
       ].length,
     );
+    final repeat = s.isRepeatPack;
     final adj = DailyAdjuster.adjust(
       profile: s.profile,
       currentContentStep: s.contentStep,
@@ -719,21 +758,24 @@ class StudyController extends Notifier<StudyState> {
       yesterdayAccuracy: s.yesterdayAccuracy,
       date: s.now,
     );
+    // 이미 배운 기본 팩을 다시 한 날은 기록만 남기고 레벨·난이도는 그대로 (아는 내용이라 정답률이 부풀어서)
+    final profile = repeat ? s.profile : adj.profile;
     _set(
       s.copyWith(
-        profile: adj.profile,
-        contentStep: adj.nextContentStep,
-        today: _progress(levelDelta: adj.levelDelta),
+        profile: profile,
+        contentStep: repeat ? s.contentStep : adj.nextContentStep,
+        // 점수 범위(0~1499) 끝에서 잘린 경우를 위해 실제로 바뀐 만큼을 기록한다
+        today: _progress(levelDelta: profile.overall.score - s.profile.overall.score),
         log: {
           ...s.log,
           dateKey(_today): DayRecord(
             accuracy: result.accuracy,
-            levelScore: adj.profile.overall.score,
+            levelScore: profile.overall.score,
             speakingAverage: result.speakingAverage,
             newAccuracy: result.newAccuracy,
           ),
         },
-        lastAdjustmentReasons: adj.reasons,
+        lastAdjustmentReasons: repeat ? const ['오늘은 이미 배운 기본 학습을 다시 해서 레벨과 난이도는 그대로 둬요.'] : adj.reasons,
       ),
     );
   }

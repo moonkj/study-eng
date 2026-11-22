@@ -23,6 +23,7 @@ class _TodayeAppState extends ConsumerState<TodayeApp> with WidgetsBindingObserv
   late final GoRouter _router = buildRouter(
     initialLocation: widget.initialLocation,
     isOnboarded: () => ref.read(studyProvider).onboarded,
+    isAllDone: () => ref.read(studyProvider).allDone,
   );
 
   late final AppLifecycleListener _lifecycle;
@@ -36,15 +37,34 @@ class _TodayeAppState extends ConsumerState<TodayeApp> with WidgetsBindingObserv
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     // 다음 날 앱으로 돌아오면 오늘 기준으로 새로 고친다
-    _lifecycle = AppLifecycleListener(onResume: _checkDay);
+    _lifecycle = AppLifecycleListener(
+      onResume: () {
+        _checkDay();
+        // 잠든 동안 타이머가 밀렸을 수 있으므로 다시 잡고, 휴대폰 설정에서 알림 권한을 바꿨을 수 있으니 다시 확인한다
+        _scheduleMidnight();
+        ref.read(studyProvider.notifier).syncReminder();
+      },
+    );
     _scheduleMidnight();
+    // 탭 화면으로 이동할 때(학습 화면에서 돌아옴·탭 전환) 미뤄 둔 날짜 변경을 적용한다
+    _router.routerDelegate.addListener(_onRoute);
     // 알림 문구를 오늘의 연속 학습일로 갱신
     Future.microtask(() {
       if (mounted) ref.read(studyProvider.notifier).syncReminder();
     });
   }
 
-  void _checkDay() => refreshStudyDay(ref, fromHome: _router.routerDelegate.currentConfiguration.uri.path == '/');
+  bool get _onTab => tabPaths.contains(_router.routerDelegate.currentConfiguration.uri.path);
+
+  void _checkDay() => refreshStudyDay(ref, fromHome: _onTab);
+
+  void _onRoute() {
+    if (!_onTab) return;
+    // 내비게이션 처리 중에 상태를 바꾸지 않도록 한 프레임 뒤에
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _onTab) refreshStudyDay(ref, fromHome: true);
+    });
+  }
 
   /// 앱을 켜 둔 채 학습일 경계(새벽 4시)를 넘기는 경우
   void _scheduleMidnight() {
@@ -61,6 +81,7 @@ class _TodayeAppState extends ConsumerState<TodayeApp> with WidgetsBindingObserv
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _router.routerDelegate.removeListener(_onRoute);
     _midnight?.cancel();
     _lifecycle.dispose();
     _router.dispose();

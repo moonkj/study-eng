@@ -15,7 +15,7 @@ class ProgressScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final s = ref.watch(studyProvider);
-    final now = ref.watch(clockProvider)();
+    final now = s.now; // 학습일 기준 (매달 1일 새벽에 제목과 달력이 어긋나지 않게)
     // 단어 카드 중 '알아요'(7일 간격) 이상까지 올라간 것을 외운 단어로 센다
     final knownWords = s.cards.values.where((c) => c.itemId.startsWith('w-') && c.stage >= 2).length;
     final records = s.log.values.toList();
@@ -332,5 +332,8 @@ class _GrowthPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_GrowthPainter old) => old.points.length != points.length;
+  // 60일이 넘으면 개수는 같고 내용만 밀리므로 값까지 비교한다
+  bool shouldRepaint(_GrowthPainter old) =>
+      old.points.length != points.length ||
+      (points.isNotEmpty && (old.points.first != points.first || old.points.last != points.last));
 }

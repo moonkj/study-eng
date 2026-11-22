@@ -22,42 +22,51 @@ import '../features/words/words_screen.dart';
 /// 첫 실행(레벨 진단 전)에도 들어갈 수 있는 경로
 const _onboardingPaths = {'/welcome', '/level-test', '/level-result'};
 
-GoRouter buildRouter({String initialLocation = '/', bool Function()? isOnboarded}) => GoRouter(
-  initialLocation: initialLocation,
-  redirect: (context, state) {
-    final onboarded = isOnboarded?.call() ?? true;
-    if (!onboarded && !_onboardingPaths.contains(state.matchedLocation)) return '/welcome';
-    return null;
-  },
-  routes: [
-    _focused('/welcome', const WelcomeScreen()),
-    StatefulShellRoute.indexedStack(
-      builder: (context, state, shell) => TabShell(shell: shell),
-      branches: [
-        StatefulShellBranch(
-          routes: [GoRoute(path: '/', builder: (_, _) => const HomeScreen())],
+/// 탭 화면 (루틴 진행 화면이 아닌 곳). 여기 있을 때는 학습일이 바뀌면 바로 새로 고쳐도 된다.
+const tabPaths = {'/', '/review', '/progress', '/settings'};
+
+GoRouter buildRouter({String initialLocation = '/', bool Function()? isOnboarded, bool Function()? isAllDone}) =>
+    GoRouter(
+      initialLocation: initialLocation,
+      redirect: (context, state) {
+        final onboarded = isOnboarded?.call() ?? true;
+        final path = state.matchedLocation;
+        if (!onboarded && !_onboardingPaths.contains(path)) return '/welcome';
+        // 진단을 마친 사용자는 환영 화면으로 돌아가지 않는다 (건너뛰기로 진단 결과를 덮어쓰지 않게)
+        if (onboarded && path == '/welcome') return '/';
+        // 루틴을 다 끝내지 않았으면 완료 화면 대신 홈으로 (바로 열기·새로고침)
+        if (path == '/complete' && !(isAllDone?.call() ?? true)) return '/';
+        return null;
+      },
+      routes: [
+        _focused('/welcome', const WelcomeScreen()),
+        StatefulShellRoute.indexedStack(
+          builder: (context, state, shell) => TabShell(shell: shell),
+          branches: [
+            StatefulShellBranch(
+              routes: [GoRoute(path: '/', builder: (_, _) => const HomeScreen())],
+            ),
+            StatefulShellBranch(
+              routes: [GoRoute(path: '/review', builder: (_, _) => const ReviewScreen())],
+            ),
+            StatefulShellBranch(
+              routes: [GoRoute(path: '/progress', builder: (_, _) => const ProgressScreen())],
+            ),
+            StatefulShellBranch(
+              routes: [GoRoute(path: '/settings', builder: (_, _) => const SettingsScreen())],
+            ),
+          ],
         ),
-        StatefulShellBranch(
-          routes: [GoRoute(path: '/review', builder: (_, _) => const ReviewScreen())],
-        ),
-        StatefulShellBranch(
-          routes: [GoRoute(path: '/progress', builder: (_, _) => const ProgressScreen())],
-        ),
-        StatefulShellBranch(
-          routes: [GoRoute(path: '/settings', builder: (_, _) => const SettingsScreen())],
-        ),
+        _focused('/expressions', const ExpressionScreen()),
+        _focused('/words', const WordsScreen()),
+        _focused('/speaking', const SpeakingScreen()),
+        _focused('/quiz', const QuizScreen()),
+        _focused('/complete', const CompleteScreen()),
+        _focused('/review-session', const ReviewSessionScreen()),
+        _focused('/level-test', const LevelTestScreen()),
+        _focused('/level-result', const LevelResultScreen()),
       ],
-    ),
-    _focused('/expressions', const ExpressionScreen()),
-    _focused('/words', const WordsScreen()),
-    _focused('/speaking', const SpeakingScreen()),
-    _focused('/quiz', const QuizScreen()),
-    _focused('/complete', const CompleteScreen()),
-    _focused('/review-session', const ReviewSessionScreen()),
-    _focused('/level-test', const LevelTestScreen()),
-    _focused('/level-result', const LevelResultScreen()),
-  ],
-);
+    );
 
 class TabShell extends StatelessWidget {
   const TabShell({super.key, required this.shell});

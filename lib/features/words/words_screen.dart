@@ -1,7 +1,6 @@
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../app/routine_flow.dart';
 import '../../app/study_controller.dart';
@@ -19,7 +18,7 @@ class WordsScreen extends ConsumerStatefulWidget {
   ConsumerState<WordsScreen> createState() => _WordsScreenState();
 }
 
-class _WordsScreenState extends ConsumerState<WordsScreen> {
+class _WordsScreenState extends ConsumerState<WordsScreen> with StudyScreenGuard {
   late int _index = ref.read(studyProvider).done.contains(RoutineStep.words)
       ? 0
       : ref.read(studyProvider).wordRatings.length.clamp(0, ref.read(studyProvider).pack.words.length - 1);
@@ -59,6 +58,8 @@ class _WordsScreenState extends ConsumerState<WordsScreen> {
       _index++;
       _revealed = false;
     });
+    // 끝낸 단계를 다시 보는 중이면 평가가 반영되지 않으므로 되돌리기 안내도 띄우지 않는다
+    if (s.done.contains(RoutineStep.words)) return;
     // 실수로 누른 평가는 3초 안에 되돌릴 수 있다
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
@@ -91,6 +92,8 @@ class _WordsScreenState extends ConsumerState<WordsScreen> {
   Widget build(BuildContext context) {
     final s = ref.watch(studyProvider);
     final words = s.pack.words;
+    // 팩이 바뀌어 개수가 줄었으면 범위 안으로
+    if (_index >= words.length) _index = words.length - 1;
     final w = words[_index];
 
     return Scaffold(
@@ -103,7 +106,7 @@ class _WordsScreenState extends ConsumerState<WordsScreen> {
             const SingleActivator(LogicalKeyboardKey.digit2): () => _rate(SelfRating.confusing),
             const SingleActivator(LogicalKeyboardKey.digit3): () => _rate(SelfRating.know),
             const SingleActivator(LogicalKeyboardKey.keyL): () => ref.read(sayProvider)(w.word),
-            const SingleActivator(LogicalKeyboardKey.escape): () => context.pop(),
+            const SingleActivator(LogicalKeyboardKey.escape): () => popOrHome(context),
           },
           child: Column(
             children: [

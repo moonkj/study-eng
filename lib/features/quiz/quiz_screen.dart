@@ -1,7 +1,6 @@
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../app/routine_flow.dart';
 import '../../app/study_controller.dart';
@@ -18,7 +17,7 @@ class QuizScreen extends ConsumerStatefulWidget {
   ConsumerState<QuizScreen> createState() => _QuizScreenState();
 }
 
-class _QuizScreenState extends ConsumerState<QuizScreen> {
+class _QuizScreenState extends ConsumerState<QuizScreen> with StudyScreenGuard {
   // 끝낸 단계를 다시 보면 처음부터
   late int _index = ref.read(studyProvider).done.contains(RoutineStep.quiz)
       ? 0
@@ -45,6 +44,8 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
   Widget build(BuildContext context) {
     final s = ref.watch(studyProvider);
     final quiz = s.pack.quiz;
+    // 팩이 바뀌어 개수가 줄었으면 범위 안으로
+    if (_index >= quiz.length) _index = quiz.length - 1;
     final item = quiz[_index];
     final picked = s.quizAnswers[_index];
     final answered = picked != null;
@@ -65,7 +66,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
             const SingleActivator(LogicalKeyboardKey.enter): () {
               if (answered) _next();
             },
-            const SingleActivator(LogicalKeyboardKey.escape): () => context.pop(),
+            const SingleActivator(LogicalKeyboardKey.escape): () => popOrHome(context),
           },
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -74,7 +75,11 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                 padding: const EdgeInsets.fromLTRB(8, 8, 20, 0),
                 child: Row(
                   children: [
-                    IconButton(tooltip: '닫기', onPressed: () => context.pop(), icon: const Icon(Icons.close_rounded)),
+                    IconButton(
+                      tooltip: '닫기',
+                      onPressed: () => popOrHome(context),
+                      icon: const Icon(Icons.close_rounded),
+                    ),
                     const SizedBox(width: 4),
                     Expanded(child: _Segments(state: s)),
                     const SizedBox(width: 12),

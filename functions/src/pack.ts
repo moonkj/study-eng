@@ -219,12 +219,18 @@ export function validatePack(pack: GeneratedPack, req: PackRequest): string[] {
     ...pack.words.map((w) => w.example.ko.trim()),
   ]);
 
-  const avoidWords = new Set(req.avoid.words.map(lower));
-  const repeated = pack.words.filter((w) => avoidWords.has(lower(w.word))).map((w) => w.word);
+  // 반복·중복은 앱 id 와 같은 기준(slug)으로 본다 ("Could I get ~?" 와 "could I get ~" 는 같은 카드)
+  const avoidWords = new Set(req.avoid.words.map(slug));
+  const repeated = pack.words.filter((w) => avoidWords.has(slug(w.word))).map((w) => w.word);
   if (repeated.length) problems.push(`최근에 배운 단어를 다시 냈습니다: ${repeated.join(", ")}`);
-  const avoidExp = new Set(req.avoid.expressions.map(lower));
-  const repeatedExp = pack.expressions.filter((e) => avoidExp.has(lower(e.pattern))).map((e) => e.pattern);
+  const avoidExp = new Set(req.avoid.expressions.map(slug));
+  const repeatedExp = pack.expressions.filter((e) => avoidExp.has(slug(e.pattern))).map((e) => e.pattern);
   if (repeatedExp.length) problems.push(`최근에 배운 표현을 다시 냈습니다: ${repeatedExp.join(", ")}`);
+  const expSlugs = pack.expressions.map((e) => slug(e.pattern));
+  if (new Set(expSlugs).size !== expSlugs.length) problems.push("표현끼리 너무 비슷합니다 (같은 표현이 두 번 나왔습니다)");
+  const wordSlugs = pack.words.map((w) => slug(w.word));
+  if (new Set(wordSlugs).size !== wordSlugs.length) problems.push("words 에 중복이 있습니다 (철자만 조금 다른 같은 단어)");
+
 
   const reviewIds = new Set(req.review.map((r) => r.id));
   for (const q of pack.quiz) {
@@ -234,6 +240,8 @@ export function validatePack(pack: GeneratedPack, req: PackRequest): string[] {
     if (new Set(q.choices).size !== q.choices.length) problems.push(`퀴즈 "${q.prompt}" 의 보기에 중복이 있습니다`);
     if (q.review_of && !reviewIds.has(q.review_of)) problems.push(`퀴즈 "${q.prompt}" 의 review_of "${q.review_of}" 는 복습 항목 id 가 아닙니다`);
   }
+  const reviewOfs = pack.quiz.map((q) => q.review_of).filter(Boolean);
+  if (new Set(reviewOfs).size !== reviewOfs.length) problems.push("같은 복습 항목의 퀴즈가 두 번 나왔습니다. 항목마다 1문항만 만들어 주세요");
   const reviewQuizzes = new Set(pack.quiz.map((q) => q.review_of).filter(Boolean));
   for (const id of reviewIds) if (!reviewQuizzes.has(id)) problems.push(`복습 항목 ${id} 의 퀴즈가 없습니다`);
   const todayQuizzes = pack.quiz.filter((q) => !q.review_of).length;
@@ -250,11 +258,27 @@ export const slug = (s: string) =>
     .replace(/^-+|-+$/g, "")
     .slice(0, 48);
 
+/** 퀴즈가 다루는 오늘 항목 id. 철자가 조금 달라도(활용형·구두점) 찾는다. 못 찾으면 null. */
+function findItemId(pack: GeneratedPack, tests: string, itemIds: Map<string, string>): string | null {
+  if (!tests.trim()) return null;
+  const exact = itemIds.get(slug(tests));
+  if (exact) return exact;
+  const w = pack.words.find((w) => containsWord(tests, w.word, w.pos_en));
+  if (w) return `w-${slug(w.word)}`;
+  const t = slug(tests);
+  const e = pack.expressions.find((e) => {
+    const p = slug(e.pattern);
+    return p.length > 0 && (t.includes(p) || p.includes(t));
+  });
+  return e ? `exp-${slug(e.pattern)}` : null;
+}
+
 /** 앱의 DailyPack JSON 형식으로 바꾼다. id 는 내용에서 만들어 날짜가 달라도 같은 단어는 같은 복습 카드가 된다. */
 export function toAppPack(pack: GeneratedPack, req: PackRequest) {
+  // tests 를 slug 로 맞춘다 (물음표·대소문자·공백 차이로 itemId 가 빠지지 않게)
   const itemIds = new Map<string, string>([
-    ...pack.expressions.map((e) => [e.pattern.toLowerCase(), `exp-${slug(e.pattern)}`] as [string, string]),
-    ...pack.words.map((w) => [w.word.toLowerCase(), `w-${slug(w.word)}`] as [string, string]),
+    ...pack.expressions.map((e) => [slug(e.pattern), `exp-${slug(e.pattern)}`] as [string, string]),
+    ...pack.words.map((w) => [slug(w.word), `w-${slug(w.word)}`] as [string, string]),
   ]);
   return {
     date: req.date,
@@ -291,15 +315,19 @@ export function toAppPack(pack: GeneratedPack, req: PackRequest) {
       explanation: q.explanation,
       reviewOf: q.review_of || null,
       // 이 문제를 틀리면 복습 일정이 당겨질 표현·단어
-      itemId: q.review_of || itemIds.get(q.tests.toLowerCase()) || null,
+      itemId: q.review_of || findItemId(pack, q.tests, itemIds),
     })),
   };
 }
+
+export type Usage = Array<Record<string, number | null | undefined>>;
 
 export class PackGenerationError extends Error {
   constructor(
     message: string,
     readonly problems: string[] = [],
+    /** 실패하기까지 쓴 토큰 (비용 로그용) */
+    readonly usage: Usage = [],
   ) {
     super(message);
   }
@@ -319,28 +347,40 @@ function retryNote(problems: string[]): string {
  */
 export async function generatePack(client: Client, req: PackRequest, maxAttempts = 2) {
   let problems: string[] = [];
-  const usage: Array<Record<string, number | null | undefined>> = [];
+  const usage: Usage = [];
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    const response = await client.beta.messages.parse({
-      model: MODEL,
-      max_tokens: 16000,
-      // 정책상 거절되면 서버에서 다른 모델로 이어서 처리 (거절 사유별 자동 선택)
-      betas: ["server-side-fallback-2026-07-01"],
-      fallbacks: "default",
-      cache_control: { type: "ephemeral" },
-      system: SYSTEM_PROMPT,
-      output_config: { effort: "medium", format: betaZodOutputFormat(GeneratedPack) },
-      messages: [{ role: "user", content: buildUserPrompt(req) + retryNote(problems) }],
-    });
+    let response;
+    try {
+      response = await client.beta.messages.parse({
+        model: MODEL,
+        max_tokens: 16000,
+        // 정책상 거절되면 서버에서 다른 모델로 이어서 처리 (거절 사유별 자동 선택)
+        betas: ["server-side-fallback-2026-07-01"],
+        fallbacks: "default",
+        // 매일 바뀌는 사용자 메시지가 아니라 고정된 시스템 프롬프트를 캐시한다
+        system: [{ type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
+        output_config: { effort: "medium", format: betaZodOutputFormat(GeneratedPack) },
+        messages: [{ role: "user", content: buildUserPrompt(req) + retryNote(problems) }],
+      });
+    } catch (e) {
+      // SDK 가 응답을 스키마로 읽다 실패한 경우(출력이 잘림 등)는 API 오류가 아니다: 짧게 다시 만든다
+      if (e instanceof Anthropic.AnthropicError && !(e instanceof Anthropic.APIError)) {
+        problems = ["응답이 잘렸거나 형식에 맞지 않았습니다. 문장을 더 짧게, 형식을 정확히 지켜 주세요."];
+        continue;
+      }
+      if (e instanceof Error) Object.assign(e, { usage });
+      throw e;
+    }
     usage.push({
       input: response.usage.input_tokens,
       output: response.usage.output_tokens,
       cacheRead: response.usage.cache_read_input_tokens,
+      cacheWrite: response.usage.cache_creation_input_tokens,
     });
 
     if (response.stop_reason === "refusal") {
-      throw new PackGenerationError("Claude 가 요청을 거절했습니다");
+      throw new PackGenerationError("Claude 가 요청을 거절했습니다", [], usage);
     }
     if (response.stop_reason === "max_tokens") {
       problems = ["응답이 너무 길어 잘렸습니다. 문장을 더 짧게 만들어 주세요."];
@@ -351,5 +391,5 @@ export async function generatePack(client: Client, req: PackRequest, maxAttempts
       if (problems.length === 0) return { pack: toAppPack(response.parsed_output, req), usage, attempts: attempt };
     }
   }
-  throw new PackGenerationError("규칙에 맞는 팩을 만들지 못했습니다", problems);
+  throw new PackGenerationError("규칙에 맞는 팩을 만들지 못했습니다", problems, usage);
 }

@@ -363,4 +363,85 @@ void main() {
     expect(c.read(studyProvider).streakDays, 1);
     c.dispose();
   });
+
+  test('서버에 보내는 피할 단어 목록은 최근에 배운 것부터 400개', () {
+    final learned = {
+      for (var i = 0; i < 500; i++)
+        'w-$i': LearnedItem(id: 'w-$i', kind: 'word', text: 'word$i', meaning: '뜻', firstSeen: '2026-10-01'),
+      'w-new': const LearnedItem(id: 'w-new', kind: 'word', text: 'newest', meaning: '뜻', firstSeen: '2026-11-22'),
+    };
+    final req = buildPackRequest(date: day, profile: profile, contentStep: 8, learned: learned, cards: const {});
+    final words = ((req['avoid'] as Map)['words'] as List);
+    expect(words.length, 400);
+    expect(words.first, 'newest');
+  });
+
+  test('이미 배운 기본 팩을 다시 하는 날: 복습 일정·레벨은 그대로, 기록만 남는다', () {
+    final c1 = ProviderContainer(
+      overrides: [
+        storeProvider.overrideWithValue(MemoryStore(onboarded())),
+        clockProvider.overrideWithValue(() => day),
+      ],
+    );
+    final ctl1 = c1.read(studyProvider.notifier);
+    ctl1.rateWord('w-actually', SelfRating.know);
+    final saved = c1.read(studyProvider).toSaved();
+    final stage = saved.cards['w-actually']!.stage;
+    c1.dispose();
+
+    final next = DateTime(2026, 11, 24, 9);
+    final c2 = ProviderContainer(
+      overrides: [storeProvider.overrideWithValue(MemoryStore(saved)), clockProvider.overrideWithValue(() => next)],
+    );
+    final s = c2.read(studyProvider);
+    expect(s.isRepeatPack, isTrue);
+    final ctl = c2.read(studyProvider.notifier);
+    ctl.rateWord('w-actually', SelfRating.know);
+    expect(c2.read(studyProvider).cards['w-actually']!.stage, stage);
+    for (final step in RoutineStep.values) {
+      ctl.complete(step);
+    }
+    final after = c2.read(studyProvider);
+    expect(after.profile.overall, s.profile.overall);
+    expect(after.log.containsKey('2026-11-24'), isTrue);
+    c2.dispose();
+  });
+
+  test('저장할 때 완전히 익힌 카드와 오래된 배운 항목은 정리한다', () {
+    final c = ProviderContainer(
+      overrides: [
+        storeProvider.overrideWithValue(MemoryStore(onboarded())),
+        clockProvider.overrideWithValue(() => day),
+      ],
+    );
+    final s = c
+        .read(studyProvider)
+        .copyWith(
+          cards: {
+            'w-old': ReviewCard(itemId: 'w-old', stage: Srs.retiredStage, due: DateTime(2036, 1, 1)),
+            'w-keep': ReviewCard(itemId: 'w-keep', stage: 2, due: DateTime(2026, 12, 1)),
+          },
+          learned: {
+            'w-old': const LearnedItem(id: 'w-old', kind: 'word', text: 'old', meaning: '뜻', firstSeen: '2025-01-01'),
+            'w-keep': const LearnedItem(
+              id: 'w-keep',
+              kind: 'word',
+              text: 'keep',
+              meaning: '뜻',
+              firstSeen: '2025-01-01',
+            ),
+            'w-recent': const LearnedItem(
+              id: 'w-recent',
+              kind: 'word',
+              text: 'recent',
+              meaning: '뜻',
+              firstSeen: '2026-11-01',
+            ),
+          },
+        );
+    final saved = s.toSaved();
+    expect(saved.cards.keys, ['w-keep']);
+    expect(saved.learned.keys.toSet(), {'w-keep', 'w-recent'});
+    c.dispose();
+  });
 }

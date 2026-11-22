@@ -14,15 +14,16 @@ class ReviewScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final s = ref.watch(studyProvider);
-    final now = ref.watch(clockProvider)();
+    final now = s.now; // 학습일 기준 (새벽 4시 전에도 '내일' 계산이 맞게)
     final wrong = [
       for (final e in s.quizAnswers.entries)
-        if (s.pack.quiz[e.key].answerIndex != e.value) s.pack.quiz[e.key],
+        if (e.key < s.pack.quiz.length && s.pack.quiz[e.key].answerIndex != e.value) s.pack.quiz[e.key],
     ];
     final words = {for (final w in s.pack.words) w.id: w};
     final scheduled = s.cards.values.where((c) => words.containsKey(c.itemId)).toList()
       ..sort((a, b) => a.due.compareTo(b.due));
-    final dueCount = ref.read(studyProvider.notifier).dueReviews(limit: 999).length;
+    // 홈·세션과 같은 기준 (한 번에 최대 20장)
+    final dueCount = s.dueCount;
 
     return SafeArea(
       child: ListView(
@@ -91,7 +92,8 @@ class ReviewScreen extends ConsumerWidget {
                 children: [
                   for (final c in scheduled)
                     Container(
-                      height: 52,
+                      constraints: const BoxConstraints(minHeight: 52),
+                      padding: const EdgeInsets.symmetric(vertical: 6),
                       decoration: BoxDecoration(
                         border: c == scheduled.first ? null : Border(top: BorderSide(color: AppColors.line)),
                       ),
@@ -103,7 +105,14 @@ class ReviewScreen extends ConsumerWidget {
                               Text(words[c.itemId]!.word, style: serif(18)),
                             ),
                           ),
-                          Text(words[c.itemId]!.meaning, style: sans(13, color: AppColors.ink2)),
+                          Flexible(
+                            child: Text(
+                              words[c.itemId]!.meaning,
+                              style: sans(13, color: AppColors.ink2),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
                           const SizedBox(width: 12),
                           Tag(
                             '${c.due.difference(DateTime(now.year, now.month, now.day)).inDays}일 뒤',

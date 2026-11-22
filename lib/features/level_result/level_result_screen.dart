@@ -30,7 +30,8 @@ class LevelResultScreen extends ConsumerWidget {
                 padding: const EdgeInsets.fromLTRB(8, 8, 0, 0),
                 child: IconButton(
                   tooltip: '닫기',
-                  onPressed: () => context.canPop() ? context.pop() : context.go('/'),
+                  // 바로 아래가 환영 화면일 수 있으므로(첫 진단) 항상 홈으로
+                  onPressed: () => context.go('/'),
                   icon: const Icon(Icons.close_rounded),
                 ),
               ),
@@ -120,7 +121,9 @@ class LevelResultScreen extends ConsumerWidget {
                             TextSpan(
                               style: sans(14, height: 1.6),
                               children: [
-                                TextSpan(text: '${strong.ko}은(는) 강점이에요. '),
+                                // 모든 영역이 같은 점수면(진단을 건너뛴 경우) 강점을 단정하지 않는다
+                                if (strong != weak && p.skills[strong] != p.skills[weak])
+                                  TextSpan(text: '${strong.ko}은(는) 강점이에요. '),
                                 if (weakIsLow) ...[
                                   TextSpan(
                                     text: '${weak.ko} 연습',

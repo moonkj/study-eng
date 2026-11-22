@@ -89,14 +89,15 @@ class DeviceReminder implements Reminder {
   bool get _supported => !kIsWeb;
 
   Future<void> _init() async {
-    if (_initialized) return;
-    tzdata.initializeTimeZones();
+    // 시간대는 예약할 때마다 다시 읽는다 (여행 중 시간대가 바뀌어도 그 지역 시각에 울리게)
     try {
+      if (!_initialized) tzdata.initializeTimeZones();
       final info = await FlutterTimezone.getLocalTimezone();
       tz.setLocalLocation(tz.getLocation(info.identifier));
     } catch (_) {
-      tz.setLocalLocation(tz.getLocation('Asia/Seoul'));
+      if (!_initialized) tz.setLocalLocation(tz.getLocation('Asia/Seoul'));
     }
+    if (_initialized) return;
     await _plugin.initialize(
       settings: const InitializationSettings(
         android: AndroidInitializationSettings('@mipmap/ic_launcher'),

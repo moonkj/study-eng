@@ -1,7 +1,6 @@
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../app/routine_flow.dart';
 import '../../app/study_controller.dart';
@@ -26,7 +25,7 @@ class SpeakingScreen extends ConsumerStatefulWidget {
   ConsumerState<SpeakingScreen> createState() => _SpeakingScreenState();
 }
 
-class _SpeakingScreenState extends ConsumerState<SpeakingScreen> {
+class _SpeakingScreenState extends ConsumerState<SpeakingScreen> with StudyScreenGuard {
   bool get _practice => widget.practice != null;
   bool get _quiet => ref.read(quietModeProvider);
   List<Sentence> get _sentences => widget.practice ?? ref.read(studyProvider).pack.sentences;
@@ -52,20 +51,42 @@ class _SpeakingScreenState extends ConsumerState<SpeakingScreen> {
     }
   }
 
+  late final SpeechInput _input;
+
+  @override
+  void initState() {
+    super.initState();
+    _input = ref.read(speechInputProvider);
+  }
+
+  @override
+  void dispose() {
+    // 화면을 나가면 듣기를 바로 멈춘다 (마이크가 켜진 채 남지 않게)
+    if (_listening) _input.stop();
+    super.dispose();
+  }
+
+  /// 듣는 중이면 멈춘다 (문장을 넘기거나 조용 모드를 켤 때)
+  void _stopListening() {
+    if (_listening) _input.stop();
+  }
+
   Future<void> _toggleMic() async {
     if (_quiet) return;
-    final input = ref.read(speechInputProvider);
+    final input = _input;
     if (_listening) {
       await input.stop();
       return;
     }
     final s = _sentences[_index];
-    await ref.read(speakerProvider).stop();
+    // 먼저 듣는 중으로 표시해 두 번 눌러도 한 번만 시작한다
     setState(() {
       _listening = true;
       _partial = '';
       _error = null;
     });
+    await ref.read(speakerProvider).stop();
+    if (!mounted) return;
     final attempt = await input.listen(
       expected: s.en,
       onPartial: (p) {
@@ -73,7 +94,8 @@ class _SpeakingScreenState extends ConsumerState<SpeakingScreen> {
       },
     );
     if (!mounted) return;
-    if (attempt.ok) {
+    // 듣는 사이 문장을 넘겼으면 이전 문장의 결과는 버린다
+    if (attempt.ok && identical(s, _sentences[_index])) {
       _record(s, attempt.text!);
       HapticFeedback.lightImpact();
     }
@@ -100,10 +122,11 @@ class _SpeakingScreenState extends ConsumerState<SpeakingScreen> {
   }
 
   void _next({bool force = false}) {
+    _stopListening();
     final st = ref.read(studyProvider);
     if (!force && !_done(st, _sentences[_index])) return;
     if (_index >= _sentences.length - 1) {
-      _practice ? context.pop() : finishStep(context, ref, RoutineStep.speaking);
+      _practice ? popOrHome(context) : finishStep(context, ref, RoutineStep.speaking);
       return;
     }
     setState(() {
@@ -117,10 +140,16 @@ class _SpeakingScreenState extends ConsumerState<SpeakingScreen> {
   Widget build(BuildContext context) {
     final st = ref.watch(studyProvider);
     ref.watch(quietModeProvider);
+    // 팩이 바뀌어 개수가 줄었으면 범위 안으로
+    if (_index >= _sentences.length) _index = _sentences.length - 1;
     final sentence = _sentences[_index];
     final result = _resultFor(st, sentence);
     final done = _done(st, sentence);
-    final say = ref.read(sayProvider);
+    final sayRaw = ref.read(sayProvider);
+    // 듣는 중에는 기기가 문장을 읽지 않는다 (읽어 준 소리가 녹음돼 점수가 매겨지지 않게)
+    void say(String text, {bool slow = false}) {
+      if (!_listening) sayRaw(text, slow: slow);
+    }
 
     return Scaffold(
       body: SafeArea(
@@ -132,7 +161,7 @@ class _SpeakingScreenState extends ConsumerState<SpeakingScreen> {
             const SingleActivator(LogicalKeyboardKey.keyL): () => say(sentence.en),
             const SingleActivator(LogicalKeyboardKey.enter): _next,
             const SingleActivator(LogicalKeyboardKey.arrowRight): _next,
-            const SingleActivator(LogicalKeyboardKey.escape): () => context.pop(),
+            const SingleActivator(LogicalKeyboardKey.escape): () => popOrHome(context),
           },
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -156,6 +185,7 @@ class _SpeakingScreenState extends ConsumerState<SpeakingScreen> {
                         backgroundColor: AppColors.paper,
                         side: BorderSide(color: AppColors.line),
                         onSelected: (v) => setState(() {
+                          _stopListening();
                           ref.read(quietModeProvider.notifier).set(v);
                           _error = null;
                         }),

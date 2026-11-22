@@ -49,10 +49,15 @@ export async function handleDailyPack(opts: {
     return { status: 200, body: pack };
   } catch (e) {
     if (e instanceof PackGenerationError) {
-      log("pack rejected", { message: e.message, problems: e.problems });
+      log("pack rejected", { message: e.message, problems: e.problems, usage: e.usage });
       return { status: 502, body: { error: e.message, problems: e.problems } };
     }
+    // 일시적인 문제(요청 한도, 과부하, 시간 초과, 연결 끊김)는 503: 앱이 "잠시 뒤에 다시"로 안내한다
     if (e instanceof Anthropic.RateLimitError) return { status: 503, body: { error: "rate limited, retry later" } };
+    if (e instanceof Anthropic.APIConnectionError || (e instanceof Anthropic.APIError && (e.status === 529 || (e.status ?? 0) >= 500))) {
+      log("anthropic temporary error", { status: e instanceof Anthropic.APIError ? e.status : undefined });
+      return { status: 503, body: { error: "temporarily unavailable, retry later" } };
+    }
     if (e instanceof Anthropic.AuthenticationError) {
       log("anthropic auth failed");
       return { status: 500, body: { error: "server misconfigured" } };

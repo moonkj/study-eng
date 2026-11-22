@@ -29,11 +29,8 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final s = ref.watch(studyProvider);
     final now = ref.watch(clockProvider)();
-    // 홈으로 돌아왔을 때 학습일이 바뀌었으면(루틴 중이라 미뤄 둔 경우 포함) 오늘로 새로 고친다
-    // (학습 화면이 위에 떠 있는 동안에도 홈은 다시 그려지므로, 홈이 실제로 맨 위일 때만)
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (context.mounted && (ModalRoute.of(context)?.isCurrent ?? true)) refreshStudyDay(ref, fromHome: true);
-    });
+    // 학습일 새로 고침은 app.dart 의 라우터 리스너가 탭 화면에 있을 때만 한다
+    // (홈은 학습 화면 뒤에서도 다시 그려지므로 여기서 하면 루틴 도중 진행이 지워진다)
     final exp = s.pack.expressions.first;
     // 내용 영역 폭 기준 (iPad 에서는 내비게이션 폭을 뺀 값): 두 단이 답답하지 않을 때만 나눈다
     final wide = MediaQuery.sizeOf(context).width >= 760;

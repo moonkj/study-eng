@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import Anthropic from "@anthropic-ai/sdk";
 import { test } from "node:test";
 
 import { handleDailyPack } from "./handler.js";
@@ -182,4 +183,28 @@ test("단어 포함 검사: 활용형과 분리된 구동사를 허용한다", (
   assert.ok(!containsWord("I've been working late a lot lately.".replace("late a lot ", ""), "late"));
   assert.ok(containsWord("It's busier than usual.", "busy", "adjective"));
   assert.ok(containsWord("I forgot my umbrella.", "forget", "verb"));
+});
+
+test("퀴즈 tests 가 구두점·활용형이 달라도 오늘 항목 id 를 찾는다", () => {
+  const p = goodPack();
+  p.quiz[0] = { ...p.quiz[0], tests: "Grabbed", review_of: "" };
+  const out = toAppPack(p, req);
+  assert.equal(out.quiz[0].itemId, "w-grab");
+});
+
+test("SDK 가 응답을 읽다 실패하면(출력 잘림) 짧게 다시 만든다", async () => {
+  let n = 0;
+  const client = {
+    beta: {
+      messages: {
+        parse: async () => {
+          n++;
+          if (n === 1) throw new Anthropic.AnthropicError("Failed to parse structured output");
+          return { stop_reason: "end_turn", parsed_output: goodPack(), content: [], usage: { input_tokens: 1, output_tokens: 1 } };
+        },
+      },
+    },
+  } as unknown as Parameters<typeof generatePack>[0];
+  const out = await generatePack(client, req);
+  assert.equal(out.attempts, 2);
 });

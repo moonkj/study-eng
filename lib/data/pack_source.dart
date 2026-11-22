@@ -56,7 +56,7 @@ Map<String, LearnedItem> registerLearned(Map<String, LearnedItem> learned, Daily
 
 /// "어제 배운 단어", "5일 전에 배운 표현"
 String reviewLabelFor(LearnedItem item, DateTime today) {
-  final days = dateOnly(today).difference(parseDateKey(item.firstSeen)).inDays;
+  final days = daysBetween(parseDateKey(item.firstSeen), today);
   final what = item.kind == 'word' ? '단어' : '표현';
   if (days <= 1) return '어제 배운 $what';
   if (days >= 7 && days % 7 == 0) return '${days ~/ 7}주 전에 배운 $what';
@@ -72,7 +72,9 @@ Map<String, Object?> buildPackRequest({
   required Map<String, ReviewCard> cards,
 }) {
   final today = dateOnly(date);
-  bool recent(LearnedItem i, int days) => today.difference(parseDateKey(i.firstSeen)).inDays <= days;
+  bool recent(LearnedItem i, int days) => daysBetween(parseDateKey(i.firstSeen), today) <= days;
+  // 최근에 배운 것부터 (오래된 순으로 저장돼 있어서 앞에서 자르면 최근 항목이 빠진다)
+  final newestFirst = learned.values.toList()..sort((a, b) => b.firstSeen.compareTo(a.firstSeen));
   final due = Srs.dueToday(cards.values.where((c) => learned.containsKey(c.itemId)), today, limit: 4);
   final focus = profile.focusSkillFor(today);
   return {
@@ -84,11 +86,11 @@ Map<String, Object?> buildPackRequest({
     'speakingSentences': focus == Skill.speaking ? 12 : 10,
     'avoid': {
       'expressions': [
-        for (final i in learned.values)
+        for (final i in newestFirst)
           if (i.kind == 'expression' && recent(i, 60)) i.text,
       ].take(200).toList(),
       'words': [
-        for (final i in learned.values)
+        for (final i in newestFirst)
           if (i.kind == 'word' && recent(i, 90)) i.text,
       ].take(400).toList(),
     },
@@ -209,7 +211,7 @@ class RemotePackSource implements PackSource {
     if (res.statusCode != 200) {
       throw PackFetchException(switch (res.statusCode) {
         401 => '서버 토큰이 맞지 않아요. 앱 설정을 확인해 주세요.',
-        503 => '요청이 많아요. 잠시 뒤에 다시 시도해 주세요.',
+        429 || 503 => '요청이 많아요. 잠시 뒤에 다시 시도해 주세요.',
         _ => '학습 팩을 만들지 못했어요. (${res.statusCode})',
       });
     }

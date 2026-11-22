@@ -50,7 +50,7 @@ SavedData seeded() => SavedData(
   contentStep: 7,
   onboarded: true,
   log: {
-    for (var d = 10; d <= 21; d++) dateKey(DateTime(2026, 11, d)): DayRecord(accuracy: 0.88, levelScore: 700 + d * 2),
+    for (var d = 10; d <= 21; d++) dateKey(DateTime(2026, 11, d)): DayRecord(accuracy: 0.95, levelScore: 700 + d * 2),
   },
 );
 
@@ -233,6 +233,65 @@ void main() {
     }
     expect(find.text('내 레벨'), findsOneWidget);
     expect(find.text('오늘 학습 시작하기'), findsOneWidget);
+  });
+
+  testWidgets('루틴을 끝내지 않았으면 완료 화면 대신 홈, 진단을 마친 사용자는 환영 화면 대신 홈', (tester) async {
+    await setPhone(tester);
+    await tester.pumpWidget(app(initial: '/complete'));
+    await tester.pumpAndSettle();
+    expect(find.text('오늘의 루틴'), findsOneWidget);
+    await tester.pumpWidget(Container());
+    await tester.pumpWidget(app(initial: '/welcome'));
+    await tester.pumpAndSettle();
+    expect(find.text('레벨 진단 시작하기'), findsNothing);
+    expect(find.text('오늘의 루틴'), findsOneWidget);
+  });
+
+  testWidgets('바로 연 학습 화면에서 닫으면 오류 없이 홈으로', (tester) async {
+    await setPhone(tester);
+    await tester.pumpWidget(app(initial: '/quiz'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('닫기'));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(find.text('오늘의 루틴'), findsOneWidget);
+  });
+
+  testWidgets('단어를 하던 중 새벽 4시가 지나도 진행이 지워지지 않고, 홈으로 돌아오면 오늘로 바뀐다', (tester) async {
+    await setPhone(tester);
+    var now = DateTime(2026, 11, 22, 3, 50);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          reminderProvider.overrideWithValue(FakeReminder()),
+          speakerProvider.overrideWithValue(FakeSpeaker()),
+          storeProvider.overrideWithValue(MemoryStore(seeded())),
+          clockProvider.overrideWithValue(() => now),
+          speechInputProvider.overrideWithValue(_PerfectSpeech()),
+        ],
+        child: const TodayeApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('오늘의 단어 10개'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('알아요'));
+    await tester.pumpAndSettle();
+    final container = ProviderScope.containerOf(tester.element(find.byType(Scaffold).first));
+    expect(container.read(studyProvider).today.date, '2026-11-21'); // 새벽 3:50 은 전날 학습일
+
+    now = DateTime(2026, 11, 22, 4, 5);
+    await tester.tap(find.text('알아요'));
+    await tester.pumpAndSettle();
+    var st = container.read(studyProvider);
+    expect(st.today.date, '2026-11-21');
+    expect(st.wordRatings.length, 2); // 루틴 중에는 미룬다
+
+    await tester.tap(find.byTooltip('홈으로'));
+    await tester.pumpAndSettle();
+    st = container.read(studyProvider);
+    expect(st.today.date, '2026-11-22');
+    expect(st.wordRatings, isEmpty);
   });
 }
 

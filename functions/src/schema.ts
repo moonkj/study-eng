@@ -4,26 +4,27 @@ import { z } from "zod";
 export const PackRequest = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   /** 전체 레벨 (예: "B1.2") */
-  level: z.string(),
+  level: z.string().max(8),
   /** 오늘 콘텐츠 난이도 (자동 조정 결과, 예: "B1.3") */
-  contentLevel: z.string(),
-  skills: z.record(z.string(), z.string()),
+  contentLevel: z.string().max(8),
+  skills: z.record(z.enum(["vocabulary", "grammar", "listening", "speaking"]), z.string().max(8)),
   /** 가장 약한 영역 */
   focusSkill: z.enum(["vocabulary", "grammar", "listening", "speaking"]),
   speakingSentences: z.number().int().min(5).max(15),
   /** 최근에 배운 표현·단어 (중복 방지) */
   avoid: z.object({
-    expressions: z.array(z.string()).max(200),
-    words: z.array(z.string()).max(400),
+    // 항목 길이도 제한한다 (긴 문자열로 입력 토큰 비용이 커지지 않게)
+    expressions: z.array(z.string().max(80)).max(200),
+    words: z.array(z.string().max(60)).max(400),
   }),
   /** 오늘 복습할 항목 (간격 반복으로 돌아온 것) */
   review: z
     .array(
       z.object({
-        id: z.string(),
+        id: z.string().max(80),
         kind: z.enum(["expression", "word"]),
-        text: z.string(),
-        meaning: z.string(),
+        text: z.string().max(80),
+        meaning: z.string().max(120),
       }),
     )
     .max(6),

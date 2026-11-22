@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import '../core/theme/app_theme.dart';
 import '../core/theme/tokens.dart';
 import '../domain/study_log.dart';
+import '../core/audio/tts.dart';
 import 'study_controller.dart';
 
 const routinePaths = {
@@ -56,7 +57,7 @@ Future<void> finishStep(BuildContext context, WidgetRef ref, RoutineStep step) a
   if (!(ModalRoute.of(context)?.isCurrent ?? true)) return;
   // 이미 끝낸 단계를 다시 본 것이면 축하·이어가기 없이 돌아간다
   if (ref.read(studyProvider).done.contains(step)) {
-    context.pop();
+    popOrHome(context);
     return;
   }
   await _finish(context, ref, step);
@@ -102,5 +103,32 @@ Future<void> _finish(BuildContext context, WidgetRef ref, RoutineStep step) asyn
     ),
   );
   if (!context.mounted) return;
-  go == true ? context.pushReplacement(routinePaths[next]!) : context.pop();
+  go == true ? context.pushReplacement(routinePaths[next]!) : popOrHome(context);
+}
+
+/// 돌아갈 화면이 없으면(웹 새로고침·바로 열기 등) 홈으로
+void popOrHome(BuildContext context) => context.canPop() ? context.pop() : context.go('/');
+
+/// 학습 화면 공통:
+/// - 맞춤 팩을 기다리는 중에 들어오면 기본 팩으로 고정한다 (보는 도중 내용·개수가 바뀌지 않게)
+/// - 화면을 나가면 읽어 주던 음성을 멈춘다
+mixin StudyScreenGuard<T extends ConsumerStatefulWidget> on ConsumerState<T> {
+  Speaker? _speaker;
+
+  @override
+  void initState() {
+    super.initState();
+    _speaker = ref.read(speakerProvider);
+    if (ref.read(studyProvider).packLoading) {
+      Future.microtask(() {
+        if (mounted) ref.read(studyProvider.notifier).startWithFallback();
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _speaker?.stop();
+    super.dispose();
+  }
 }

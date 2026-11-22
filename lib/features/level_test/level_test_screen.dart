@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../app/routine_flow.dart';
 import '../../app/study_controller.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/tokens.dart';
@@ -30,6 +31,7 @@ class _LevelTestScreenState extends ConsumerState<LevelTestScreen> {
   }
 
   void _submit(Answer answer) {
+    if (_test.isFinished) return; // 마지막 문항을 빠르게 두 번 누른 경우
     _test.record(answer, step: _item.step, skill: _item.skill);
     if (_test.isFinished) {
       ref.read(studyProvider.notifier).applyLevelTest(_test.result());
@@ -57,7 +59,11 @@ class _LevelTestScreenState extends ConsumerState<LevelTestScreen> {
               padding: const EdgeInsets.fromLTRB(8, 8, 20, 0),
               child: Row(
                 children: [
-                  IconButton(tooltip: '진단 닫기', onPressed: () => context.pop(), icon: const Icon(Icons.close_rounded)),
+                  IconButton(
+                    tooltip: '진단 닫기',
+                    onPressed: () => popOrHome(context),
+                    icon: const Icon(Icons.close_rounded),
+                  ),
                   const SizedBox(width: 4),
                   Expanded(
                     child: Row(
