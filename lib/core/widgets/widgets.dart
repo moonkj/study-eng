@@ -7,14 +7,14 @@ import '../theme/tokens.dart';
 
 /// 종이 카드
 class PaperCard extends StatelessWidget {
-  const PaperCard({
+  PaperCard({
     super.key,
     required this.child,
     this.padding = const EdgeInsets.all(AppSpace.xl),
     this.radius = AppRadius.card,
     this.elevated = false,
-    this.color = AppColors.card,
-  });
+    Color? color,
+  }) : color = color ?? AppColors.card;
 
   final Widget child;
   final EdgeInsetsGeometry padding;
@@ -80,11 +80,16 @@ class HighlightText extends StatelessWidget {
               text: text.substring(idx, idx + h.length),
               style: style.copyWith(
                 background: Paint()
-                  ..shader = const LinearGradient(
+                  ..shader = LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     stops: [0.55, 0.55, 0.95, 0.95],
-                    colors: [Color(0x00F3DB7A), AppColors.highlighter, AppColors.highlighter, Color(0x00F3DB7A)],
+                    colors: [
+                      AppColors.highlighter.withValues(alpha: 0),
+                      AppColors.highlighter,
+                      AppColors.highlighter,
+                      AppColors.highlighter.withValues(alpha: 0),
+                    ],
                     tileMode: TileMode.repeated,
                   ).createShader(Rect.fromLTWH(0, 0, 10, lineHeight)),
               ),
@@ -101,13 +106,9 @@ class HighlightText extends StatelessWidget {
 
 /// 작은 라벨 칩
 class Tag extends StatelessWidget {
-  const Tag(
-    this.label, {
-    super.key,
-    this.color = AppColors.penBlue,
-    this.background = AppColors.penBlueTint,
-    this.icon,
-  });
+  Tag(this.label, {super.key, Color? color, Color? background, this.icon})
+    : color = color ?? AppColors.penBlue,
+      background = background ?? AppColors.penBlueTint;
 
   final String label;
   final Color color;
@@ -138,13 +139,9 @@ class Tag extends StatelessWidget {
 
 /// 얇은 진행 바
 class ThinProgress extends StatelessWidget {
-  const ThinProgress(
-    this.value, {
-    super.key,
-    this.height = 4,
-    this.color = AppColors.ink,
-    this.track = AppColors.track,
-  });
+  ThinProgress(this.value, {super.key, this.height = 4, Color? color, Color? track})
+    : color = color ?? AppColors.ink,
+      track = track ?? AppColors.track;
 
   final double value;
   final double height;
@@ -200,7 +197,7 @@ class RoundIconButton extends StatelessWidget {
       excludeSemantics: true,
       child: Material(
         color: filled ? AppColors.penBlue : AppColors.paper,
-        shape: CircleBorder(side: filled ? BorderSide.none : const BorderSide(color: AppColors.line)),
+        shape: CircleBorder(side: filled ? BorderSide.none : BorderSide(color: AppColors.line)),
         child: InkWell(
           customBorder: const CircleBorder(),
           onTap: onPressed,
@@ -284,7 +281,7 @@ class ExampleRow extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 14),
       decoration: divider
-          ? const BoxDecoration(
+          ? BoxDecoration(
               border: Border(
                 top: BorderSide(color: AppColors.line, style: BorderStyle.solid),
               ),
@@ -340,7 +337,7 @@ class PronText extends StatelessWidget {
       spans.add(
         TextSpan(
           text: m.group(1),
-          style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.ink),
+          style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.ink),
         ),
       );
       last = m.end;

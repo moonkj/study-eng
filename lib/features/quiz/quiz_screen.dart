@@ -98,7 +98,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                               color: AppColors.ink,
                               background: AppColors.sand,
                             )
-                          : const Tag('오늘 배운 내용'),
+                          : Tag('오늘 배운 내용'),
                     ),
                     const SizedBox(height: 14),
                     Text(
@@ -126,7 +126,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                 ),
               ),
               AnimatedSize(
-                duration: const Duration(milliseconds: 260),
+                duration: motion(context, AppMotion.base),
                 curve: Curves.easeOutCubic,
                 child: answered
                     ? _Feedback(
@@ -207,49 +207,55 @@ class _Choice extends StatelessWidget {
     };
     // 답한 뒤 나머지 보기: 흐리게(Opacity) 대신 글자색으로 구분해 대비를 지킨다
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      child: Material(
-        color: bg,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-          side: BorderSide(color: border, width: width),
-        ),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(14),
-          onTap: onTap,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 58),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: englishSemantics(
-                      text,
-                      Text(
+      duration: motion(context, AppMotion.fast),
+      child: Semantics(
+        button: true,
+        enabled: onTap != null,
+        child: Material(
+          color: bg,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+            side: BorderSide(color: border, width: width),
+          ),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(14),
+            onTap: onTap,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 58),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: englishSemantics(
                         text,
-                        style:
-                            serif(
-                              18,
-                              color: status == _Status.wrong || status == _Status.dim ? AppColors.ink2 : AppColors.ink,
-                            ).copyWith(
-                              decoration: status == _Status.wrong ? TextDecoration.lineThrough : null,
-                              decorationColor: AppColors.error,
-                            ),
+                        Text(
+                          text,
+                          style:
+                              serif(
+                                18,
+                                color: status == _Status.wrong || status == _Status.dim
+                                    ? AppColors.ink2
+                                    : AppColors.ink,
+                              ).copyWith(
+                                decoration: status == _Status.wrong ? TextDecoration.lineThrough : null,
+                                decorationColor: AppColors.error,
+                              ),
+                        ),
                       ),
                     ),
-                  ),
-                  if (status == _Status.correct)
-                    Text(
-                      '정답',
-                      style: sans(12, weight: FontWeight.w700, color: AppColors.success),
-                    ),
-                  if (status == _Status.wrong)
-                    Text(
-                      '내 답',
-                      style: sans(12, weight: FontWeight.w700, color: AppColors.error),
-                    ),
-                ],
+                    if (status == _Status.correct)
+                      Text(
+                        '정답',
+                        style: sans(12, weight: FontWeight.w700, color: AppColors.success),
+                      ),
+                    if (status == _Status.wrong)
+                      Text(
+                        '내 답',
+                        style: sans(12, weight: FontWeight.w700, color: AppColors.error),
+                      ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -277,13 +283,10 @@ class _Feedback extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final answer = item.choices[item.answerIndex];
     return Semantics(
       // 스크린리더가 결과를 바로 읽어 주도록
+      // 결과 시트가 뜨면 안의 글(정답 여부, 답, 해설)을 스크린리더가 이어서 읽는다
       liveRegion: true,
-      label: correct
-          ? '정답이에요. ${item.explanation}'
-          : '오답이에요. 고른 답 ${picked == null ? '' : item.choices[picked!]}. 정답은 $answer. ${item.explanation}',
       child: ConstrainedBox(
         // 해설이 길거나 글씨가 커도 화면을 다 덮지 않도록
         constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.6),
@@ -297,11 +300,11 @@ class _Feedback extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: EdgeInsets.fromLTRB(22, 22, 22, 16 + MediaQuery.paddingOf(context).bottom),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AppColors.card,
         borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.sheet)),
         border: Border(top: BorderSide(color: AppColors.line)),
-        boxShadow: [BoxShadow(color: Color(0x4D3C2D14), offset: Offset(0, -12), blurRadius: 30, spreadRadius: -20)],
+        boxShadow: [BoxShadow(color: AppColors.sheetShadow, offset: Offset(0, -12), blurRadius: 30, spreadRadius: -20)],
       ),
       child: SingleChildScrollView(
         child: Column(
@@ -335,7 +338,7 @@ class _Feedback extends StatelessWidget {
               const SizedBox(height: 4),
               Row(
                 children: [
-                  Expanded(child: Text(answer, style: serif(18, weight: 600))),
+                  Expanded(child: englishSemantics('정답 $answer', Text(answer, style: serif(18, weight: 600)))),
                   RoundIconButton(icon: Icons.volume_up_rounded, label: '정답 듣기', onPressed: onListen),
                 ],
               ),
@@ -343,7 +346,7 @@ class _Feedback extends StatelessWidget {
             ] else if (correct) ...[
               Row(
                 children: [
-                  Expanded(child: Text(answer, style: serif(18, weight: 600))),
+                  Expanded(child: englishSemantics('정답 $answer', Text(answer, style: serif(18, weight: 600)))),
                   RoundIconButton(icon: Icons.volume_up_rounded, label: '정답 듣기', onPressed: onListen),
                 ],
               ),

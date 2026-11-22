@@ -12,7 +12,7 @@ const kSerif = 'Newsreader';
 TextStyle serif(
   double size, {
   int weight = 400,
-  Color color = AppColors.ink,
+  Color? color,
   bool italic = false,
   double? height,
   double? letterSpacing,
@@ -23,7 +23,7 @@ TextStyle serif(
     fontWeight: FontWeight.values[(weight ~/ 100 - 1).clamp(0, 8)],
     fontVariations: [FontVariation('wght', weight.toDouble()), FontVariation('opsz', size.clamp(6, 72).toDouble())],
     fontStyle: italic ? FontStyle.italic : FontStyle.normal,
-    color: color,
+    color: color ?? AppColors.ink,
     height: height,
     letterSpacing: letterSpacing,
   );
@@ -33,7 +33,7 @@ TextStyle serif(
 TextStyle sans(
   double size, {
   FontWeight weight = FontWeight.w400,
-  Color color = AppColors.ink,
+  Color? color,
   double? height,
   double? letterSpacing,
 }) {
@@ -41,7 +41,7 @@ TextStyle sans(
     fontFamily: kSans,
     fontSize: size,
     fontWeight: weight,
-    color: color,
+    color: color ?? AppColors.ink,
     height: height,
     letterSpacing: letterSpacing,
   );
@@ -52,7 +52,9 @@ ThemeData buildAppTheme() {
     useMaterial3: true,
     fontFamily: kSans,
     scaffoldBackgroundColor: AppColors.paper,
-    colorScheme: const ColorScheme.light(
+    brightness: AppColors.palette.brightness,
+    colorScheme: ColorScheme(
+      brightness: AppColors.palette.brightness,
       primary: AppColors.ink,
       onPrimary: AppColors.card,
       secondary: AppColors.penBlue,
@@ -60,22 +62,23 @@ ThemeData buildAppTheme() {
       surface: AppColors.paper,
       onSurface: AppColors.ink,
       error: AppColors.error,
+      onError: AppColors.card,
       outline: AppColors.line,
     ),
     // 종이 질감에 맞게 반짝이(InkSparkle) 대신 잔잔한 물결
     splashFactory: InkRipple.splashFactory,
-    highlightColor: const Color(0x1FF3DB7A),
+    highlightColor: AppColors.highlighter.withValues(alpha: 0.12),
   );
 
   return base.copyWith(
     textTheme: base.textTheme.apply(bodyColor: AppColors.ink, displayColor: AppColors.ink, fontFamily: kSans),
-    appBarTheme: const AppBarTheme(
+    appBarTheme: AppBarTheme(
       backgroundColor: AppColors.paper,
       surfaceTintColor: Colors.transparent,
       elevation: 0,
       foregroundColor: AppColors.ink,
     ),
-    dividerTheme: const DividerThemeData(color: AppColors.line, space: 1),
+    dividerTheme: DividerThemeData(color: AppColors.line, space: 1),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
         backgroundColor: AppColors.ink,
@@ -89,7 +92,7 @@ ThemeData buildAppTheme() {
       style: OutlinedButton.styleFrom(
         foregroundColor: AppColors.ink,
         minimumSize: const Size.fromHeight(56),
-        side: const BorderSide(color: AppColors.ink, width: 1.5),
+        side: BorderSide(color: AppColors.ink, width: 1.5),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.button)),
         textStyle: sans(15, weight: FontWeight.w600),
       ),

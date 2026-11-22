@@ -71,21 +71,22 @@ class _CompleteScreenState extends ConsumerState<CompleteScreen> {
                     // 불꽃(또는 레벨 업이면 새 레벨)이 톡 튀어나온다
                     child: TweenAnimationBuilder<double>(
                       tween: Tween(begin: 0.6, end: 1),
-                      duration: const Duration(milliseconds: 700),
-                      curve: Curves.elasticOut,
+                      duration: motion(context, const Duration(milliseconds: 700)),
+                      // 동작 줄이기면 튕김 없이
+                      curve: MediaQuery.disableAnimationsOf(context) ? Curves.linear : Curves.elasticOut,
                       builder: (_, v, child) => Transform.scale(scale: v, child: child),
                       child: Container(
                         width: 112,
                         height: 112,
                         alignment: Alignment.center,
-                        decoration: const BoxDecoration(
+                        decoration: BoxDecoration(
                           color: AppColors.ink,
                           shape: BoxShape.circle,
                           boxShadow: [BoxShadow(color: AppColors.sand, spreadRadius: 10)],
                         ),
                         child: levelUp
                             ? Text(now.label, style: serif(34, weight: 600, color: AppColors.highlighter))
-                            : const Icon(Icons.local_fire_department_rounded, size: 46, color: AppColors.highlighter),
+                            : Icon(Icons.local_fire_department_rounded, size: 46, color: AppColors.highlighter),
                       ),
                     ),
                   ),
@@ -94,7 +95,7 @@ class _CompleteScreenState extends ConsumerState<CompleteScreen> {
                     // 연속 학습일이 하나 올라가는 순간을 보여준다
                     child: TweenAnimationBuilder<double>(
                       tween: Tween(begin: (s.streakDays - 1).clamp(0, 99999).toDouble(), end: s.streakDays.toDouble()),
-                      duration: const Duration(milliseconds: 900),
+                      duration: motion(context, const Duration(milliseconds: 900)),
                       curve: Curves.easeOutCubic,
                       builder: (_, v, _) => Text.rich(
                         TextSpan(
@@ -170,18 +171,18 @@ class _CompleteScreenState extends ConsumerState<CompleteScreen> {
                                   width: double.infinity,
                                   child: Stack(
                                     children: [
-                                      const Positioned.fill(child: ColoredBox(color: AppColors.line)),
+                                      Positioned.fill(child: ColoredBox(color: AppColors.line)),
                                       FractionallySizedBox(
                                         alignment: Alignment.centerLeft,
                                         heightFactor: 1,
                                         widthFactor: now.progressToNext,
-                                        child: const ColoredBox(color: AppColors.highlighter),
+                                        child: ColoredBox(color: AppColors.highlighter),
                                       ),
                                       FractionallySizedBox(
                                         alignment: Alignment.centerLeft,
                                         heightFactor: 1,
                                         widthFactor: before.step == now.step ? before.progressToNext : 0,
-                                        child: const ColoredBox(color: AppColors.penBlue),
+                                        child: ColoredBox(color: AppColors.penBlue),
                                       ),
                                     ],
                                   ),
@@ -224,7 +225,7 @@ class _CompleteScreenState extends ConsumerState<CompleteScreen> {
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Padding(
+                                Padding(
                                   padding: EdgeInsets.only(top: 2),
                                   child: Icon(Icons.north_east_rounded, size: 16, color: AppColors.penBlue),
                                 ),
@@ -317,13 +318,13 @@ class _ReminderSuggestionState extends ConsumerState<_ReminderSuggestion> {
                   ActionChip(
                     label: Text(formatMinutes(m), style: sans(14, weight: FontWeight.w500)),
                     backgroundColor: AppColors.paper,
-                    side: const BorderSide(color: AppColors.line),
+                    side: BorderSide(color: AppColors.line),
                     onPressed: () => _pick(m),
                   ),
                 ActionChip(
                   label: Text('괜찮아요', style: sans(14, color: AppColors.ink2)),
                   backgroundColor: AppColors.paper,
-                  side: const BorderSide(color: AppColors.line),
+                  side: BorderSide(color: AppColors.line),
                   onPressed: () => setState(() => _message = '알림은 설정에서 언제든 켤 수 있어요.'),
                 ),
               ],

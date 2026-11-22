@@ -94,7 +94,7 @@ class ProgressScreen extends ConsumerWidget {
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    const Icon(Icons.weekend_outlined, size: 14, color: AppColors.ink2),
+                    Icon(Icons.weekend_outlined, size: 14, color: AppColors.ink2),
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
@@ -218,7 +218,7 @@ class _DayCell extends StatelessWidget {
         ? (AppColors.penBlue, AppColors.card)
         : rested
         ? (AppColors.sand, AppColors.ink)
-        : (const Color(0xFFEDE6D8), AppColors.ink2);
+        : (AppColors.muted, AppColors.ink2);
     return Semantics(
       label:
           '$day일, ${isToday
@@ -277,7 +277,7 @@ class _GrowthPainter extends CustomPainter {
       30 + points[i].$1.difference(first).inDays / span * (size.width - 42),
       size.height - 18 - (values[i] - minV) / (maxV - minV) * (size.height - 30),
     );
-    final grid = Paint()..color = const Color(0xFFEDE6D8);
+    final grid = Paint()..color = AppColors.muted;
     for (var i = 0; i < 3; i++) {
       final y = 8 + i * (size.height - 26) / 2;
       canvas.drawLine(Offset(0, y), Offset(size.width, y), grid);

@@ -154,7 +154,7 @@ class _SpeakingScreenState extends ConsumerState<SpeakingScreen> {
                         showCheckmark: false,
                         selectedColor: AppColors.sand,
                         backgroundColor: AppColors.paper,
-                        side: const BorderSide(color: AppColors.line),
+                        side: BorderSide(color: AppColors.line),
                         onSelected: (v) => setState(() {
                           ref.read(quietModeProvider.notifier).set(v);
                           _error = null;
@@ -228,7 +228,7 @@ class _SpeakingScreenState extends ConsumerState<SpeakingScreen> {
                                 child: GestureDetector(
                                   onTap: _toggleMic,
                                   child: AnimatedContainer(
-                                    duration: const Duration(milliseconds: 200),
+                                    duration: motion(context, AppMotion.fast),
                                     width: 84,
                                     height: 84,
                                     decoration: BoxDecoration(
@@ -244,14 +244,14 @@ class _SpeakingScreenState extends ConsumerState<SpeakingScreen> {
                                   ),
                                 ),
                               ),
-                              const SizedBox(height: 14),
+                              SizedBox(height: 14),
                               Text(
                                 _listening ? '다 말했으면 누르기' : (result == null ? '눌러서 말하기' : '한 번 더 말하기'),
                                 style: sans(12, color: AppColors.ink2),
                               ),
                             ],
                           ),
-                          const Spacer(),
+                          Spacer(),
                           _SideButton(
                             icon: Icons.chevron_right_rounded,
                             label: '다음',
@@ -279,8 +279,8 @@ class _QuietCard extends StatelessWidget {
     return PaperCard(
       child: Row(
         children: [
-          const Icon(Icons.hearing_rounded, color: AppColors.penBlue),
-          const SizedBox(width: 12),
+          Icon(Icons.hearing_rounded, color: AppColors.penBlue),
+          SizedBox(width: 12),
           Expanded(child: Text('이어폰으로 문장을 듣고, 입 모양만 따라 하거나 속으로 따라 해 보세요. 점수는 매기지 않아요.', style: sans(14, height: 1.55))),
         ],
       ),
@@ -307,7 +307,7 @@ class _SentenceView extends StatelessWidget {
             label: w.matched ? w.word : '${w.word}, 다르게 들림',
             excludeSemantics: true,
             child: Container(
-              padding: const EdgeInsets.only(bottom: 2),
+              padding: EdgeInsets.only(bottom: 2),
               decoration: BoxDecoration(
                 border: Border(
                   bottom: BorderSide(color: w.matched ? AppColors.success : AppColors.error, width: w.matched ? 2 : 4),
@@ -318,7 +318,7 @@ class _SentenceView extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(w.word, style: style.copyWith(color: w.matched ? AppColors.ink : AppColors.error)),
-                  if (!w.matched) const Icon(Icons.hearing_disabled_rounded, size: 16, color: AppColors.error),
+                  if (!w.matched) Icon(Icons.hearing_disabled_rounded, size: 16, color: AppColors.error),
                 ],
               ),
             ),
@@ -359,7 +359,7 @@ class _ScoreCard extends StatelessWidget {
                   child: CircularProgressIndicator(
                     value: result.score / 100,
                     strokeWidth: 6,
-                    backgroundColor: const Color(0xFFEDE6D8),
+                    backgroundColor: AppColors.muted,
                     color: result.score >= 80 ? AppColors.success : AppColors.ember,
                     strokeCap: StrokeCap.round,
                   ),
@@ -414,7 +414,7 @@ class _TipCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.auto_awesome_outlined, size: 14, color: AppColors.penBlue),
+              Icon(Icons.auto_awesome_outlined, size: 14, color: AppColors.penBlue),
               const SizedBox(width: 6),
               Text(
                 '선생님 한마디',

@@ -97,7 +97,10 @@ class HomeScreen extends ConsumerWidget {
           Row(
             children: [
               Expanded(
-                child: Text('"${exp.examples.first.en}"', style: serif(15, italic: true, color: AppColors.inkSoft)),
+                child: englishSemantics(
+                  exp.examples.first.en,
+                  Text('"${exp.examples.first.en}"', style: serif(15, italic: true, color: AppColors.inkSoft)),
+                ),
               ),
               RoundIconButton(
                 icon: Icons.volume_up_rounded,
@@ -305,7 +308,7 @@ class _PreparingCardState extends State<_PreparingCard> {
             style: sans(13, color: AppColors.ink2),
           ),
           const SizedBox(height: 18),
-          const ClipRRect(
+          ClipRRect(
             borderRadius: BorderRadius.all(Radius.circular(2)),
             child: LinearProgressIndicator(
               minHeight: 4,
@@ -336,7 +339,7 @@ class _DoneCard extends StatelessWidget {
       decoration: BoxDecoration(color: AppColors.ink, borderRadius: BorderRadius.circular(AppRadius.card)),
       child: Row(
         children: [
-          const Icon(Icons.local_fire_department_rounded, color: AppColors.highlighter),
+          Icon(Icons.local_fire_department_rounded, color: AppColors.highlighter),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -351,7 +354,7 @@ class _DoneCard extends StatelessWidget {
                   state.dueCount > 0
                       ? '복습 카드 ${state.dueCount}장이 기다려요. ${state.reviewMinutes}분이면 돼요.'
                       : '오늘 복습까지 끝! 내일 만나요.',
-                  style: sans(13, color: const Color(0xFFDDD3C1)),
+                  style: sans(13, color: AppColors.onInkSoft),
                 ),
               ],
             ),
@@ -380,7 +383,7 @@ class _ReviewRow extends StatelessWidget {
       color: AppColors.card,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(color: AppColors.line),
+        side: BorderSide(color: AppColors.line),
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
@@ -391,13 +394,13 @@ class _ReviewRow extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             child: Row(
               children: [
-                const Icon(Icons.replay_rounded, color: AppColors.penBlue, size: 22),
+                Icon(Icons.replay_rounded, color: AppColors.penBlue, size: 22),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Text('복습 카드 $count장', style: sans(15, weight: FontWeight.w500)),
                 ),
                 Text('$minutes분', style: sans(13, color: AppColors.ink2)),
-                const Icon(Icons.chevron_right_rounded, color: AppColors.ink2, size: 20),
+                Icon(Icons.chevron_right_rounded, color: AppColors.ink2, size: 20),
               ],
             ),
           ),
@@ -420,7 +423,7 @@ class _FallbackNotice extends StatelessWidget {
       decoration: BoxDecoration(color: AppColors.sand, borderRadius: BorderRadius.circular(16)),
       child: Row(
         children: [
-          const Icon(Icons.cloud_off_rounded, size: 18, color: AppColors.ink2),
+          Icon(Icons.cloud_off_rounded, size: 18, color: AppColors.ink2),
           const SizedBox(width: 10),
           Expanded(child: Text('$message 오늘은 기본 학습으로 진행할 수 있어요.', style: sans(13, height: 1.45))),
           TextButton(onPressed: onRetry, child: const Text('다시 시도')),
@@ -546,17 +549,21 @@ class _RoutineRow extends StatelessWidget {
                         title,
                         style: sans(15, weight: FontWeight.w600, color: AppColors.card),
                       ),
-                      const SizedBox(height: 6),
-                      ThinProgress(_progress, color: AppColors.highlighter, track: const Color(0x33FFFDF8)),
+                      SizedBox(height: 6),
+                      ThinProgress(
+                        _progress,
+                        color: AppColors.highlighter,
+                        track: AppColors.card.withValues(alpha: 0.2),
+                      ),
                     ],
                   ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 Text(
                   _progress > 0 ? '이어서' : '시작',
                   style: sans(13, weight: FontWeight.w600, color: AppColors.card),
                 ),
-                const Icon(Icons.chevron_right_rounded, color: AppColors.card, size: 18),
+                Icon(Icons.chevron_right_rounded, color: AppColors.card, size: 18),
               ],
             ),
           ),
@@ -568,19 +575,19 @@ class _RoutineRow extends StatelessWidget {
       color: done ? Colors.transparent : AppColors.card,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(color: AppColors.line),
+        side: BorderSide(color: AppColors.line),
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: () => context.push(routinePaths[step]!),
         child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 60),
+          constraints: BoxConstraints(minHeight: 60),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             child: Row(
               children: [
                 if (done)
-                  const CircleAvatar(
+                  CircleAvatar(
                     radius: 15,
                     backgroundColor: AppColors.success,
                     child: Icon(Icons.check_rounded, size: 17, color: AppColors.card),

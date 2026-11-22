@@ -52,6 +52,23 @@ class SettingsScreen extends ConsumerWidget {
           _Group(
             children: [
               _Item(
+                icon: Icons.contrast_rounded,
+                title: '화면 테마',
+                value: themes[settings.theme] ?? themes['system'],
+                onTap: () => _pick<String>(
+                  context,
+                  title: '화면 테마',
+                  options: themes,
+                  selected: settings.theme,
+                  onSelect: (v) => ref.read(studyProvider.notifier).updateSettings(settings.copyWith(theme: v)),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _Group(
+            children: [
+              _Item(
                 icon: Icons.record_voice_over_outlined,
                 title: '발음 음성',
                 value: voices[settings.voice] ?? settings.voice,
@@ -90,6 +107,7 @@ class SettingsScreen extends ConsumerWidget {
 }
 
 const voices = {'en-US': '미국 영어', 'en-GB': '영국 영어'};
+const themes = {'system': '휴대폰 설정 따라', 'light': '밝게 (종이)', 'dark': '어둡게 (밤의 종이)'};
 final speeds = <double, String>{0.8: '느리게', 1.0: '보통', 1.15: '조금 빠르게'};
 
 void _pick<T>(
@@ -103,23 +121,23 @@ void _pick<T>(
     useRootNavigator: true,
     context: context,
     backgroundColor: AppColors.card,
-    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.sheet))),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.sheet))),
     builder: (ctx) => SafeArea(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 20, 12, 12),
+        padding: EdgeInsets.fromLTRB(12, 20, 12, 12),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+              padding: EdgeInsets.fromLTRB(12, 0, 12, 8),
               child: Text(title, style: sans(17, weight: FontWeight.w700)),
             ),
             for (final e in options.entries)
               ListTile(
                 minTileHeight: 52,
                 title: Text(e.value, style: sans(15)),
-                trailing: e.key == selected ? const Icon(Icons.check_rounded, color: AppColors.penBlue) : null,
+                trailing: e.key == selected ? Icon(Icons.check_rounded, color: AppColors.penBlue) : null,
                 onTap: () {
                   onSelect(e.key);
                   Navigator.pop(ctx);
@@ -139,7 +157,7 @@ class _Group extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PaperCard(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: EdgeInsets.symmetric(vertical: 4),
       // 목록 항목의 터치 물결 효과가 카드 배경 위에 보이도록
       child: Material(
         type: MaterialType.transparency,
@@ -170,7 +188,7 @@ class _Item extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (value != null) Text(value!, style: sans(14, color: AppColors.ink2)),
-          if (onTap != null) const Icon(Icons.chevron_right_rounded, color: AppColors.ink2),
+          if (onTap != null) Icon(Icons.chevron_right_rounded, color: AppColors.ink2),
         ],
       ),
       onTap: onTap,
@@ -205,7 +223,7 @@ class _ReminderItem extends ConsumerWidget {
     return Column(
       children: [
         SwitchListTile(
-          secondary: const Icon(Icons.notifications_none_rounded, color: AppColors.penBlue),
+          secondary: Icon(Icons.notifications_none_rounded, color: AppColors.penBlue),
           title: Text('아침 알림', style: sans(15, weight: FontWeight.w500)),
           subtitle: Consumer(
             builder: (_, ref, _) {

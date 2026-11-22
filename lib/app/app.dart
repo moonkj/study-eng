@@ -1,10 +1,12 @@
 import 'dart:async';
 
+import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../core/theme/app_theme.dart';
+import '../core/theme/tokens.dart';
 import 'router.dart';
 import 'study_controller.dart';
 
@@ -17,7 +19,7 @@ class TodayeApp extends ConsumerStatefulWidget {
   ConsumerState<TodayeApp> createState() => _TodayeAppState();
 }
 
-class _TodayeAppState extends ConsumerState<TodayeApp> {
+class _TodayeAppState extends ConsumerState<TodayeApp> with WidgetsBindingObserver {
   late final GoRouter _router = buildRouter(
     initialLocation: widget.initialLocation,
     isOnboarded: () => ref.read(studyProvider).onboarded,
@@ -27,8 +29,12 @@ class _TodayeAppState extends ConsumerState<TodayeApp> {
   Timer? _midnight;
 
   @override
+  void didChangePlatformBrightness() => setState(() {});
+
+  @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     // 다음 날 앱으로 돌아오면 오늘 기준으로 새로 고친다
     _lifecycle = AppLifecycleListener(onResume: _checkDay);
     _scheduleMidnight();
@@ -54,6 +60,7 @@ class _TodayeAppState extends ConsumerState<TodayeApp> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _midnight?.cancel();
     _lifecycle.dispose();
     _router.dispose();
@@ -62,10 +69,21 @@ class _TodayeAppState extends ConsumerState<TodayeApp> {
 
   @override
   Widget build(BuildContext context) {
+    // 테마: 설정이 system 이면 휴대폰의 밝기 설정을 따른다
+    final theme = ref.watch(studyProvider.select((s) => s.settings.theme));
+    final dark =
+        theme == 'dark' ||
+        (theme == 'system' && WidgetsBinding.instance.platformDispatcher.platformBrightness == Brightness.dark);
+    AppColors.use(dark ? AppPalette.dark : AppPalette.light);
     return MaterialApp.router(
       title: '오늘의 영어',
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(),
+      // 색 토큰은 화면을 그릴 때 읽으므로, 테마가 바뀌면 화면 전체를 새로 만든다 (위치는 라우터가 기억)
+      builder: (context, child) => AnnotatedRegion<SystemUiOverlayStyle>(
+        value: dark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
+        child: KeyedSubtree(key: ValueKey(dark), child: child ?? const SizedBox.shrink()),
+      ),
       routerConfig: _router,
       locale: const Locale('ko'),
       supportedLocales: const [Locale('ko'), Locale('en')],

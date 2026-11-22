@@ -33,7 +33,11 @@ class _ExpressionScreenState extends ConsumerState<ExpressionScreen> {
     final total = ref.read(studyProvider).pack.expressions.length;
     final target = (_index + delta).clamp(0, total - 1);
     if (target != _index) {
-      _page.animateToPage(target, duration: const Duration(milliseconds: 320), curve: Curves.easeOutCubic);
+      _page.animateToPage(
+        target,
+        duration: motion(context, AppMotion.slow) + const Duration(milliseconds: 1),
+        curve: AppMotion.curve,
+      );
     }
   }
 
@@ -66,7 +70,10 @@ class _ExpressionScreenState extends ConsumerState<ExpressionScreen> {
 
   void _next(int total) {
     if (_index < total - 1) {
-      _page.nextPage(duration: const Duration(milliseconds: 320), curve: Curves.easeOutCubic);
+      _page.nextPage(
+        duration: motion(context, AppMotion.slow) + const Duration(milliseconds: 1),
+        curve: AppMotion.curve,
+      );
     } else {
       finishStep(context, ref, RoutineStep.expressions);
     }
@@ -199,7 +206,7 @@ class _ExpressionCard extends ConsumerWidget {
             children: [
               Tag(e.levelLabel),
               const SizedBox(width: 6),
-              Tag(e.topic, color: AppColors.ink2, background: const Color(0xFFF1EBDF)),
+              Tag(e.topic, color: AppColors.ink2, background: AppColors.mutedSoft),
             ],
           ),
           const SizedBox(height: 18),
@@ -264,12 +271,12 @@ class _Dots extends StatelessWidget {
         children: [
           for (var i = 0; i < count; i++)
             AnimatedContainer(
-              duration: const Duration(milliseconds: 250),
+              duration: motion(context, AppMotion.base),
               margin: const EdgeInsets.symmetric(horizontal: 3),
               width: i == index ? 22 : 6,
               height: 6,
               decoration: BoxDecoration(
-                color: i == index ? AppColors.ink : const Color(0xFFCFC5B2),
+                color: i == index ? AppColors.ink : AppColors.dotIdle,
                 borderRadius: BorderRadius.circular(3),
               ),
             ),

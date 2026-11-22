@@ -68,7 +68,10 @@ class ReviewScreen extends ConsumerWidget {
                   children: [
                     Text(q.prompt, style: sans(15, weight: FontWeight.w600)),
                     const SizedBox(height: 6),
-                    Text(q.choices[q.answerIndex], style: serif(17, color: AppColors.success)),
+                    englishSemantics(
+                      q.choices[q.answerIndex],
+                      Text(q.choices[q.answerIndex], style: serif(17, color: AppColors.success)),
+                    ),
                     const SizedBox(height: 6),
                     Text(q.explanation, style: sans(13, color: AppColors.ink2, height: 1.5)),
                   ],
@@ -90,11 +93,16 @@ class ReviewScreen extends ConsumerWidget {
                     Container(
                       height: 52,
                       decoration: BoxDecoration(
-                        border: c == scheduled.first ? null : const Border(top: BorderSide(color: AppColors.line)),
+                        border: c == scheduled.first ? null : Border(top: BorderSide(color: AppColors.line)),
                       ),
                       child: Row(
                         children: [
-                          Expanded(child: Text(words[c.itemId]!.word, style: serif(18))),
+                          Expanded(
+                            child: englishSemantics(
+                              words[c.itemId]!.word,
+                              Text(words[c.itemId]!.word, style: serif(18)),
+                            ),
+                          ),
                           Text(words[c.itemId]!.meaning, style: sans(13, color: AppColors.ink2)),
                           const SizedBox(width: 12),
                           Tag(

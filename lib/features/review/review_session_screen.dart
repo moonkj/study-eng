@@ -176,10 +176,13 @@ class _Card extends StatelessWidget {
                       ],
                     ),
                     const Spacer(),
-                    Text(
+                    englishSemantics(
                       item.text,
-                      textAlign: TextAlign.center,
-                      style: serif(item.kind == 'word' ? 44 : 32, weight: 500, height: 1.2, letterSpacing: -0.5),
+                      Text(
+                        item.text,
+                        textAlign: TextAlign.center,
+                        style: serif(item.kind == 'word' ? 44 : 32, weight: 500, height: 1.2, letterSpacing: -0.5),
+                      ),
                     ),
                     const SizedBox(height: 12),
                     Text('뜻을 먼저 떠올려 보세요', style: sans(13, color: AppColors.ink2)),
@@ -187,11 +190,18 @@ class _Card extends StatelessWidget {
                     const Divider(),
                     const SizedBox(height: 16),
                     AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 200),
+                      duration: motion(context, AppMotion.fast),
                       // 뜻이 나타나면 스크린리더가 바로 읽어 준다
                       layoutBuilder: (current, previous) => Semantics(
                         liveRegion: true,
-                        child: Stack(alignment: Alignment.center, children: [...previous, ?current]),
+                        // 사라지는 '뜻 보기' 버튼은 읽지 않는다
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            for (final p in previous) ExcludeSemantics(child: p),
+                            ?current,
+                          ],
+                        ),
                       ),
                       child: revealed
                           ? Text(
@@ -232,7 +242,7 @@ class _Summary extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.task_alt_rounded, size: 56, color: AppColors.success),
+            Icon(Icons.task_alt_rounded, size: 56, color: AppColors.success),
             const SizedBox(height: 16),
             Text('${results.length}장 복습 완료', style: sans(22, weight: FontWeight.w700)),
             const SizedBox(height: 8),

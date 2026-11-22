@@ -94,7 +94,13 @@ class TodayProgress {
 
 /// 사용자 설정
 class AppSettings {
-  const AppSettings({this.voice = 'en-US', this.speed = 1.0, this.reminderMinutes, this.reminderOffered = false});
+  const AppSettings({
+    this.voice = 'en-US',
+    this.speed = 1.0,
+    this.reminderMinutes,
+    this.reminderOffered = false,
+    this.theme = 'system',
+  });
 
   /// 발음 음성: en-US(미국) / en-GB(영국)
   final String voice;
@@ -108,19 +114,29 @@ class AppSettings {
   /// 첫 완료 때 알림 시각을 한 번 제안했는지 (매일 묻지 않게)
   final bool reminderOffered;
 
-  AppSettings copyWith({String? voice, double? speed, int? Function()? reminderMinutes, bool? reminderOffered}) =>
-      AppSettings(
-        voice: voice ?? this.voice,
-        speed: speed ?? this.speed,
-        reminderMinutes: reminderMinutes == null ? this.reminderMinutes : reminderMinutes(),
-        reminderOffered: reminderOffered ?? this.reminderOffered,
-      );
+  /// 화면 테마: system(휴대폰 설정 따라) / light / dark
+  final String theme;
+
+  AppSettings copyWith({
+    String? voice,
+    double? speed,
+    int? Function()? reminderMinutes,
+    bool? reminderOffered,
+    String? theme,
+  }) => AppSettings(
+    voice: voice ?? this.voice,
+    speed: speed ?? this.speed,
+    reminderMinutes: reminderMinutes == null ? this.reminderMinutes : reminderMinutes(),
+    reminderOffered: reminderOffered ?? this.reminderOffered,
+    theme: theme ?? this.theme,
+  );
 
   Map<String, Object?> toJson() => {
     'voice': voice,
     'speed': speed,
     'reminder': reminderMinutes,
     'reminderOffered': reminderOffered,
+    'theme': theme,
   };
 
   factory AppSettings.fromJson(Map<String, Object?>? j) => j == null
@@ -130,6 +146,7 @@ class AppSettings {
           speed: (j['speed'] as num?)?.toDouble() ?? 1.0,
           reminderMinutes: (j['reminder'] as num?)?.toInt(),
           reminderOffered: j['reminderOffered'] as bool? ?? false,
+          theme: j['theme'] as String? ?? 'system',
         );
 }
 

@@ -110,7 +110,7 @@ class LevelResultScreen extends ConsumerWidget {
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Padding(
+                        Padding(
                           padding: EdgeInsets.only(top: 2),
                           child: Icon(Icons.edit_outlined, size: 20, color: AppColors.penBlue),
                         ),

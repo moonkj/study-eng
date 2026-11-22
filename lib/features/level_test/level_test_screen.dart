@@ -188,7 +188,7 @@ class _DifficultyCard extends StatelessWidget {
                   test.correctStreak >= 2 ? '연속 ${test.correctStreak}문제 정답! 조금 더 어렵게' : '답에 따라 난이도가 바뀌어요',
                   style: sans(12, color: AppColors.ink2),
                 ),
-                const SizedBox(height: 2),
+                SizedBox(height: 2),
                 Text.rich(
                   TextSpan(
                     children: [
@@ -287,8 +287,8 @@ class _BlankSentence extends StatelessWidget {
             baseline: TextBaseline.alphabetic,
             child: Container(
               width: 110,
-              margin: const EdgeInsets.symmetric(horizontal: 4),
-              decoration: const BoxDecoration(
+              margin: EdgeInsets.symmetric(horizontal: 4),
+              decoration: BoxDecoration(
                 border: Border(bottom: BorderSide(color: AppColors.penBlue, width: 2)),
               ),
               child: Text(' ', style: style),
@@ -323,13 +323,13 @@ class _Option extends StatelessWidget {
           borderRadius: BorderRadius.circular(14),
           onTap: onTap,
           child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 54),
+            constraints: BoxConstraints(minHeight: 54),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+              padding: EdgeInsets.symmetric(horizontal: 18, vertical: 12),
               child: Row(
                 children: [
                   Expanded(child: Text(label, style: serifFont ? serif(18) : sans(16))),
-                  if (selected) const Icon(Icons.check_rounded, color: AppColors.penBlue, size: 20),
+                  if (selected) Icon(Icons.check_rounded, color: AppColors.penBlue, size: 20),
                 ],
               ),
             ),

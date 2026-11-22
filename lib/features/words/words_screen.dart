@@ -115,7 +115,7 @@ class _WordsScreenState extends ConsumerState<WordsScreen> {
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(20, 22, 20, 0),
                   child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 280),
+                    duration: motion(context, AppMotion.base),
                     transitionBuilder: (child, anim) => SlideTransition(
                       position: Tween(
                         begin: const Offset(0.15, 0),
@@ -181,88 +181,107 @@ class _WordCard extends ConsumerWidget {
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        Positioned(left: 20, right: 20, top: 18, bottom: -14, child: _ghost(const Color(0xFFEDE6D8))),
-        Positioned(left: 10, right: 10, top: 9, bottom: -6, child: _ghost(const Color(0xFFF7F2E8))),
+        Positioned(left: 20, right: 20, top: 18, bottom: -14, child: _ghost(AppColors.muted)),
+        Positioned(left: 10, right: 10, top: 9, bottom: -6, child: _ghost(AppColors.mutedSoft)),
         Positioned.fill(
           child: PaperCard(
             elevated: true,
             radius: AppRadius.sheet,
             padding: const EdgeInsets.fromLTRB(24, 28, 24, 22),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    Text('${word.posKo} · ${word.posEn}', style: sans(12, color: AppColors.ink2)),
-                    const Spacer(),
-                    Tag(word.levelLabel),
-                  ],
-                ),
-                const Spacer(),
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: englishSemantics(
-                    word.word,
-                    Text(word.word, style: serif(52, weight: 500, letterSpacing: -1, height: 1)),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Wrap(
-                  alignment: WrapAlignment.center,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  spacing: 8,
-                  children: [
-                    Text(word.ipa, style: serif(16, italic: true, color: AppColors.ink2)),
-                    const CircleAvatar(radius: 1.5, backgroundColor: AppColors.lineStrong),
-                    PronText(word.pronKo, style: sans(14, color: AppColors.ink2)),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                RoundIconButton(
-                  icon: Icons.volume_up_rounded,
-                  label: '발음 듣기',
-                  size: 52,
-                  onPressed: () => ref.read(sayProvider)(word.word),
-                ),
-                const Spacer(),
-                const Divider(),
-                const SizedBox(height: 16),
-                AnimatedCrossFade(
-                  duration: const Duration(milliseconds: 220),
-                  crossFadeState: revealed ? CrossFadeState.showSecond : CrossFadeState.showFirst,
-                  firstChild: SizedBox(
-                    width: double.infinity,
-                    child: TextButton.icon(
-                      onPressed: onReveal,
-                      icon: const Icon(Icons.visibility_outlined, size: 18),
-                      label: const Text('탭해서 뜻 보기'),
-                      style: TextButton.styleFrom(minimumSize: const Size.fromHeight(96)),
-                    ),
-                  ),
-                  secondChild: Column(
-                    children: [
-                      Text(
-                        word.meaning,
-                        textAlign: TextAlign.center,
-                        style: sans(20, weight: FontWeight.w700),
-                      ),
-                      const SizedBox(height: 10),
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                        decoration: BoxDecoration(color: AppColors.paper, borderRadius: BorderRadius.circular(16)),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+            child: LayoutBuilder(
+              // 큰 글씨에서 뜻·예문이 카드보다 길어지면 스크롤
+              builder: (context, box) => SingleChildScrollView(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: box.maxHeight),
+                  child: IntrinsicHeight(
+                    child: Column(
+                      children: [
+                        Row(
                           children: [
-                            HighlightText(word.example.en, highlight: word.word, style: serif(17, height: 1.4)),
-                            const SizedBox(height: 4),
-                            Text(word.example.ko, style: sans(13, color: AppColors.ink2)),
+                            Flexible(
+                              child: Text('${word.posKo} · ${word.posEn}', style: sans(12, color: AppColors.ink2)),
+                            ),
+                            const SizedBox(width: 8),
+                            const Spacer(),
+                            Tag(word.levelLabel),
                           ],
                         ),
-                      ),
-                    ],
+                        const Spacer(),
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: englishSemantics(
+                            word.word,
+                            Text(word.word, style: serif(52, weight: 500, letterSpacing: -1, height: 1)),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Wrap(
+                          alignment: WrapAlignment.center,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          spacing: 8,
+                          children: [
+                            englishSemantics(
+                              word.ipa,
+                              Text(word.ipa, style: serif(16, italic: true, color: AppColors.ink2)),
+                            ),
+                            CircleAvatar(radius: 1.5, backgroundColor: AppColors.lineStrong),
+                            PronText(word.pronKo, style: sans(14, color: AppColors.ink2)),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+                        RoundIconButton(
+                          icon: Icons.volume_up_rounded,
+                          label: '발음 듣기',
+                          size: 52,
+                          onPressed: () => ref.read(sayProvider)(word.word),
+                        ),
+                        const Spacer(),
+                        const Divider(),
+                        const SizedBox(height: 16),
+                        AnimatedCrossFade(
+                          duration: motion(context, AppMotion.fast),
+                          crossFadeState: revealed ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+                          firstChild: SizedBox(
+                            width: double.infinity,
+                            child: TextButton.icon(
+                              onPressed: onReveal,
+                              icon: const Icon(Icons.visibility_outlined, size: 18),
+                              label: const Text('탭해서 뜻 보기'),
+                              style: TextButton.styleFrom(minimumSize: const Size.fromHeight(96)),
+                            ),
+                          ),
+                          secondChild: Column(
+                            children: [
+                              Text(
+                                word.meaning,
+                                textAlign: TextAlign.center,
+                                style: sans(20, weight: FontWeight.w700),
+                              ),
+                              const SizedBox(height: 10),
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                decoration: BoxDecoration(
+                                  color: AppColors.paper,
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    HighlightText(word.example.en, highlight: word.word, style: serif(17, height: 1.4)),
+                                    const SizedBox(height: 4),
+                                    Text(word.example.ko, style: sans(13, color: AppColors.ink2)),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ],
+              ),
             ),
           ),
         ),
@@ -280,13 +299,8 @@ class _WordCard extends ConsumerWidget {
 }
 
 class _RateButton extends StatelessWidget {
-  const _RateButton({
-    required this.label,
-    required this.sub,
-    required this.onTap,
-    this.color = AppColors.ink,
-    this.dark = false,
-  });
+  _RateButton({required this.label, required this.sub, required this.onTap, Color? color, this.dark = false})
+    : color = color ?? AppColors.ink;
   final String label;
   final String sub;
   final Color color;
@@ -299,7 +313,7 @@ class _RateButton extends StatelessWidget {
       color: dark ? AppColors.ink : AppColors.card,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: dark ? BorderSide.none : const BorderSide(color: AppColors.line),
+        side: dark ? BorderSide.none : BorderSide(color: AppColors.line),
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
@@ -316,7 +330,7 @@ class _RateButton extends StatelessWidget {
                 style: sans(15, weight: FontWeight.w600, color: dark ? AppColors.card : color),
               ),
               const SizedBox(height: 2),
-              Text(sub, style: sans(12, color: dark ? const Color(0xFFCFC5B2) : AppColors.ink2)),
+              Text(sub, style: sans(12, color: dark ? AppColors.onInkSoft : AppColors.ink2)),
             ],
           ),
         ),

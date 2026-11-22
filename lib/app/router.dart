@@ -97,7 +97,7 @@ class TabShell extends StatelessWidget {
           body: Row(
             children: [
               _SideNav(current: shell.currentIndex, onSelect: _go, extended: size == WindowSize.expanded),
-              const VerticalDivider(width: 1, thickness: 1, color: AppColors.line),
+              VerticalDivider(width: 1, thickness: 1, color: AppColors.line),
               // 내용 영역의 실제 폭을 MediaQuery 로 알려 준다 (여백·단 나눔이 내비게이션 폭을 빼고 계산되게)
               Expanded(
                 child: LayoutBuilder(
@@ -121,7 +121,7 @@ class TabShell extends StatelessWidget {
       Scaffold(
         body: shell,
         bottomNavigationBar: DecoratedBox(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             color: AppColors.paper,
             border: Border(top: BorderSide(color: AppColors.line)),
           ),
@@ -215,7 +215,7 @@ class _SideNav extends StatelessWidget {
                         position: DecorationPosition.foreground,
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(14),
-                          border: current == i ? const Border(left: BorderSide(color: AppColors.ink, width: 3)) : null,
+                          border: current == i ? Border(left: BorderSide(color: AppColors.ink, width: 3)) : null,
                         ),
                         child: InkWell(
                           borderRadius: BorderRadius.circular(14),
