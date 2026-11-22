@@ -20,16 +20,26 @@ class ReviewSessionScreen extends ConsumerStatefulWidget {
 
 class _ReviewSessionScreenState extends ConsumerState<ReviewSessionScreen> {
   late final List<LearnedItem> _items = ref.read(studyProvider.notifier).dueReviews();
+
+  /// 처음 세션에 나온 카드 수 (몰라요 카드를 끝에 한 번 더 보여 주기 전)
+  late final int _firstPass = _items.length;
   int _index = 0;
   bool _revealed = false;
   final _results = <SelfRating>[];
 
   void _rate(SelfRating r) {
-    if (_index >= _items.length) return;
-    ref.read(studyProvider.notifier).reviewCard(_items[_index].id, r);
+    // 뜻을 확인하기 전에는 평가하지 않는다 (키보드로 바로 누르는 경우)
+    if (_index >= _items.length || !_revealed) return;
+    final item = _items[_index];
+    final firstPass = _index < _firstPass;
+    if (firstPass) {
+      ref.read(studyProvider.notifier).reviewCard(item.id, r);
+      _results.add(r);
+    }
     HapticFeedback.selectionClick();
     setState(() {
-      _results.add(r);
+      // 몰랐던 카드는 세션 끝에 한 번 더 본다 (복습 일정은 첫 평가로 이미 정해짐)
+      if (firstPass && r == SelfRating.dontKnow) _items.add(item);
       _index++;
       _revealed = false;
     });
@@ -55,7 +65,12 @@ class _ReviewSessionScreenState extends ConsumerState<ReviewSessionScreen> {
               children: [
                 Padding(
                   padding: const EdgeInsets.fromLTRB(8, 8, 12, 0),
-                  child: StudyTopBar(title: '복습', index: _index, total: _items.length, close: true),
+                  child: StudyTopBar(
+                    title: !finished && _index >= _firstPass ? '몰랐던 카드 한 번 더' : '복습',
+                    index: _index,
+                    total: _items.length,
+                    close: true,
+                  ),
                 ),
                 Expanded(
                   child: _items.isEmpty

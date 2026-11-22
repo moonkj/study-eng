@@ -44,11 +44,31 @@ void main() {
       expect(Srs.dueToday(cards, today).first.itemId, 'hard');
     });
 
-    test('30일 단계 다음은 졸업', () {
+    test('30일 단계에서 퀴즈로 맞히면 졸업하고, 90일·180일 뒤 유지 복습 후 끝난다', () {
       var card = ReviewCard(itemId: 'x', stage: 4, due: DateTime(2026, 11, 1));
       card = Srs.answer(card, correct: true, today: today);
       expect(card.graduated, isTrue);
-      expect(card.isDue(today.add(const Duration(days: 365))), isFalse);
+      expect(card.due, DateTime(2026, 11, 22).add(const Duration(days: 90)));
+      final d1 = card.due;
+      card = Srs.rate(card, SelfRating.know, d1);
+      expect(card.due, d1.add(const Duration(days: 180)));
+      card = Srs.answer(card, correct: true, today: card.due);
+      expect(card.retired, isTrue);
+      expect(card.isDue(today.add(const Duration(days: 2000))), isFalse);
+    });
+
+    test('자가 평가 \'알아요\'만으로는 졸업하지 않는다', () {
+      var card = ReviewCard(itemId: 'x', stage: 4, due: DateTime(2026, 11, 1));
+      card = Srs.rate(card, SelfRating.know, today);
+      expect(card.stage, 4);
+      expect(card.graduated, isFalse);
+    });
+
+    test('복습 카드: 몰라요는 두 단계, 헷갈려요는 한 단계 내린다', () {
+      final card = ReviewCard(itemId: 'x', stage: 3, due: DateTime(2026, 11, 1));
+      expect(Srs.rate(card, SelfRating.dontKnow, today).stage, 1);
+      expect(Srs.rate(card, SelfRating.confusing, today).stage, 2);
+      expect(Srs.rate(card, SelfRating.dontKnow, today).lapses, 1);
     });
 
     test('오늘 복습할 카드를 오래된 순으로 최대 5개 고른다', () {

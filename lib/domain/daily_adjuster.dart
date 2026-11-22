@@ -10,6 +10,8 @@ class DailyResult {
     required this.speakingAverage,
     required this.expressionsAlreadyKnown,
     required this.expressionsTotal,
+    this.reviewCorrect = 0,
+    this.reviewTotal = 0,
   });
 
   final int quizCorrect;
@@ -21,6 +23,25 @@ class DailyResult {
   final double? speakingAverage;
   final int expressionsAlreadyKnown;
   final int expressionsTotal;
+
+  /// 퀴즈 중 예전에 배운 것을 묻는 복습 문항 ([quizCorrect]/[quizTotal]에 포함된 수)
+  final int reviewCorrect;
+  final int reviewTotal;
+
+  int get newTotal => quizTotal - reviewTotal;
+  int get newCorrect => quizCorrect - reviewCorrect;
+
+  /// 오늘 배운 것 정답률 (방금 본 것이라 높게 나온다) → 내일 난이도에 쓴다
+  double? get newAccuracy => newTotal < 3 ? null : newCorrect / newTotal;
+
+  /// 며칠 전 배운 것 정답률 (실제로 기억하는지) → 레벨 점수에 더 크게 반영한다
+  double? get reviewAccuracy => reviewTotal < 3 ? null : reviewCorrect / reviewTotal;
+
+  /// 레벨 점수용 정답률: 복습 60% + 오늘 40% (한쪽이 3문항 미만이면 전체 정답률)
+  double get levelAccuracy {
+    final n = newAccuracy, r = reviewAccuracy;
+    return n != null && r != null ? r * 0.6 + n * 0.4 : accuracy;
+  }
 
   double get accuracy => quizTotal == 0 ? 0 : quizCorrect / quizTotal;
   double get wordsKnownRatio => wordsTotal == 0 ? 0 : wordsKnown / wordsTotal;
@@ -68,16 +89,19 @@ abstract final class DailyAdjuster {
     required int currentContentStep,
     required DailyResult today,
     double? yesterdayAccuracy,
+    DateTime? date,
   }) {
-    final acc = today.accuracy;
+    // 난이도는 오늘 배운 것 정답률로, 레벨은 기억(복습) 정답률을 더 크게 본다
+    final acc = today.newAccuracy ?? today.accuracy;
+    final levelAcc = today.levelAccuracy;
     final reasons = <String>[];
 
     // 1) 레벨 점수: 정답률만 반영한다 (출석만으로 레벨이 오르지 않게)
-    final levelDelta = ((acc - 0.75) * 40).round();
+    final levelDelta = ((levelAcc - 0.75) * 40).round();
 
     // 2) 영역별 점수
     final skillDelta = <Skill, int>{
-      Skill.grammar: ((acc - 0.75) * 30).round(),
+      Skill.grammar: ((levelAcc - 0.75) * 30).round(),
       // 듣기 문항이 생기기 전까지는 퀴즈(읽기)로 듣기 점수를 바꾸지 않는다
       Skill.listening: 0,
       Skill.vocabulary: ((today.wordsKnownRatio - 0.6) * 30).round(),
@@ -106,7 +130,7 @@ abstract final class DailyAdjuster {
     );
 
     // 4) 약점 보강
-    final focus = newProfile.weakestSkill;
+    final focus = newProfile.focusSkillFor((date ?? DateTime.now()).add(const Duration(days: 1)));
     final speaking = baseSpeakingSentences + (focus == Skill.speaking ? 2 : 0);
     reasons.add(
       focus == Skill.speaking ? '말하기 보강 → 말하기 문장 $baseSpeakingSentences개 → $speaking개' : '${focus.ko} 영역을 조금 더 출제해요',

@@ -221,7 +221,13 @@ class StudyController extends Notifier<StudyState> {
 
     // 오늘 진행이 다른 팩에 대한 것이면(캐시가 버려졌거나 바뀜) 번호 기준 진행이 어긋나므로 비운다
     final id = packIdOf(pack);
+    var cards = saved?.cards ?? const <String, ReviewCard>{};
     if (today.packId != null && today.packId != id) {
+      // 지운 진행으로 바뀐 복습 카드는 원래대로 돌린다 (다시 평가할 때 두 번 오르지 않게)
+      cards = {...cards};
+      for (final e in today.cardsBefore.entries) {
+        e.value == null ? cards.remove(e.key) : cards[e.key] = e.value!;
+      }
       today = TodayProgress(date: todayKey, packId: id, regenCount: today.regenCount);
     } else if (today.packId == null) {
       today = _withPackId(today, id);
@@ -239,7 +245,7 @@ class StudyController extends Notifier<StudyState> {
       contentStep: saved?.contentStep ?? profile.overall.step,
       onboarded: onboarded,
       log: saved?.log ?? const {},
-      cards: saved?.cards ?? const {},
+      cards: cards,
       today: today,
       lastAdjustmentReasons: saved?.lastReasons ?? const [],
       settings: saved?.settings ?? const AppSettings(),
@@ -279,12 +285,13 @@ class StudyController extends Notifier<StudyState> {
   int _packRequest = 0;
   int _prefetchRequest = 0;
 
-  /// 오늘 레벨 재진단으로 팩을 다시 만들 수 있는 횟수 (Claude 비용 방지)
-  static const maxRegenPerDay = 2;
+  /// 하루에 오늘 팩을 Claude 로 만들 수 있는 횟수 (첫 요청 + 재시도·재진단, 비용 방지)
+  static const maxFetchPerDay = 4;
 
   /// 오늘의 맞춤 팩을 서버(Claude)에서 받아온다. 실패하면 기본 팩으로 계속한다.
   /// [force] 이면 이미 받은 팩이 있어도 다시 받는다 (레벨 재진단 후).
   Future<void> loadTodayPack({bool force = false}) async {
+    if (!ref.mounted) return;
     final source = ref.read(packSourceProvider);
     if (source == null) return;
     final s0 = state;
@@ -292,8 +299,19 @@ class StudyController extends Notifier<StudyState> {
       if (s0.packLoading) state = s0.copyWith(packLoading: false);
       return;
     }
+    if (s0.today.regenCount >= maxFetchPerDay) {
+      _set(s0.copyWith(packLoading: false, packError: () => '오늘은 맞춤 학습을 충분히 만들었어요. 기본 학습으로 진행해요.'));
+      return;
+    }
     final request = ++_packRequest;
-    state = s0.copyWith(packLoading: true, packError: () => null);
+    // 요청 횟수를 먼저 저장한다 (기다리다 앱을 꺼도 세어지게)
+    _set(
+      s0.copyWith(
+        packLoading: true,
+        packError: () => null,
+        today: _progress(regenCount: s0.today.regenCount + 1),
+      ),
+    );
     try {
       final json = await source.fetch(
         buildPackRequest(
@@ -369,14 +387,15 @@ class StudyController extends Notifier<StudyState> {
 
   /// 학습일이 바뀌었으면(새벽 4시를 넘김) 오늘 기준으로 다시 만든다.
   /// 루틴을 하는 중이면 진행을 지우지 않도록 미루고, 홈으로 돌아왔을 때([fromHome]) 새로 고친다.
-  void refreshIfNewDay({bool fromHome = false}) {
-    if (dateKey(studyDay(ref.read(clockProvider)())) == state.today.date) return;
-    if (state.untouched || state.allDone || fromHome) {
+  /// 새로 고쳤으면 true (호출한 쪽에서 새 상태로 알림 문구를 갱신한다).
+  bool refreshIfNewDay({bool fromHome = false}) {
+    if (dateKey(studyDay(ref.read(clockProvider)())) == state.today.date) return false;
+    // 완료 화면을 보는 중에 결과가 사라지지 않도록, 끝낸 날도 홈에 있을 때만 바꾼다
+    if (state.untouched || fromHome) {
       ref.invalidateSelf();
-      Future.microtask(() {
-        if (ref.mounted) syncReminder();
-      });
+      return true;
     }
+    return false;
   }
 
   void _set(StudyState next) {
@@ -419,7 +438,8 @@ class StudyController extends Notifier<StudyState> {
   }
 
   void setExpressionKnown(String id, bool known) {
-    if (state.expressionKnown[id] == known) return; // 같은 선택을 다시 누름
+    // 같은 선택을 다시 누름, 또는 끝낸 단계를 다시 보는 중 (퀴즈로 바뀐 복습 일정을 덮어쓰지 않게)
+    if (state.expressionKnown[id] == known || state.done.contains(RoutineStep.expressions)) return;
     final r = _rateFromBaseline(id, known ? SelfRating.know : SelfRating.dontKnow);
     _set(
       state.copyWith(
@@ -430,7 +450,7 @@ class StudyController extends Notifier<StudyState> {
   }
 
   void rateWord(String id, SelfRating rating) {
-    if (state.wordRatings[id] == rating) return;
+    if (state.wordRatings[id] == rating || state.done.contains(RoutineStep.words)) return;
     final r = _rateFromBaseline(id, rating);
     _set(
       state.copyWith(
@@ -475,7 +495,10 @@ class StudyController extends Notifier<StudyState> {
   }
 
   /// 소리 내기 어려운 곳에서: 듣고 속으로 따라 한 것으로 기록 (점수 없음)
-  void recordSilent(Sentence s) => recordSpeaking(s, kSilentAttempt);
+  /// 이미 소리 내어 받은 점수가 있으면 지우지 않는다.
+  void recordSilent(Sentence s) {
+    if (!state.today.spoken.containsKey(s.id)) recordSpeaking(s, kSilentAttempt);
+  }
 
   void recordSpeaking(Sentence s, String heard) {
     _set(state.copyWith(today: _progress(spoken: {...state.today.spoken, s.id: heard})));
@@ -511,8 +534,9 @@ class StudyController extends Notifier<StudyState> {
   void applyLevelTest(LearnerProfile profile) {
     final todayKey = dateKey(state.now);
     final untouched = state.untouched;
-    final canRegen = state.today.regenCount < maxRegenPerDay;
+    final canRegen = state.today.regenCount < maxFetchPerDay;
     _prefetchRequest++; // 옛 레벨로 받던 내일 팩은 저장하지 않는다
+    _packRequest++; // 옛 레벨로 받던 오늘 팩도 쓰지 않는다
     // 이전 레벨로 미리 받아 둔 팩은 버린다. 오늘 팩은 아직 시작 전이고 다시 만들 수 있을 때만 버린다.
     final dropToday = untouched && canRegen && ref.read(packSourceProvider) != null;
     final packs = {
@@ -530,7 +554,8 @@ class StudyController extends Notifier<StudyState> {
         pack: fallback,
         today: fallback == null
             ? null
-            : TodayProgress(date: todayKey, packId: packIdOf(fallback), regenCount: state.today.regenCount + 1),
+            : TodayProgress(date: todayKey, packId: packIdOf(fallback), regenCount: state.today.regenCount),
+        packLoading: false,
       ),
     );
     // 진단 결과에 맞춰 오늘의 팩을 만든다
@@ -587,12 +612,18 @@ class StudyController extends Notifier<StudyState> {
       speakingAverage: s.speakingAverage,
       expressionsAlreadyKnown: s.expressionKnown.values.where((k) => k).length,
       expressionsTotal: s.pack.expressions.length,
+      reviewTotal: s.pack.quiz.where((q) => q.isReview).length,
+      reviewCorrect: [
+        for (final e in s.quizAnswers.entries)
+          if (e.key < s.pack.quiz.length && s.pack.quiz[e.key].isReview && s.pack.quiz[e.key].answerIndex == e.value) e,
+      ].length,
     );
     final adj = DailyAdjuster.adjust(
       profile: s.profile,
       currentContentStep: s.contentStep,
       today: result,
       yesterdayAccuracy: s.yesterdayAccuracy,
+      date: s.now,
     );
     _set(
       s.copyWith(
@@ -611,6 +642,13 @@ class StudyController extends Notifier<StudyState> {
       ),
     );
   }
+}
+
+/// 학습일이 바뀌었으면 새로 고치고, 새 상태(연속 학습일)로 알림 문구를 갱신한다.
+void refreshStudyDay(WidgetRef ref, {bool fromHome = false}) {
+  if (!ref.read(studyProvider.notifier).refreshIfNewDay(fromHome: fromHome)) return;
+  ref.read(studyProvider); // 새 상태로 다시 만든다
+  ref.read(studyProvider.notifier).syncReminder();
 }
 
 final studyProvider = NotifierProvider<StudyController, StudyState>(StudyController.new);

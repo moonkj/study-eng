@@ -74,7 +74,7 @@ Map<String, Object?> buildPackRequest({
   final today = dateOnly(date);
   bool recent(LearnedItem i, int days) => today.difference(parseDateKey(i.firstSeen)).inDays <= days;
   final due = Srs.dueToday(cards.values.where((c) => learned.containsKey(c.itemId)), today, limit: 4);
-  final focus = profile.weakestSkill;
+  final focus = profile.focusSkillFor(today);
   return {
     'date': dateKey(today),
     'level': profile.overall.label,

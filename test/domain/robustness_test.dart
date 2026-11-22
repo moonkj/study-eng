@@ -193,7 +193,8 @@ void main() {
     final ctl2 = next.read(studyProvider.notifier);
     expect(ctl2.dueReviews().map((i) => i.text), ['actually']);
     ctl2.reviewCard('w-actually', SelfRating.know);
-    expect(next.read(studyProvider).cards['w-actually']!.due, DateTime(2026, 12, 1));
+    // 복습 카드의 '알았어요'는 한 단계씩 오른다 (내일 → 3일 뒤)
+    expect(next.read(studyProvider).cards['w-actually']!.due, DateTime(2026, 11, 27));
     expect(ctl2.dueReviews(), isEmpty);
     next.dispose();
   });
@@ -299,7 +300,7 @@ void main() {
     expect(back.lapses, 3);
   });
 
-  test('재진단으로 오늘 팩을 다시 만드는 것은 하루 2번까지', () async {
+  test('오늘 팩을 Claude 로 만드는 것은 재시도·재진단 포함 하루 4번까지', () async {
     final source = ControlledSource();
     final c = ProviderContainer(
       overrides: [
@@ -314,7 +315,29 @@ void main() {
     for (var i = 0; i < 4; i++) {
       ctl.applyLevelTest(defaultProfile(step: 4 + i));
     }
-    expect(source.pending.length, 3); // 시작 1 + 재진단 2
+    expect(source.pending.length, 4); // 시작 1 + 재진단 3, 다섯 번째부터는 기본 팩
+    expect(c.read(studyProvider).packLoading, isFalse);
+    c.dispose();
+  });
+
+  test('끝낸 단계는 다시 평가해도 복습 일정이 바뀌지 않고, 속으로 따라 하기는 받은 점수를 지우지 않는다', () {
+    final c = ProviderContainer(
+      overrides: [
+        storeProvider.overrideWithValue(MemoryStore(onboarded())),
+        clockProvider.overrideWithValue(() => day),
+      ],
+    );
+    final ctl = c.read(studyProvider.notifier);
+    ctl.rateWord('w-actually', SelfRating.dontKnow);
+    ctl.complete(RoutineStep.words);
+    final card = c.read(studyProvider).cards['w-actually'];
+    ctl.rateWord('w-actually', SelfRating.know);
+    expect(c.read(studyProvider).cards['w-actually']!.stage, card!.stage);
+
+    final sentence = c.read(studyProvider).pack.sentences.first;
+    ctl.recordSpeaking(sentence, sentence.en);
+    ctl.recordSilent(sentence);
+    expect(c.read(studyProvider).speakingAverage, 100);
     c.dispose();
   });
 }

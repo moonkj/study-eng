@@ -91,6 +91,20 @@ class LearnerProfile {
 
   Skill get weakestSkill => skills.entries.reduce((a, b) => a.value <= b.value ? a : b).key;
 
+  /// 매일 학습에서 보강할 영역.
+  /// 아직 매일 측정하지 않는 듣기는 빼고, 약한 두 영역의 차이가 50점 미만이면 날마다 번갈아 보강한다
+  /// (같은 영역만 계속 보강하다 다른 약점이 방치되지 않게).
+  Skill focusSkillFor(DateTime day) {
+    final ranked = skills.entries.where((e) => e.key != Skill.listening).toList()
+      ..sort((a, b) => a.value.score.compareTo(b.value.score));
+    if (ranked.isEmpty) return Skill.speaking;
+    if (ranked.length > 1 && ranked[1].value.score - ranked[0].value.score < 50) {
+      final dayIndex = DateTime.utc(day.year, day.month, day.day).millisecondsSinceEpoch ~/ Duration.millisecondsPerDay;
+      return ranked[dayIndex.isEven ? 0 : 1].key;
+    }
+    return ranked.first.key;
+  }
+
   Skill get strongestSkill => skills.entries.reduce((a, b) => a.value >= b.value ? a : b).key;
 
   LearnerProfile copyWith({Level? overall, Map<Skill, Level>? skills}) =>

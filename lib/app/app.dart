@@ -33,10 +33,12 @@ class _TodayeAppState extends ConsumerState<TodayeApp> {
     _lifecycle = AppLifecycleListener(onResume: _checkDay);
     _scheduleMidnight();
     // 알림 문구를 오늘의 연속 학습일로 갱신
-    Future.microtask(() => ref.read(studyProvider.notifier).syncReminder());
+    Future.microtask(() {
+      if (mounted) ref.read(studyProvider.notifier).syncReminder();
+    });
   }
 
-  void _checkDay() => ref.read(studyProvider.notifier).refreshIfNewDay();
+  void _checkDay() => refreshStudyDay(ref, fromHome: _router.routerDelegate.currentConfiguration.uri.path == '/');
 
   /// 앱을 켜 둔 채 학습일 경계(새벽 4시)를 넘기는 경우
   void _scheduleMidnight() {

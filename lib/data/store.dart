@@ -60,7 +60,7 @@ class TodayProgress {
   /// 오늘 처음 평가하기 전의 카드 (null = 원래 없던 카드). 평가를 바꾸거나 되돌릴 때 기준이 된다.
   final Map<String, ReviewCard?> cardsBefore;
 
-  /// 오늘 레벨 재진단으로 팩을 다시 만든 횟수 (비용 방지)
+  /// 오늘 팩을 서버(Claude)에 요청한 횟수 (재시도·재진단 포함, 비용 상한용)
   final int regenCount;
 
   Map<String, Object?> toJson() => {

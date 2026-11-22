@@ -31,7 +31,11 @@ class _WordsScreenState extends ConsumerState<WordsScreen> {
   @override
   void dispose() {
     // 화면을 닫은 뒤 '되돌리기'가 남아 다른 화면에서 눌리지 않게
-    _messenger?.hideCurrentSnackBar();
+    // dispose 중에는 다른 위젯 상태를 바꾸지 않도록 한 박자 뒤에 숨긴다
+    final messenger = _messenger;
+    Future.microtask(() {
+      if (messenger != null && messenger.mounted) messenger.hideCurrentSnackBar();
+    });
     super.dispose();
   }
 
@@ -65,6 +69,7 @@ class _WordsScreenState extends ConsumerState<WordsScreen> {
           action: SnackBarAction(
             label: '되돌리기',
             onPressed: () {
+              if (!mounted) return;
               ref.read(studyProvider.notifier).undoWordRating(id);
               if (mounted) setState(() => _index = rated);
             },

@@ -36,8 +36,9 @@ class HomeScreen extends ConsumerWidget {
     final s = ref.watch(studyProvider);
     final now = ref.watch(clockProvider)();
     // 홈으로 돌아왔을 때 학습일이 바뀌었으면(루틴 중이라 미뤄 둔 경우 포함) 오늘로 새로 고친다
+    // (학습 화면이 위에 떠 있는 동안에도 홈은 다시 그려지므로, 홈이 실제로 맨 위일 때만)
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (context.mounted) ref.read(studyProvider.notifier).refreshIfNewDay(fromHome: true);
+      if (context.mounted && (ModalRoute.of(context)?.isCurrent ?? true)) refreshStudyDay(ref, fromHome: true);
     });
     final exp = s.pack.expressions.first;
     final wide = context.windowSize == WindowSize.expanded;
