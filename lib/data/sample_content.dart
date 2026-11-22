@@ -280,7 +280,7 @@ DailyPack samplePack(DateTime date) => DailyPack(
       prompt: '오늘 회사에 제시간에 도착했어.',
       choices: ['I arrived work on time today.', 'I got to work on time today.', 'I reached to work on time today.'],
       answerIndex: 1,
-      explanation: "arrive 는 뒤에 at/to 같은 전치사가 필요하고, reach 는 전치사 없이 써요. 회화에서는 get to work 가 가장 자연스러워요.",
+      explanation: "arrive 는 뒤에 at 이 필요하고, reach 는 전치사 없이 써요. 회화에서는 get to work 가 가장 자연스러워요.",
     ),
     QuizItem(
       id: 'q10',
@@ -331,7 +331,7 @@ const levelTestPool = <LevelTestItem>[
     step: 7,
     skill: Skill.grammar,
     instruction: '빈칸에 가장 자연스러운 표현을 골라주세요',
-    sentence: 'I ___ to call you, but I kept forgetting.',
+    sentence: 'I ___ to call you, but I keep forgetting.',
     translation: '계속 전화하려고 했는데 자꾸 잊어버렸어.',
     choices: ['am meaning', 'have been meaning', 'was meant', 'meaning'],
     answerIndex: 1,
@@ -351,7 +351,7 @@ const levelTestPool = <LevelTestItem>[
     instruction: '빈칸에 가장 자연스러운 표현을 골라주세요',
     sentence: "I'd rather you ___ tell anyone.",
     translation: '아무한테도 말 안 했으면 좋겠어.',
-    choices: ["didn't", "don't", "won't", 'not'],
+    choices: ["didn't", "won't", 'not to', 'wasn\'t'],
     answerIndex: 0,
   ),
   // vocabulary

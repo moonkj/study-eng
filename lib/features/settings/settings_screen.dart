@@ -100,6 +100,7 @@ void _pick<T>(
   required void Function(T) onSelect,
 }) {
   showModalBottomSheet<void>(
+    useRootNavigator: true,
     context: context,
     backgroundColor: AppColors.card,
     shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.sheet))),

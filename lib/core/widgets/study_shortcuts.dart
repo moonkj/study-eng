@@ -15,7 +15,7 @@ class StudyShortcuts extends StatefulWidget {
 }
 
 class _StudyShortcutsState extends State<StudyShortcuts> {
-  final _node = FocusNode(debugLabel: 'study-screen');
+  final _node = FocusScopeNode(debugLabel: 'study-screen');
 
   static final _repeatable = {LogicalKeyboardKey.arrowLeft, LogicalKeyboardKey.arrowRight};
   static final _activate = {LogicalKeyboardKey.space, LogicalKeyboardKey.enter, LogicalKeyboardKey.numpadEnter};
@@ -32,7 +32,7 @@ class _StudyShortcutsState extends State<StudyShortcuts> {
     if (_activate.contains(event.logicalKey) && !node.hasPrimaryFocus) return KeyEventResult.ignored;
     for (final e in widget.bindings.entries) {
       final a = e.key;
-      if (a.trigger == event.logicalKey &&
+      if (_sameKey(a.trigger, event) &&
           a.control == HardwareKeyboard.instance.isControlPressed &&
           a.meta == HardwareKeyboard.instance.isMetaPressed &&
           a.shift == HardwareKeyboard.instance.isShiftPressed &&
@@ -44,8 +44,17 @@ class _StudyShortcutsState extends State<StudyShortcuts> {
     return KeyEventResult.ignored;
   }
 
+  /// 글자 키는 자판 배열(한글 두벌식 등)과 상관없이 물리 키 위치로도 맞춘다
+  static bool _sameKey(LogicalKeyboardKey trigger, KeyEvent event) {
+    if (trigger == event.logicalKey) return true;
+    final id = trigger.keyId;
+    if (id >= 0x61 && id <= 0x7a) return event.physicalKey.usbHidUsage == 0x00070004 + (id - 0x61);
+    return false;
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Focus(focusNode: _node, autofocus: true, onKeyEvent: _onKey, child: widget.child);
+    // FocusScope: 포커스를 가진 위젯이 사라지면(카드 교체 등) 이 화면으로 돌아와 단축키가 계속 동작한다
+    return FocusScope(node: _node, autofocus: true, onKeyEvent: _onKey, child: widget.child);
   }
 }

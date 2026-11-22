@@ -63,6 +63,7 @@ void _askLevel(BuildContext context, WidgetRef ref) {
   }
 
   showModalBottomSheet<void>(
+    useRootNavigator: true,
     context: context,
     backgroundColor: AppColors.card,
     shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.sheet))),

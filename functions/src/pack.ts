@@ -92,20 +92,75 @@ const IRREGULAR: Record<string, string[]> = {
   hold: ["holds", "held", "holding"],
   put: ["puts", "putting"],
   set: ["sets", "setting"],
+  forget: ["forgets", "forgot", "forgotten", "forgetting"],
+  feel: ["feels", "felt", "feeling"],
+  spend: ["spends", "spent", "spending"],
+  wake: ["wakes", "woke", "woken", "waking"],
+  meet: ["meets", "met", "meeting"],
+  sleep: ["sleeps", "slept", "sleeping"],
+  send: ["sends", "sent", "sending"],
+  lose: ["loses", "lost", "losing"],
+  win: ["wins", "won", "winning"],
+  sit: ["sits", "sat", "sitting"],
+  stand: ["stands", "stood", "standing"],
+  understand: ["understands", "understood", "understanding"],
+  give: ["gives", "gave", "given", "giving"],
+  see: ["sees", "saw", "seen", "seeing"],
+  know: ["knows", "knew", "known", "knowing"],
+  grow: ["grows", "grew", "grown", "growing"],
+  drive: ["drives", "drove", "driven", "driving"],
+  ride: ["rides", "rode", "ridden", "riding"],
+  write: ["writes", "wrote", "written", "writing"],
+  eat: ["eats", "ate", "eaten", "eating"],
+  drink: ["drinks", "drank", "drunk", "drinking"],
+  begin: ["begins", "began", "begun", "beginning"],
+  break: ["breaks", "broke", "broken", "breaking"],
+  choose: ["chooses", "chose", "chosen", "choosing"],
+  fall: ["falls", "fell", "fallen", "falling"],
+  hear: ["hears", "heard", "hearing"],
+  lend: ["lends", "lent", "lending"],
+  mean: ["means", "meant", "meaning"],
+  read: ["reads", "reading"],
+  sell: ["sells", "sold", "selling"],
+  speak: ["speaks", "spoke", "spoken", "speaking"],
+  teach: ["teaches", "taught", "teaching"],
+  wear: ["wears", "wore", "worn", "wearing"],
 };
 
-/** 한 단어의 흔한 활용형 (규칙 변화 + 자주 쓰는 불규칙 동사) */
-export function wordForms(word: string): string[] {
+/**
+ * 한 단어의 흔한 활용형 (규칙 변화 + 자주 쓰는 불규칙 동사).
+ * 비교급(-er/-est)은 형용사·부사일 때만 붙인다 (hard → hardly 처럼 뜻이 다른 단어가 통과하지 않게, -ly 는 넣지 않는다).
+ */
+export function wordForms(word: string, pos = ""): string[] {
   const w = word.toLowerCase();
-  const forms = new Set([w, `${w}s`, `${w}es`, `${w}ed`, `${w}d`, `${w}ing`, `${w}er`, `${w}ly`]);
+  const adj = /adj|adv|형용|부사/i.test(pos);
+  const forms = new Set([w, `${w}s`, `${w}es`, `${w}ed`, `${w}d`, `${w}ing`]);
+  if (adj) {
+    forms.add(`${w}er`);
+    forms.add(`${w}est`);
+    if (w.endsWith("e")) {
+      forms.add(`${w}r`);
+      forms.add(`${w}st`);
+    }
+  }
   if (w.endsWith("e")) forms.add(`${w.slice(0, -1)}ing`);
-  if (w.endsWith("y")) {
-    forms.add(`${w.slice(0, -1)}ies`);
-    forms.add(`${w.slice(0, -1)}ied`);
+  if (/[^aeiou]y$/.test(w)) {
+    const stem = w.slice(0, -1);
+    forms.add(`${stem}ies`);
+    forms.add(`${stem}ied`);
+    if (adj) {
+      forms.add(`${stem}ier`);
+      forms.add(`${stem}iest`);
+    }
   }
   if (/[^aeiou][aeiou][bdgmnprt]$/.test(w)) {
-    forms.add(`${w}${w.at(-1)}ed`);
-    forms.add(`${w}${w.at(-1)}ing`);
+    const d = `${w}${w.at(-1)}`;
+    forms.add(`${d}ed`);
+    forms.add(`${d}ing`);
+    if (adj) {
+      forms.add(`${d}er`);
+      forms.add(`${d}est`);
+    }
   }
   for (const f of IRREGULAR[w] ?? []) forms.add(f);
   return [...forms];
@@ -115,11 +170,14 @@ export function wordForms(word: string): string[] {
  * 문장에 단어(또는 구동사)가 들어 있는지. 활용형과, 구동사 사이에 목적어가 끼는 경우(figure it out)를 허용한다.
  * 구동사의 첫 단어만 활용하고, 나머지 단어 사이에는 최대 3단어까지 끼어들 수 있다.
  */
-export function containsWord(sentence: string, word: string): boolean {
+export function containsWord(sentence: string, word: string, pos = ""): boolean {
   const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const parts = word.toLowerCase().trim().split(/\s+/);
-  const first = `(?:${wordForms(parts[0]).map(esc).join("|")})`;
-  const rest = parts.slice(1).map((p) => `(?:[\\s,]+[\\w']+){0,3}?[\\s,]+${esc(p)}`);
+  // 고정 표현(on time 등)은 활용하지 않고 붙여 쓴 그대로, 구동사만 활용·목적어 끼움 허용
+  const fixed = parts.length > 1 && pos !== "" && !/verb|동사/i.test(pos);
+  const first = fixed ? esc(parts[0]) : `(?:${wordForms(parts[0], pos).map(esc).join("|")})`;
+  const gap = fixed ? "" : "(?:[\\s,]+[\\w']+){0,3}?";
+  const rest = parts.slice(1).map((p) => `${gap}[\\s,]+${esc(p)}`);
   const re = new RegExp(`\\b${first}${rest.join("")}\\b`, "i");
   return re.test(sentence.replace(/[’]/g, "'"));
 }
@@ -142,12 +200,12 @@ export function validatePack(pack: GeneratedPack, req: PackRequest): string[] {
   const words = new Set(pack.words.map((w) => lower(w.word)));
   if (words.size !== pack.words.length) problems.push("words 에 중복이 있습니다");
   for (const w of pack.words) {
-    if (!containsWord(w.example.en, w.word)) problems.push(`단어 "${w.word}" 의 예문에 단어가 들어있지 않습니다`);
+    if (!containsWord(w.example.en, w.word, w.pos_en)) problems.push(`단어 "${w.word}" 의 예문에 단어가 들어있지 않습니다`);
   }
   const wordExamples = new Set(pack.words.map((w) => lower(w.example.en.trim())));
   for (const s of pack.sentences) {
     if (!words.has(lower(s.focus))) problems.push(`문장 "${s.en}" 의 focus "${s.focus}" 가 오늘 단어가 아닙니다`);
-    else if (!containsWord(s.en, s.focus)) problems.push(`문장 "${s.en}" 에 "${s.focus}" 가 들어있지 않습니다`);
+    else if (!containsWord(s.en, s.focus, pack.words.find((w) => lower(w.word) === lower(s.focus))?.pos_en)) problems.push(`문장 "${s.en}" 에 "${s.focus}" 가 들어있지 않습니다`);
     if (wordExamples.has(lower(s.en.trim()))) problems.push(`따라 말하기 문장 "${s.en}" 이 단어 예문과 똑같습니다. 새 문장으로 만들어 주세요`);
   }
 

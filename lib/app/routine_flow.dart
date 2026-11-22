@@ -94,7 +94,8 @@ Future<void> _finish(BuildContext context, WidgetRef ref, RoutineStep step) asyn
               style: sans(14, color: AppColors.ink2),
             ),
             const SizedBox(height: 20),
-            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('이어서 하기')),
+            // 키보드(Enter)로도 바로 이어갈 수 있게
+            FilledButton(autofocus: true, onPressed: () => Navigator.pop(ctx, true), child: const Text('이어서 하기')),
             const SizedBox(height: 4),
             TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('나중에 할게요')),
           ],

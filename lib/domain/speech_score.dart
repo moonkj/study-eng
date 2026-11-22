@@ -31,10 +31,39 @@ class SpeechScore {
   };
 }
 
-String _norm(String w) => w.toLowerCase().replaceAll('’', "'").replaceAll(RegExp(r"[^a-z0-9':]"), '');
+String _norm(String w) {
+  final n = w.toLowerCase().replaceAll('’', "'").replaceAll(RegExp(r"[^a-z0-9':]"), '');
+  // 콜론은 시각(8:10)에만 남긴다 ("thing:" 같은 문장부호는 뗀다)
+  return RegExp(r'^\d{1,2}:\d{2}$').hasMatch(n) ? n : n.replaceAll(':', '');
+}
 
 /// 원어민이 약하게 발음해 음성 인식이 자주 놓치는 기능어. 점수 비중을 절반으로 둔다.
-const _functionWords = {'a', 'an', 'the', 'to', 'of'};
+/// ('s 를 풀어 쓴 is/has 도 약하게 발음되고, 소유격이면 아예 없으므로 같은 취급)
+const _functionWords = {'a', 'an', 'the', 'to', 'of', 'is|has'};
+
+/// 토큰은 '|' 로 여러 후보를 가질 수 있다 ('d = would|had). 후보가 하나라도 같으면 같은 말.
+bool _same(String a, String b) => a == b || a.split('|').any(b.split('|').contains);
+
+const _hours = {
+  'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5, 'six': 6, //
+  'seven': 7, 'eight': 8, 'nine': 9, 'ten': 10, 'eleven': 11, 'twelve': 12,
+};
+
+/// 인식 결과의 시각 표현을 숫자 읽기로 맞춘다 (quarter past three → three fifteen, noon → twelve).
+String _normalizeTimes(String heard) {
+  var s = heard.toLowerCase().replaceAll('’', "'");
+  s = s.replaceAll(RegExp(r"\bo'?clock\b"), ' ');
+  s = s.replaceAll(RegExp(r'\b(noon|midnight)\b'), 'twelve');
+  String hourWord(String h) => int.tryParse(h) == null ? h : (_numberWords(int.parse(h))?.join(' ') ?? h);
+  s = s.replaceAllMapped(RegExp(r'\b(?:a )?quarter (?:past|after) (\w+)'), (m) => '${hourWord(m[1]!)} fifteen');
+  s = s.replaceAllMapped(RegExp(r'\bhalf past (\w+)'), (m) => '${hourWord(m[1]!)} thirty');
+  s = s.replaceAllMapped(RegExp(r'\b(?:a )?quarter (?:to|till) (\w+)'), (m) {
+    final h = _hours[m[1]!] ?? int.tryParse(m[1]!);
+    if (h == null) return m[0]!;
+    return '${_numberWords(h == 1 ? 12 : h - 1)!.join(' ')} forty five';
+  });
+  return s;
+}
 
 /// 구어 축약 → 풀어 쓴 말 (음성 인식이 어느 쪽으로 돌려줘도 같게 본다)
 const _spoken = {
@@ -88,13 +117,13 @@ List<String> _expand(String raw) {
     if (n != null) return n;
   }
   if (w.endsWith("n't") && w.length > 3) return [w.substring(0, w.length - 3), 'not'];
-  for (final (suffix, full) in const [
-    ("'ll", 'will'),
-    ("'ve", 'have'),
-    ("'re", 'are'),
-    ("'d", 'would'),
-    ("'s", 'is'),
-  ]) {
+  if (w.endsWith("'s") && w.length > 2) {
+    // is / has 축약이거나 소유격. 인식기는 sister's 를 sisters 로 돌려주기도 한다.
+    final stem = w.substring(0, w.length - 2);
+    return ['$stem|${stem}s', 'is|has'];
+  }
+  if (w == 'its') return ['it|its'];
+  for (final (suffix, full) in const [("'ll", 'will'), ("'ve", 'have'), ("'re", 'are'), ("'d", 'would|had')]) {
     if (w.endsWith(suffix) && w.length > suffix.length) return [w.substring(0, w.length - suffix.length), full];
   }
   return [w.replaceAll("'", '')];
@@ -114,22 +143,30 @@ List<_Token> _tokens(List<String> words) => [
 ];
 
 SpeechScore scoreSpeech(String target, String heard) {
+  // 하이픈은 띄어 쓴 것으로 본다 (well-known = well known)
   final targetWords = target.split(RegExp(r'\s+')).where((w) => _norm(w).isNotEmpty).toList();
-  final tt = _tokens(targetWords);
+  final tt = [
+    for (var i = 0; i < targetWords.length; i++)
+      for (final part in targetWords[i].split('-'))
+        for (final t in _expand(part)) _Token(t, i),
+  ];
   final t = [for (final x in tt) x.text];
-  final h = [for (final x in _tokens(heard.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList())) x.text];
+  final h = [
+    for (final x in _tokens(_normalizeTimes(heard).split(RegExp(r'[\s-]+')).where((w) => w.isNotEmpty).toList()))
+      x.text,
+  ];
 
   // LCS 로 순서를 지키며 일치한 단어를 찾는다.
   final dp = List.generate(t.length + 1, (_) => List.filled(h.length + 1, 0));
   for (var i = t.length - 1; i >= 0; i--) {
     for (var j = h.length - 1; j >= 0; j--) {
-      dp[i][j] = t[i] == h[j] ? dp[i + 1][j + 1] + 1 : (dp[i + 1][j] > dp[i][j + 1] ? dp[i + 1][j] : dp[i][j + 1]);
+      dp[i][j] = _same(t[i], h[j]) ? dp[i + 1][j + 1] + 1 : (dp[i + 1][j] > dp[i][j + 1] ? dp[i + 1][j] : dp[i][j + 1]);
     }
   }
   final matched = List.filled(t.length, false);
   var i = 0, j = 0;
   while (i < t.length && j < h.length) {
-    if (t[i] == h[j]) {
+    if (_same(t[i], h[j])) {
       matched[i] = true;
       i++;
       j++;

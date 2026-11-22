@@ -87,7 +87,8 @@ class TabShell extends StatelessWidget {
         for (var i = 0; i < tabs.length; i++)
           SingleActivator(tabKeys[i], meta: true, includeRepeats: false): () => _go(i),
       },
-      child: child,
+      // 탭 화면에는 포커스 받을 위젯이 없어 단축키가 닿지 않으므로 여기서 포커스를 받는다
+      child: Focus(autofocus: true, child: child),
     );
     if (size.isWide) {
       // iPad: 왼쪽 세로 내비게이션 + 내용
@@ -101,7 +102,12 @@ class TabShell extends StatelessWidget {
               Expanded(
                 child: LayoutBuilder(
                   builder: (context, c) => MediaQuery(
-                    data: MediaQuery.of(context).copyWith(size: Size(c.maxWidth, c.maxHeight)),
+                    // 왼쪽 안전 영역은 내비게이션이 이미 처리했다
+                    data: MediaQuery.of(context).copyWith(
+                      size: Size(c.maxWidth, c.maxHeight),
+                      padding: MediaQuery.paddingOf(context).copyWith(left: 0),
+                      viewPadding: MediaQuery.viewPaddingOf(context).copyWith(left: 0),
+                    ),
                     child: shell,
                   ),
                 ),

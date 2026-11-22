@@ -109,6 +109,17 @@ void main() {
       expect(scoreSpeech('It starts at 7:05.', 'it starts at seven oh five').score, 100);
     });
 
+    test("'d 는 would/had, 's 는 is/has/소유격 모두 인정, 하이픈·시각 읽기도 같게", () {
+      expect(scoreSpeech("I'd been waiting.", 'I had been waiting').score, 100);
+      expect(scoreSpeech("He's been busy.", 'he has been busy').score, 100);
+      expect(scoreSpeech("My sister's car is new.", 'my sisters car is new').score, greaterThanOrEqualTo(90));
+      expect(scoreSpeech("It's a well-known place.", "it's a well known place").score, 100);
+      expect(scoreSpeech("Here's the thing:", "here's the thing").score, 100);
+      expect(scoreSpeech("Let's meet at 3:15.", "let's meet at a quarter past three").score, 100);
+      expect(scoreSpeech("Let's meet at 8:00.", "let's meet at eight o'clock").score, 100);
+      expect(scoreSpeech('Lunch is at 12:00.', 'lunch is at noon').score, 100);
+    });
+
     test('a·the·to 를 놓쳐도 크게 깎지 않고, 다르게 들린 단어 목록에서는 뺀다', () {
       final s = scoreSpeech('I need to grab a coffee.', 'I need grab coffee');
       expect(s.score, greaterThanOrEqualTo(80));
@@ -132,5 +143,9 @@ void main() {
     expect(koreanPronTip('coffee'), contains("'f'"));
     expect(koreanPronTip('crowded,'), contains("'r'"));
     expect(koreanPronTips(['the', 'that', 'very']).length, 2);
+    expect(koreanPronTip('walk'), isNot(contains("'l'"))); // 묵음 l
+    expect(koreanPronTip('listen'), contains('소리 내지 않아요'));
+    expect(koreanPronTip('car'), contains("끝의 'r'"));
+    expect(koreanPronTip('dogs'), contains('즈'));
   });
 }

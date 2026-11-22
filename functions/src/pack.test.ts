@@ -177,4 +177,9 @@ test("단어 포함 검사: 활용형과 분리된 구동사를 허용한다", (
   assert.ok(containsWord("I'll definitely go.", "definitely"));
   assert.ok(!containsWord("I'll go later.", "figure out"));
   assert.ok(!containsWord("The cat sat.", "take"));
+  assert.ok(containsWord("I'll figure it out later.", "figure out", "phrasal verb"));
+  assert.ok(!containsWord("I only had time.", "on time", "phrase"));
+  assert.ok(!containsWord("I've been working late a lot lately.".replace("late a lot ", ""), "late"));
+  assert.ok(containsWord("It's busier than usual.", "busy", "adjective"));
+  assert.ok(containsWord("I forgot my umbrella.", "forget", "verb"));
 });
