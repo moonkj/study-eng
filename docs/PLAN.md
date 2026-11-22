@@ -267,3 +267,17 @@ speaking_attempts(id, item_id, recognized_text, score, at)
   - 레벨 시스템: `docs/level-system.md`
   - 화면 시안(Claude Design): https://claude.ai/artifact/G2JJ6akobFwcDJM7MwvheE
 - 레퍼런스 스크린샷은 참고용이며 그대로 따르지 않음.
+
+## 10. 진행 현황
+
+### 완료 (2026-11-22)
+- A안 디자인 확정, Flutter 앱 골격 (Riverpod + go_router, feature-first 구조, Material 3 테마, 폰트 번들)
+- 화면 11개: 홈 · 표현 · 단어 · 따라 말하기 · 퀴즈 · 완료 · 레벨 진단 · 레벨 결과 · 기록 · 복습 · 설정
+- 레벨 시스템 도메인 로직 + 단위 테스트: 15단계 레벨, 적응형 진단(계단식, 영역별 보정), 일일 난이도 자동 조정, SRS, 말하기 단어 비교 채점
+- 하루 루틴 전체를 도는 위젯 테스트
+
+### 다음 단계
+1. 로컬 저장 (Drift): 레벨·학습 기록·SRS 카드가 앱 재시작 후에도 유지
+2. 음성: flutter_tts(듣기 버튼) + speech_to_text(따라 말하기, 지금은 데모 모드)
+3. Claude 콘텐츠 생성: 내 레벨·약점·복습 대상을 넣어 매일 나만의 팩 생성 (지금은 샘플 데이터)
+4. 아침 알림, 첫 실행 시 레벨 진단으로 시작
