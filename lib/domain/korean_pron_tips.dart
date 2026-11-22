@@ -34,7 +34,11 @@ String? koreanPronTip(String word) {
   }
   if (RegExp(r'(r|er|or|ar|ir|ur)$').hasMatch(w)) return "끝의 'r'은 혀를 뒤로 말아 끝까지 소리 내요 (미국식은 빼먹지 않아요).";
   if (w.contains('r')) return "'r'은 혀끝이 입천장에 닿지 않게 둥글게 말아요 (ㄹ과 달라요).";
-  if (w.contains('l') && !_silentL.contains(w)) return "'l'은 혀끝을 윗잇몸에 꼭 붙였다 떼요. 끝에 오면 '을'처럼 살짝 남겨요.";
+  if (w.contains('l') && !_silentL.contains(w)) {
+    return w.endsWith('l') || w.endsWith('le')
+        ? "끝의 'l'은 혀끝만 윗잇몸에 대고 소리를 삼켜요 ('을'처럼 모음을 붙이지 않아요)."
+        : "'l'은 혀끝을 윗잇몸에 꼭 붙였다 떼요 (ㄹ보다 또렷하게).";
+  }
   if (w.contains('z')) return "'z'는 'ㅈ'이 아니라 벌이 윙 하는 소리처럼 떨며 내요.";
   if (RegExp(r'[^aeious]s$').hasMatch(w) || w.endsWith('es')) {
     // 앞이 유성음(모음, b d g l m n r v)이면 끝 s 는 /z/

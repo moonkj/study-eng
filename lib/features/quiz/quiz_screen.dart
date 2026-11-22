@@ -324,7 +324,7 @@ class _Feedback extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text(correct ? '정답이에요!' : '아깝다! 비슷한 표현이랑 헷갈렸어요', style: sans(16, weight: FontWeight.w700)),
+                  child: Text(correct ? '정답이에요!' : '아쉬워요. 정답과 이 부분이 달라요', style: sans(16, weight: FontWeight.w700)),
                 ),
               ],
             ),

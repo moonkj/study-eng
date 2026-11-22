@@ -656,6 +656,7 @@ class StudyController extends Notifier<StudyState> {
     final reminder = ref.read(reminderProvider);
     if (minutes == null) {
       await reminder.cancel();
+      if (!ref.mounted) return true;
       _set(state.copyWith(settings: state.settings.copyWith(reminderMinutes: () => null)));
       return true;
     }

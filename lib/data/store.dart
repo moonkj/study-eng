@@ -80,22 +80,27 @@ class TodayProgress {
   factory TodayProgress.fromJson(Map<String, Object?> j) => TodayProgress(
     date: j['date'] as String,
     done: {...((j['done'] as List?) ?? const []).whereType<String>()},
-    expressionKnown: ((j['expressionKnown'] as Map?) ?? const {}).cast<String, bool>(),
+    // 값 형식을 읽을 때 바로 걸러 낸다 (cast 는 나중에 꺼낼 때 터지므로 쓰지 않는다)
+    expressionKnown: {
+      for (final e in ((j['expressionKnown'] as Map?) ?? const {}).entries)
+        if (e.key is String && e.value is bool) e.key as String: e.value as bool,
+    },
     wordRatings: {
       for (final e in ((j['wordRatings'] as Map?) ?? const {}).entries)
         if (SelfRating.values.any((r) => r.name == e.value))
           e.key as String: SelfRating.values.byName(e.value as String),
     },
-    spoken: ((j['spoken'] as Map?) ?? const {}).cast<String, String>(),
+    spoken: {
+      for (final e in ((j['spoken'] as Map?) ?? const {}).entries)
+        if (e.key is String && e.value is String) e.key as String: e.value as String,
+    },
     quizAnswers: {
       for (final e in ((j['quizAnswers'] as Map?) ?? const {}).entries)
         if (int.tryParse('${e.key}') != null && e.value is num) int.parse('${e.key}'): (e.value as num).toInt(),
     },
     levelDelta: (j['levelDelta'] as num?)?.toInt(),
     packId: j['packId'] as String?,
-    cardsBefore: ((j['cardsBefore'] as Map?) ?? const {}).map(
-      (k, v) => MapEntry(k as String, v == null ? null : cardFromJson(k, (v as Map).cast<String, Object?>())),
-    ),
+    cardsBefore: _cardsBefore(j['cardsBefore']),
     regenCount: (j['regenCount'] as num?)?.toInt() ?? 0,
   );
 }
@@ -156,6 +161,21 @@ class AppSettings {
           reminderOffered: j['reminderOffered'] as bool? ?? false,
           theme: j['theme'] as String? ?? 'system',
         );
+}
+
+/// 오늘 첫 평가 전 카드들. 하나가 깨져도 나머지는 살린다.
+Map<String, ReviewCard?> _cardsBefore(Object? raw) {
+  final out = <String, ReviewCard?>{};
+  if (raw is! Map) return out;
+  for (final e in raw.entries) {
+    if (e.key is! String) continue;
+    try {
+      out[e.key as String] = e.value == null
+          ? null
+          : cardFromJson(e.key as String, (e.value as Map).cast<String, Object?>());
+    } catch (_) {}
+  }
+  return out;
 }
 
 bool _isDateKey(Object? k) => k is String && RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(k);
@@ -256,7 +276,7 @@ class SavedData {
         return cards;
       }, const {}),
       today: section(() => j['today'] == null ? null : TodayProgress.fromJson((j['today'] as Map).cast()), null),
-      lastReasons: section(() => (j['lastReasons'] as List).cast<String>(), const []),
+      lastReasons: section(() => (j['lastReasons'] as List).whereType<String>().toList(), const []),
       packs: section(
         () => {
           for (final e in ((j['packs'] as Map?) ?? const {}).entries)
@@ -264,12 +284,16 @@ class SavedData {
         },
         const {},
       ),
-      learned: section(
-        () => ((j['learned'] as Map?) ?? const {}).map(
-          (k, v) => MapEntry(k as String, LearnedItem.fromJson(k, (v as Map).cast())),
-        ),
-        const {},
-      ),
+      // 배운 항목도 하나씩 (하나 때문에 복습 카드 전체가 사라지지 않게)
+      learned: section(() {
+        final out = <String, LearnedItem>{};
+        for (final e in ((j['learned'] as Map?) ?? const {}).entries) {
+          try {
+            out[e.key as String] = LearnedItem.fromJson(e.key as String, (e.value as Map).cast());
+          } catch (_) {}
+        }
+        return out;
+      }, const {}),
       settings: section(
         () => AppSettings.fromJson((j['settings'] as Map?)?.cast<String, Object?>()),
         const AppSettings(),

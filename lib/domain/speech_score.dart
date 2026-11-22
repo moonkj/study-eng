@@ -20,7 +20,7 @@ class SpeechScore {
   /// 다르게 들린 단어 (a/the/to 같은 약하게 발음되는 기능어는 빼고 알려 준다)
   List<String> get missed => [
     for (final w in words)
-      if (!w.matched && !_functionWords.contains(_norm(w.word))) w.word,
+      if (!w.matched && !_functionWords.contains(_norm(w.word))) w.word.replaceAll(RegExp(r'^[^\w]+|[^\w]+$'), ''),
   ];
 
   String get verdict => switch (score) {
@@ -149,7 +149,7 @@ SpeechScore scoreSpeech(String target, String heard) {
   } catch (_) {
     return SpeechScore(
       score: 0,
-      words: [for (final w in target.split(RegExp(r'\s+'))) WordMatch(w, false)],
+      words: [for (final w in target.split(RegExp(r'\s+')).where((w) => w.isNotEmpty)) WordMatch(w, false)],
       heard: heard,
     );
   }

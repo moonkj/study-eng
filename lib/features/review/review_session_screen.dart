@@ -247,7 +247,11 @@ class _Summary extends StatelessWidget {
             Text('${results.length}장 복습 완료', style: sans(22, weight: FontWeight.w700)),
             const SizedBox(height: 8),
             Text(
-              '$known장은 기억하고 있었어요. 헷갈린 카드는 곧 다시 보여 드릴게요.',
+              known == 0
+                  ? '오늘 다시 본 것만으로도 기억이 단단해져요. 곧 다시 보여 드릴게요.'
+                  : known == results.length
+                  ? '모두 기억하고 있었어요. 다음 복습은 더 뒤로 미뤄 둘게요.'
+                  : '$known장은 기억하고 있었어요. 헷갈린 카드는 곧 다시 보여 드릴게요.',
               textAlign: TextAlign.center,
               style: sans(14, color: AppColors.ink2, height: 1.5),
             ),

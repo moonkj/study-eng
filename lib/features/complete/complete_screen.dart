@@ -55,7 +55,7 @@ class _CompleteScreenState extends ConsumerState<CompleteScreen> {
       30 => '한 달 연속! 이제 영어가 일상이에요',
       50 || 100 || 200 || 365 => '$streak일 연속! 기록을 세웠어요',
       _ when prevBest >= 3 && streak == prevBest + 1 => '최고 기록 경신! $streak일 연속',
-      1 when prevBest >= 2 => '다시 시작! 최고 기록 $prevBest일까지 ${prevBest - 1}일',
+      1 when prevBest >= 2 => '다시 시작! 오늘이 1일째예요',
       _ => null,
     };
 
@@ -127,7 +127,7 @@ class _CompleteScreenState extends ConsumerState<CompleteScreen> {
                   const SizedBox(height: 6),
                   Center(
                     child: Text(
-                      '표현 ${s.pack.expressions.length}개, 단어 ${s.pack.words.length}개, 문장 ${s.spokenCount}개를 따라 했어요',
+                      '표현 ${s.pack.expressions.length}개 · 단어 ${s.pack.words.length}개 · 문장 ${s.spokenCount}개 완료',
                       textAlign: TextAlign.center,
                       style: sans(14, color: AppColors.ink2),
                     ),
@@ -254,7 +254,8 @@ class _CompleteScreenState extends ConsumerState<CompleteScreen> {
                     onPressed: () => context.pushReplacement('/review-session'),
                     child: Text('복습 카드 ${s.dueCount}장도 넘기기 · ${s.reviewMinutes}분'),
                   ),
-                TextButton(onPressed: () => context.go('/review'), child: const Text('틀린 문제 다시 보기')),
+                if (s.quizCorrect < s.pack.quiz.length)
+                  TextButton(onPressed: () => context.go('/review'), child: const Text('틀린 문제 다시 보기')),
               ],
             ),
           ],

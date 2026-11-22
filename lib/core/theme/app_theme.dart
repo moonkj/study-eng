@@ -87,8 +87,8 @@ ThemeData buildAppTheme() {
     ),
     // 띄운 면(시트)은 다크에서 카드보다 한 단계 밝게
     bottomSheetTheme: BottomSheetThemeData(
-      backgroundColor: AppColors.isDark ? const Color(0xFF2A2621) : AppColors.card,
-      modalBackgroundColor: AppColors.isDark ? const Color(0xFF2A2621) : AppColors.card,
+      backgroundColor: AppColors.isDark ? AppColors.muted : AppColors.card,
+      modalBackgroundColor: AppColors.isDark ? AppColors.muted : AppColors.card,
       dragHandleColor: AppColors.lineStrong,
       surfaceTintColor: Colors.transparent,
     ),

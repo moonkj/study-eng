@@ -87,7 +87,7 @@ Future<void> _finish(BuildContext context, WidgetRef ref, RoutineStep step) asyn
             const SizedBox(height: 6),
             Text(
               stale
-                  ? '새벽 4시가 지나 어제 루틴이 됐어요. 지금 이어서 끝내야 어제 기록으로 남아요.'
+                  ? '날짜가 바뀌었어요. 마저 하면 어제 기록으로 남고, 지금 그만두면 어제 진행은 기록되지 않아요.'
                   : '남은 단계 $remaining개 · 약 ${remainingMinutes(s)}분 · 다음은 ${stepTitle(next, s)}',
               style: sans(14, color: AppColors.ink2),
             ),
@@ -95,10 +95,7 @@ Future<void> _finish(BuildContext context, WidgetRef ref, RoutineStep step) asyn
             // 키보드(Enter)로도 바로 이어갈 수 있게
             FilledButton(autofocus: true, onPressed: () => Navigator.pop(ctx, true), child: const Text('이어서 하기')),
             const SizedBox(height: 4),
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: Text(stale ? '그만하기 (어제 진행은 정리돼요)' : '나중에 할게요'),
-            ),
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(stale ? '오늘 걸로 새로 시작' : '나중에 할게요')),
           ],
         ),
       ),
