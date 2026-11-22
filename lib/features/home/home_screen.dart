@@ -140,7 +140,7 @@ class _StreakChip extends StatelessWidget {
         children: [
           const Icon(Icons.local_fire_department_outlined, size: 16, color: AppColors.ember),
           const SizedBox(width: 4),
-          Text('$days일째', style: sans(13, weight: FontWeight.w600)),
+          Text(days == 0 ? '오늘부터 시작' : '$days일째', style: sans(13, weight: FontWeight.w600)),
         ],
       ),
     );

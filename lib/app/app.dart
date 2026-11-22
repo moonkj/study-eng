@@ -1,20 +1,25 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../core/theme/app_theme.dart';
 import 'router.dart';
+import 'study_controller.dart';
 
-class TodayeApp extends StatefulWidget {
+class TodayeApp extends ConsumerStatefulWidget {
   const TodayeApp({super.key, this.initialLocation = '/'});
 
   final String initialLocation;
 
   @override
-  State<TodayeApp> createState() => _TodayeAppState();
+  ConsumerState<TodayeApp> createState() => _TodayeAppState();
 }
 
-class _TodayeAppState extends State<TodayeApp> {
-  late final GoRouter _router = buildRouter(initialLocation: widget.initialLocation);
+class _TodayeAppState extends ConsumerState<TodayeApp> {
+  late final GoRouter _router = buildRouter(
+    initialLocation: widget.initialLocation,
+    isOnboarded: () => ref.read(studyProvider).onboarded,
+  );
 
   @override
   void dispose() {

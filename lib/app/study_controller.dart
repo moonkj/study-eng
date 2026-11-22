@@ -2,10 +2,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/models.dart';
 import '../data/sample_content.dart';
+import '../data/store.dart';
 import '../domain/daily_adjuster.dart';
 import '../domain/level.dart';
 import '../domain/speech_score.dart';
 import '../domain/srs.dart';
+import '../domain/study_log.dart';
 
 /// 오늘의 루틴 4단계
 enum RoutineStep { expressions, words, speaking, quiz }
@@ -13,42 +15,53 @@ enum RoutineStep { expressions, words, speaking, quiz }
 /// 테스트에서 날짜를 고정할 수 있도록 시계를 주입한다.
 final clockProvider = Provider<DateTime Function()>((ref) => DateTime.now);
 
+/// 오늘의 학습 팩을 만든다. (3단계에서 Claude 생성 팩으로 교체)
+final packBuilderProvider = Provider<DailyPack Function(DateTime)>((ref) => samplePack);
+
 class StudyState {
-  const StudyState({
+  StudyState({
+    required this.now,
     required this.pack,
     required this.profile,
     required this.contentStep,
-    required this.streakDays,
-    required this.studiedDays,
-    this.done = const {},
-    this.expressionKnown = const {},
-    this.wordRatings = const {},
-    this.speaking = const {},
-    this.quizAnswers = const {},
-    this.cards = const {},
-    this.yesterdayAccuracy,
-    this.adjustment,
-    this.lastAdjustmentReasons = const [],
+    required this.onboarded,
+    required this.log,
+    required this.cards,
+    required this.today,
+    required this.lastAdjustmentReasons,
   });
 
+  final DateTime now;
   final DailyPack pack;
   final LearnerProfile profile;
   final int contentStep;
-  final int streakDays;
-
-  /// 이번 달 학습한 날짜(일)
-  final Set<int> studiedDays;
-  final Set<RoutineStep> done;
-  final Map<String, bool> expressionKnown;
-  final Map<String, SelfRating> wordRatings;
-  final Map<String, SpeechScore> speaking;
-  final Map<int, int> quizAnswers;
+  final bool onboarded;
+  final Map<String, DayRecord> log;
   final Map<String, ReviewCard> cards;
-  final double? yesterdayAccuracy;
-
-  /// 오늘 루틴을 끝내면 계산되는 내일 계획
-  final DailyAdjustment? adjustment;
+  final TodayProgress today;
   final List<String> lastAdjustmentReasons;
+
+  Set<RoutineStep> get done => {for (final n in today.done) RoutineStep.values.byName(n)};
+  Map<String, bool> get expressionKnown => today.expressionKnown;
+  Map<String, SelfRating> get wordRatings => today.wordRatings;
+  Map<int, int> get quizAnswers => today.quizAnswers;
+  int? get todayLevelDelta => today.levelDelta;
+
+  /// 오늘 말한 문장의 채점 결과 (저장된 인식 문장으로 다시 계산)
+  late final Map<String, SpeechScore> speaking = {
+    for (final s in pack.sentences)
+      if (today.spoken.containsKey(s.id)) s.id: scoreSpeech(s.en, today.spoken[s.id]!),
+  };
+
+  int get streakDays => computeStreak(log.keys, now);
+
+  /// 이번 달에 루틴을 끝낸 날짜(일)
+  Set<int> get studiedDays => {
+    for (final k in log.keys)
+      if (parseDateKey(k).year == now.year && parseDateKey(k).month == now.month) parseDateKey(k).day,
+  };
+
+  double? get yesterdayAccuracy => previousRecord(log, now)?.accuracy;
 
   bool get allDone => done.length == RoutineStep.values.length;
 
@@ -70,106 +83,130 @@ class StudyState {
   StudyState copyWith({
     LearnerProfile? profile,
     int? contentStep,
-    int? streakDays,
-    Set<int>? studiedDays,
-    Set<RoutineStep>? done,
-    Map<String, bool>? expressionKnown,
-    Map<String, SelfRating>? wordRatings,
-    Map<String, SpeechScore>? speaking,
-    Map<int, int>? quizAnswers,
+    bool? onboarded,
+    Map<String, DayRecord>? log,
     Map<String, ReviewCard>? cards,
-    DailyAdjustment? adjustment,
+    TodayProgress? today,
     List<String>? lastAdjustmentReasons,
-  }) {
-    return StudyState(
-      pack: pack,
-      profile: profile ?? this.profile,
-      contentStep: contentStep ?? this.contentStep,
-      streakDays: streakDays ?? this.streakDays,
-      studiedDays: studiedDays ?? this.studiedDays,
-      done: done ?? this.done,
-      expressionKnown: expressionKnown ?? this.expressionKnown,
-      wordRatings: wordRatings ?? this.wordRatings,
-      speaking: speaking ?? this.speaking,
-      quizAnswers: quizAnswers ?? this.quizAnswers,
-      cards: cards ?? this.cards,
-      yesterdayAccuracy: yesterdayAccuracy,
-      adjustment: adjustment ?? this.adjustment,
-      lastAdjustmentReasons: lastAdjustmentReasons ?? this.lastAdjustmentReasons,
-    );
-  }
+  }) => StudyState(
+    now: now,
+    pack: pack,
+    profile: profile ?? this.profile,
+    contentStep: contentStep ?? this.contentStep,
+    onboarded: onboarded ?? this.onboarded,
+    log: log ?? this.log,
+    cards: cards ?? this.cards,
+    today: today ?? this.today,
+    lastAdjustmentReasons: lastAdjustmentReasons ?? this.lastAdjustmentReasons,
+  );
+
+  SavedData toSaved() => SavedData(
+    profile: profile,
+    contentStep: contentStep,
+    onboarded: onboarded,
+    log: log,
+    cards: cards,
+    today: today,
+    lastReasons: lastAdjustmentReasons,
+  );
 }
 
-/// 개발용 초기 프로필 (첫 진단 전 기본값: B1.2)
-LearnerProfile initialProfile() => const LearnerProfile(
-  overall: Level(764),
-  skills: {
-    Skill.vocabulary: Level(980),
-    Skill.grammar: Level(720),
-    Skill.listening: Level(700),
-    Skill.speaking: Level(430),
-  },
-);
+/// 진단을 건너뛸 때 쓰는 기본 프로필 (B1.1)
+LearnerProfile defaultProfile() =>
+    LearnerProfile(overall: Level.fromStep(6), skills: {for (final s in Skill.values) s: Level.fromStep(6)});
 
 class StudyController extends Notifier<StudyState> {
   @override
   StudyState build() {
     final now = ref.read(clockProvider)();
+    final saved = ref.read(storeProvider).load();
+    final todayKey = dateKey(now);
+    final today = saved?.today?.date == todayKey ? saved!.today! : TodayProgress(date: todayKey);
+    final profile = saved?.profile ?? defaultProfile();
     return StudyState(
-      pack: samplePack(now),
-      profile: initialProfile(),
-      contentStep: 7,
-      streakDays: 12,
-      studiedDays: {
-        for (var d = 1; d < now.day; d++)
-          if (d != 4 && d != 10) d,
-      },
-      yesterdayAccuracy: 0.88,
-      lastAdjustmentReasons: const ['퀴즈 정답률 88% → 표현 난이도 한 단계 올렸어요', '말하기 점수가 낮아 말하기 문장을 10개 → 12개로'],
+      now: now,
+      pack: ref.read(packBuilderProvider)(now),
+      profile: profile,
+      contentStep: saved?.contentStep ?? profile.overall.step,
+      onboarded: saved?.onboarded ?? false,
+      log: saved?.log ?? const {},
+      cards: saved?.cards ?? const {},
+      today: today,
+      lastAdjustmentReasons: saved?.lastReasons ?? const [],
     );
   }
 
-  DateTime get _today => ref.read(clockProvider)();
+  DateTime get _today => state.now;
+
+  void _set(StudyState next) {
+    state = next;
+    ref.read(storeProvider).save(next.toSaved());
+  }
+
+  TodayProgress _progress({
+    Set<String>? done,
+    Map<String, bool>? expressionKnown,
+    Map<String, SelfRating>? wordRatings,
+    Map<String, String>? spoken,
+    Map<int, int>? quizAnswers,
+    int? levelDelta,
+  }) {
+    final t = state.today;
+    return TodayProgress(
+      date: t.date,
+      done: done ?? t.done,
+      expressionKnown: expressionKnown ?? t.expressionKnown,
+      wordRatings: wordRatings ?? t.wordRatings,
+      spoken: spoken ?? t.spoken,
+      quizAnswers: quizAnswers ?? t.quizAnswers,
+      levelDelta: levelDelta ?? t.levelDelta,
+    );
+  }
 
   void setExpressionKnown(String id, bool known) {
-    state = state.copyWith(expressionKnown: {...state.expressionKnown, id: known});
+    _set(state.copyWith(today: _progress(expressionKnown: {...state.expressionKnown, id: known})));
   }
 
   void rateWord(String id, SelfRating rating) {
     final card = state.cards[id] ?? ReviewCard.fresh(id, _today);
-    state = state.copyWith(
-      wordRatings: {...state.wordRatings, id: rating},
-      cards: {...state.cards, id: Srs.rate(card, rating, _today)},
+    _set(
+      state.copyWith(
+        today: _progress(wordRatings: {...state.wordRatings, id: rating}),
+        cards: {...state.cards, id: Srs.rate(card, rating, _today)},
+      ),
     );
   }
 
   void recordSpeaking(Sentence s, String heard) {
-    state = state.copyWith(speaking: {...state.speaking, s.id: scoreSpeech(s.en, heard)});
+    _set(state.copyWith(today: _progress(spoken: {...state.today.spoken, s.id: heard})));
   }
 
   void answerQuiz(int index, int choice) {
     if (state.quizAnswers.containsKey(index)) return;
     final item = state.pack.quiz[index];
     final card = state.cards[item.id] ?? ReviewCard.fresh(item.id, _today);
-    state = state.copyWith(
-      quizAnswers: {...state.quizAnswers, index: choice},
-      cards: {
-        ...state.cards,
-        item.id: Srs.answer(card, correct: item.answerIndex == choice, today: _today),
-      },
+    _set(
+      state.copyWith(
+        today: _progress(quizAnswers: {...state.quizAnswers, index: choice}),
+        cards: {
+          ...state.cards,
+          item.id: Srs.answer(card, correct: item.answerIndex == choice, today: _today),
+        },
+      ),
     );
   }
 
   void complete(RoutineStep step) {
     if (state.done.contains(step)) return;
-    final done = {...state.done, step};
-    state = state.copyWith(done: done);
+    _set(state.copyWith(today: _progress(done: {...state.today.done, step.name})));
     if (state.allDone) _finishDay();
   }
 
   void applyLevelTest(LearnerProfile profile) {
-    state = state.copyWith(profile: profile, contentStep: profile.overall.step);
+    _set(state.copyWith(profile: profile, contentStep: profile.overall.step, onboarded: true));
   }
+
+  void skipLevelTest() => applyLevelTest(defaultProfile());
 
   void _finishDay() {
     final s = state;
@@ -188,13 +225,21 @@ class StudyController extends Notifier<StudyState> {
       today: result,
       yesterdayAccuracy: s.yesterdayAccuracy,
     );
-    state = s.copyWith(
-      adjustment: adj,
-      profile: adj.profile,
-      contentStep: adj.nextContentStep,
-      streakDays: s.streakDays + 1,
-      studiedDays: {...s.studiedDays, _today.day},
-      lastAdjustmentReasons: adj.reasons,
+    _set(
+      s.copyWith(
+        profile: adj.profile,
+        contentStep: adj.nextContentStep,
+        today: _progress(levelDelta: adj.levelDelta),
+        log: {
+          ...s.log,
+          dateKey(_today): DayRecord(
+            accuracy: result.accuracy,
+            levelScore: adj.profile.overall.score,
+            speakingAverage: result.speakingAverage,
+          ),
+        },
+        lastAdjustmentReasons: adj.reasons,
+      ),
     );
   }
 }

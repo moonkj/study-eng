@@ -13,11 +13,21 @@ import '../features/quiz/quiz_screen.dart';
 import '../features/review/review_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/speaking/speaking_screen.dart';
+import '../features/welcome/welcome_screen.dart';
 import '../features/words/words_screen.dart';
 
-GoRouter buildRouter({String initialLocation = '/'}) => GoRouter(
+/// 첫 실행(레벨 진단 전)에도 들어갈 수 있는 경로
+const _onboardingPaths = {'/welcome', '/level-test', '/level-result'};
+
+GoRouter buildRouter({String initialLocation = '/', bool Function()? isOnboarded}) => GoRouter(
   initialLocation: initialLocation,
+  redirect: (context, state) {
+    final onboarded = isOnboarded?.call() ?? true;
+    if (!onboarded && !_onboardingPaths.contains(state.matchedLocation)) return '/welcome';
+    return null;
+  },
   routes: [
+    GoRoute(path: '/welcome', builder: (_, _) => const WelcomeScreen()),
     StatefulShellRoute.indexedStack(
       builder: (context, state, shell) => TabShell(shell: shell),
       branches: [

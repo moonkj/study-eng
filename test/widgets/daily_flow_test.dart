@@ -3,6 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:todaye/app/app.dart';
 import 'package:todaye/app/study_controller.dart';
+import 'package:todaye/data/store.dart';
+import 'package:todaye/domain/level.dart';
+import 'package:todaye/domain/study_log.dart';
 import 'package:todaye/features/speaking/speech_input.dart';
 
 class _PerfectSpeech implements SpeechInput {
@@ -13,8 +16,27 @@ class _PerfectSpeech implements SpeechInput {
   Future<String> listen(String target) async => target;
 }
 
-Widget app({String initial = '/'}) => ProviderScope(
+/// 진단을 마치고 11/10~11/21 12일 연속 학습한 사용자
+SavedData seeded() => SavedData(
+  profile: const LearnerProfile(
+    overall: Level(764),
+    skills: {
+      Skill.vocabulary: Level(980),
+      Skill.grammar: Level(720),
+      Skill.listening: Level(700),
+      Skill.speaking: Level(430),
+    },
+  ),
+  contentStep: 7,
+  onboarded: true,
+  log: {
+    for (var d = 10; d <= 21; d++) dateKey(DateTime(2026, 11, d)): DayRecord(accuracy: 0.88, levelScore: 700 + d * 2),
+  },
+);
+
+Widget app({String initial = '/', AppStore? store}) => ProviderScope(
   overrides: [
+    storeProvider.overrideWithValue(store ?? MemoryStore(seeded())),
     clockProvider.overrideWithValue(() => DateTime(2026, 11, 22, 8, 0)),
     speechInputProvider.overrideWithValue(_PerfectSpeech()),
   ],
@@ -95,6 +117,19 @@ void main() {
     final s = container.read(studyProvider);
     expect(s.allDone, isTrue);
     expect(s.contentStep, 8);
+  });
+
+  testWidgets('첫 실행이면 환영 화면이 나오고, 건너뛰면 B1.1로 시작한다', (tester) async {
+    await setPhone(tester);
+    await tester.pumpWidget(app(store: MemoryStore()));
+    await tester.pumpAndSettle();
+
+    expect(find.text('레벨 진단 시작하기'), findsOneWidget);
+    await tester.tap(find.text('건너뛰고 B1부터 시작'));
+    await tester.pumpAndSettle();
+    expect(find.text('오늘의 루틴'), findsOneWidget);
+    expect(find.text('B1.1'), findsOneWidget);
+    expect(find.text('오늘부터 시작'), findsOneWidget);
   });
 
   testWidgets('레벨 진단 12문항을 마치면 결과 화면으로 간다', (tester) async {

@@ -15,9 +15,9 @@ class CompleteScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final s = ref.watch(studyProvider);
-    final adj = s.adjustment;
+    final delta = s.todayLevelDelta;
     final now = s.profile.overall;
-    final before = adj == null ? now : Level(now.score - adj.levelDelta);
+    final before = delta == null ? now : Level(now.score - delta);
     final speaking = s.speakingAverage;
     final newWords = s.wordRatings.values.where((r) => r != SelfRating.know).length;
 
@@ -88,13 +88,13 @@ class CompleteScreen extends ConsumerWidget {
                           children: [
                             Text('레벨 점수', style: sans(14, weight: FontWeight.w600)),
                             const Spacer(),
-                            if (adj != null)
+                            if (delta != null)
                               Text(
-                                '${adj.levelDelta >= 0 ? '+' : ''}${adj.levelDelta}',
+                                '${delta >= 0 ? '+' : ''}$delta',
                                 style: sans(
                                   13,
                                   weight: FontWeight.w700,
-                                  color: adj.levelDelta >= 0 ? AppColors.success : AppColors.error,
+                                  color: delta >= 0 ? AppColors.success : AppColors.error,
                                 ),
                               ),
                           ],

@@ -5,7 +5,8 @@ import '../../app/study_controller.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/widgets.dart';
-import '../../domain/srs.dart';
+import '../../domain/level.dart';
+import '../../domain/study_log.dart';
 
 class ProgressScreen extends ConsumerWidget {
   const ProgressScreen({super.key});
@@ -14,7 +15,15 @@ class ProgressScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final s = ref.watch(studyProvider);
     final now = ref.watch(clockProvider)();
-    final knownWords = 405 + s.wordRatings.values.where((r) => r == SelfRating.know).length;
+    // 단어 카드 중 '알아요'(7일 간격) 이상까지 올라간 것을 외운 단어로 센다
+    final knownWords = s.cards.values.where((c) => c.itemId.startsWith('w-') && c.stage >= 2).length;
+    final records = s.log.values.toList();
+    final accuracy = records.isEmpty ? null : records.map((r) => r.accuracy).reduce((a, b) => a + b) / records.length;
+    final keys = s.log.keys.toList()..sort();
+    final points = [
+      for (final k in keys.length > 60 ? keys.sublist(keys.length - 60) : keys)
+        (parseDateKey(k), s.log[k]!.levelScore.toDouble()),
+    ];
 
     return SafeArea(
       child: ListView(
@@ -38,11 +47,23 @@ class ProgressScreen extends ConsumerWidget {
                   ],
                 ),
                 const SizedBox(height: 8),
-                SizedBox(
-                  height: 110,
-                  width: double.infinity,
-                  child: CustomPaint(painter: _GrowthPainter(current: s.profile.overall.score.toDouble())),
-                ),
+                if (points.length < 2)
+                  SizedBox(
+                    height: 110,
+                    child: Center(
+                      child: Text(
+                        '루틴을 이틀 이상 끝내면\n레벨 변화가 여기에 그려져요',
+                        textAlign: TextAlign.center,
+                        style: sans(13, color: AppColors.ink2, height: 1.5),
+                      ),
+                    ),
+                  )
+                else
+                  SizedBox(
+                    height: 110,
+                    width: double.infinity,
+                    child: CustomPaint(painter: _GrowthPainter(points: points)),
+                  ),
               ],
             ),
           ),
@@ -51,7 +72,7 @@ class ProgressScreen extends ConsumerWidget {
             children: [
               _Stat(label: '외운 단어', value: '$knownWords'),
               const SizedBox(width: 8),
-              const _Stat(label: '퀴즈 정답률', value: '81%'),
+              _Stat(label: '퀴즈 정답률', value: accuracy == null ? '-' : '${(accuracy * 100).round()}%'),
               const SizedBox(width: 8),
               _Stat(label: '연속 학습', value: '${s.streakDays}일'),
             ],
@@ -77,6 +98,8 @@ class ProgressScreen extends ConsumerWidget {
           const SizedBox(height: 18),
           Text('자동 조정 내역', style: sans(14, weight: FontWeight.w600)),
           const SizedBox(height: 8),
+          if (s.lastAdjustmentReasons.isEmpty)
+            Text('첫 루틴을 끝내면 내일 학습을 어떻게 바꿨는지 알려드려요.', style: sans(13, color: AppColors.ink2)),
           for (final r in s.lastAdjustmentReasons)
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
@@ -187,24 +210,37 @@ class _DayCell extends StatelessWidget {
   }
 }
 
-/// 3개월 레벨 변화 곡선 (현재는 최근 값만 실제, 이전 값은 기록 저장 기능이 붙으면 대체)
+/// 날짜별 레벨 점수 곡선
 class _GrowthPainter extends CustomPainter {
-  _GrowthPainter({required this.current});
-  final double current;
+  _GrowthPainter({required this.points});
+  final List<(DateTime, double)> points;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final points = [current - 300, current - 170, current - 60, current];
-    final minV = points.first - 40;
-    final maxV = current + 40;
+    final values = points.map((p) => p.$2).toList();
+    final minV = values.reduce((a, b) => a < b ? a : b) - 30;
+    final maxV = values.reduce((a, b) => a > b ? a : b) + 30;
+    final first = points.first.$1;
+    final span = points.last.$1.difference(first).inDays.clamp(1, 100000);
     Offset p(int i) => Offset(
-      24 + i * (size.width - 36) / (points.length - 1),
-      size.height - 18 - (points[i] - minV) / (maxV - minV) * (size.height - 30),
+      30 + points[i].$1.difference(first).inDays / span * (size.width - 42),
+      size.height - 18 - (values[i] - minV) / (maxV - minV) * (size.height - 30),
     );
     final grid = Paint()..color = const Color(0xFFEDE6D8);
     for (var i = 0; i < 3; i++) {
       final y = 8 + i * (size.height - 26) / 2;
       canvas.drawLine(Offset(0, y), Offset(size.width, y), grid);
+    }
+    // 세로축: 최저/최고 레벨 라벨
+    for (final (v, y) in [(maxV - 30, 8.0), (minV + 30, size.height - 26)]) {
+      final tp = TextPainter(
+        text: TextSpan(
+          text: Level(v.round()).label,
+          style: sans(10, color: AppColors.ink2),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      tp.paint(canvas, Offset(0, y - 6));
     }
     final path = Path()..moveTo(p(0).dx, p(0).dy);
     for (var i = 1; i < points.length; i++) {
@@ -228,19 +264,19 @@ class _GrowthPainter extends CustomPainter {
     final last = p(points.length - 1);
     canvas.drawCircle(last, 6, Paint()..color = AppColors.card);
     canvas.drawCircle(last, 4.5, Paint()..color = AppColors.penBlue);
-    const labels = ['9월', '10월', '', '11월'];
-    for (var i = 0; i < labels.length; i++) {
+    for (final i in {0, points.length - 1}) {
+      final d = points[i].$1;
       final tp = TextPainter(
         text: TextSpan(
-          text: labels[i],
+          text: '${d.month}/${d.day}',
           style: sans(10, color: AppColors.ink2),
         ),
         textDirection: TextDirection.ltr,
       )..layout();
-      tp.paint(canvas, Offset(p(i).dx - tp.width / 2, size.height - 12));
+      tp.paint(canvas, Offset((p(i).dx - tp.width / 2).clamp(0, size.width - tp.width), size.height - 12));
     }
   }
 
   @override
-  bool shouldRepaint(_GrowthPainter old) => old.current != current;
+  bool shouldRepaint(_GrowthPainter old) => old.points.length != points.length;
 }
