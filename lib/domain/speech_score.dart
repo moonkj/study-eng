@@ -59,7 +59,7 @@ String _normalizeTimes(String heard) {
   s = s.replaceAllMapped(RegExp(r'\bhalf past (\w+)'), (m) => '${hourWord(m[1]!)} thirty');
   s = s.replaceAllMapped(RegExp(r'\b(?:a )?quarter (?:to|till) (\w+)'), (m) {
     final h = _hours[m[1]!] ?? int.tryParse(m[1]!);
-    if (h == null) return m[0]!;
+    if (h == null || h < 1 || h > 12) return m[0]!;
     return '${_numberWords(h == 1 ? 12 : h - 1)!.join(' ')} forty five';
   });
   return s;
@@ -112,7 +112,7 @@ List<String> _expand(String raw) {
       ];
     }
   }
-  if (RegExp(r'^\d+$').hasMatch(w)) {
+  if (RegExp(r'^\d{1,2}$').hasMatch(w)) {
     final n = _numberWords(int.parse(w));
     if (n != null) return n;
   }
@@ -142,7 +142,20 @@ List<_Token> _tokens(List<String> words) => [
     for (final t in _expand(words[i])) _Token(t, i),
 ];
 
+/// 채점. 어떤 입력에도 예외를 던지지 않는다 (저장된 인식 문장을 앱을 켤 때마다 다시 채점하므로).
 SpeechScore scoreSpeech(String target, String heard) {
+  try {
+    return _scoreSpeech(target, heard);
+  } catch (_) {
+    return SpeechScore(
+      score: 0,
+      words: [for (final w in target.split(RegExp(r'\s+'))) WordMatch(w, false)],
+      heard: heard,
+    );
+  }
+}
+
+SpeechScore _scoreSpeech(String target, String heard) {
   // 하이픈은 띄어 쓴 것으로 본다 (well-known = well known)
   final targetWords = target.split(RegExp(r'\s+')).where((w) => _norm(w).isNotEmpty).toList();
   final tt = [

@@ -30,6 +30,10 @@ class AppPalette {
     required this.mutedSoft,
     required this.dotIdle,
     required this.onInkSoft,
+    required this.emphasis,
+    required this.onEmphasis,
+    required this.onEmphasisAccent,
+    required this.onEmphasisSoft,
   });
 
   final Brightness brightness;
@@ -59,6 +63,12 @@ class AppPalette {
   final Color dotIdle;
   final Color onInkSoft;
 
+  /// 강조 면(지금 할 루틴, 완료 카드, 오늘 칸)과 그 위의 글자
+  final Color emphasis;
+  final Color onEmphasis;
+  final Color onEmphasisAccent;
+  final Color onEmphasisSoft;
+
   static const light = AppPalette(
     brightness: Brightness.light,
     paper: Color(0xFFF5F0E6),
@@ -86,6 +96,10 @@ class AppPalette {
     mutedSoft: Color(0xFFF7F2E8),
     dotIdle: Color(0xFFCFC5B2),
     onInkSoft: Color(0xFFDDD3C1),
+    emphasis: Color(0xFF1F1D1A),
+    onEmphasis: Color(0xFFFFFDF8),
+    onEmphasisAccent: Color(0xFFF3DB7A),
+    onEmphasisSoft: Color(0xFFDDD3C1),
   );
 
   static const dark = AppPalette(
@@ -104,7 +118,7 @@ class AppPalette {
     penBlueDark: Color(0xFFC6D5EF),
     penBlueTint: Color(0xFF222D40),
     penBlueSoft: Color(0xFF3E5274),
-    highlighter: Color(0xFF8C7424),
+    highlighter: Color(0xFF6B5A22),
     success: Color(0xFF8DC39B),
     successTint: Color(0xFF1E2B21),
     error: Color(0xFFEC957F),
@@ -115,6 +129,10 @@ class AppPalette {
     mutedSoft: Color(0xFF25221E),
     dotIdle: Color(0xFF4A443B),
     onInkSoft: Color(0xFF4A443B),
+    emphasis: Color(0xFF3A3226),
+    onEmphasis: Color(0xFFF1EBDF),
+    onEmphasisAccent: Color(0xFFE8C766),
+    onEmphasisSoft: Color(0xFFB2A898),
   );
 }
 
@@ -159,6 +177,10 @@ abstract final class AppColors {
 
   /// 잉크색 배경 위 보조 글자
   static Color get onInkSoft => _p.onInkSoft;
+  static Color get emphasis => _p.emphasis;
+  static Color get onEmphasis => _p.onEmphasis;
+  static Color get onEmphasisAccent => _p.onEmphasisAccent;
+  static Color get onEmphasisSoft => _p.onEmphasisSoft;
 
   /// 결과 시트 그림자
   static Color get sheetShadow => isDark ? const Color(0x80000000) : const Color(0x4D3C2D14);
@@ -199,6 +221,8 @@ abstract final class AppMotion {
   static const fast = Duration(milliseconds: 160);
   static const base = Duration(milliseconds: 240);
   static const slow = Duration(milliseconds: 320);
+  static const celebrate = Duration(milliseconds: 700);
+  static const count = Duration(milliseconds: 900);
   static const curve = Curves.easeOutCubic;
 }
 

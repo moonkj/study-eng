@@ -211,11 +211,12 @@ class _DayCell extends StatelessWidget {
     final isToday = day == today;
     final future = day > today;
     final (bg, fg) = isToday
-        ? (AppColors.ink, AppColors.highlighter)
+        ? (AppColors.emphasis, AppColors.onEmphasisAccent)
         : future
         ? (Colors.transparent, AppColors.ink2)
         : studied
-        ? (AppColors.penBlue, AppColors.card)
+        // 밤의 종이에서는 밝은 파랑 타일이 눈부시지 않게 차분한 파랑에 잉크 글자
+        ? (AppColors.isDark ? (AppColors.penBlueSoft, AppColors.ink) : (AppColors.penBlue, AppColors.card))
         : rested
         ? (AppColors.sand, AppColors.ink)
         : (AppColors.muted, AppColors.ink2);
@@ -283,7 +284,9 @@ class _GrowthPainter extends CustomPainter {
       canvas.drawLine(Offset(0, y), Offset(size.width, y), grid);
     }
     // 세로축: 최저/최고 레벨 라벨
-    for (final (v, y) in [(maxV - 30, 8.0), (minV + 30, size.height - 26)]) {
+    // 위아래가 같은 단계면(변화가 작은 기간) 한 번만 쓴다
+    final top = Level((maxV - 30).round()).label, bottom = Level((minV + 30).round()).label;
+    for (final (v, y) in [(maxV - 30, 8.0), if (top != bottom) (minV + 30, size.height - 26)]) {
       final tp = TextPainter(
         text: TextSpan(
           text: Level(v.round()).label,

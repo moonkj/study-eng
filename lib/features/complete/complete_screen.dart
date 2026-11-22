@@ -48,7 +48,8 @@ class _CompleteScreenState extends ConsumerState<CompleteScreen> {
     final prevBest = s.previousLongest;
     final milestone = switch (streak) {
       3 => '3일 연속! 작심삼일을 넘었어요',
-      7 => '일주일 연속! 쉬는 날이 1개 생겼어요',
+      7 when s.streak.restsLeft > s.previousStreak.restsLeft => '일주일 연속! 쉬는 날이 1개 생겼어요',
+      7 => '일주일 연속! 습관이 되어 가고 있어요',
       14 => '2주 연속! 정말 대단해요',
       21 => '3주 연속! 이제 습관이에요',
       30 => '한 달 연속! 이제 영어가 일상이에요',
@@ -71,7 +72,7 @@ class _CompleteScreenState extends ConsumerState<CompleteScreen> {
                     // 불꽃(또는 레벨 업이면 새 레벨)이 톡 튀어나온다
                     child: TweenAnimationBuilder<double>(
                       tween: Tween(begin: 0.6, end: 1),
-                      duration: motion(context, const Duration(milliseconds: 700)),
+                      duration: motion(context, AppMotion.celebrate),
                       // 동작 줄이기면 튕김 없이
                       curve: MediaQuery.disableAnimationsOf(context) ? Curves.linear : Curves.elasticOut,
                       builder: (_, v, child) => Transform.scale(scale: v, child: child),
@@ -80,13 +81,18 @@ class _CompleteScreenState extends ConsumerState<CompleteScreen> {
                         height: 112,
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
-                          color: AppColors.ink,
+                          color: AppColors.emphasis,
                           shape: BoxShape.circle,
-                          boxShadow: [BoxShadow(color: AppColors.sand, spreadRadius: 10)],
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.isDark ? AppColors.highlighter.withValues(alpha: 0.25) : AppColors.sand,
+                              spreadRadius: 10,
+                            ),
+                          ],
                         ),
                         child: levelUp
-                            ? Text(now.label, style: serif(34, weight: 600, color: AppColors.highlighter))
-                            : Icon(Icons.local_fire_department_rounded, size: 46, color: AppColors.highlighter),
+                            ? Text(now.label, style: serif(34, weight: 600, color: AppColors.onEmphasisAccent))
+                            : Icon(Icons.local_fire_department_rounded, size: 46, color: AppColors.onEmphasisAccent),
                       ),
                     ),
                   ),
@@ -95,7 +101,7 @@ class _CompleteScreenState extends ConsumerState<CompleteScreen> {
                     // 연속 학습일이 하나 올라가는 순간을 보여준다
                     child: TweenAnimationBuilder<double>(
                       tween: Tween(begin: (s.streakDays - 1).clamp(0, 99999).toDouble(), end: s.streakDays.toDouble()),
-                      duration: motion(context, const Duration(milliseconds: 900)),
+                      duration: motion(context, AppMotion.count),
                       curve: Curves.easeOutCubic,
                       builder: (_, v, _) => Text.rich(
                         TextSpan(

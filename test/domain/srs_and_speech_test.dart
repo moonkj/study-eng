@@ -120,6 +120,12 @@ void main() {
       expect(scoreSpeech('Lunch is at 12:00.', 'lunch is at noon').score, 100);
     });
 
+    test('이상한 인식 결과에도 예외 없이 채점한다', () {
+      expect(scoreSpeech('See you at 3.', 'see you at quarter to 75').score, lessThan(100));
+      expect(scoreSpeech('Call 3.', 'call 123456789012345678901234').score, lessThan(100));
+      expect(scoreSpeech('Hi.', '').score, 0);
+    });
+
     test('a·the·to 를 놓쳐도 크게 깎지 않고, 다르게 들린 단어 목록에서는 뺀다', () {
       final s = scoreSpeech('I need to grab a coffee.', 'I need grab coffee');
       expect(s.score, greaterThanOrEqualTo(80));

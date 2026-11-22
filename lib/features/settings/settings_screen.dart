@@ -120,7 +120,6 @@ void _pick<T>(
   showModalBottomSheet<void>(
     useRootNavigator: true,
     context: context,
-    backgroundColor: AppColors.card,
     shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.sheet))),
     builder: (ctx) => SafeArea(
       child: Padding(

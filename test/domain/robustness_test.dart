@@ -340,4 +340,27 @@ void main() {
     expect(c.read(studyProvider).speakingAverage, 100);
     c.dispose();
   });
+
+  test('예전·깨진 저장 데이터: 기록은 하루씩, 날짜 키 검사, 오늘 진행은 빠진 필드를 기본값으로', () {
+    final json = SavedData(profile: profile, contentStep: 7, onboarded: true).toJson();
+    json['log'] = {
+      '2026-11-21': {'accuracy': 'old-format'},
+      '2026-11-22': {'accuracy': 0.8, 'levelScore': 760},
+      'not-a-date': {'accuracy': 0.8, 'levelScore': 760},
+    };
+    json['today'] = {
+      'date': '2026-11-23',
+      'done': ['words'],
+    };
+    final loaded = SavedData.fromJson(json);
+    expect(loaded.log.keys, ['2026-11-22']);
+    expect(loaded.today!.done, {'words'});
+    expect(loaded.today!.wordRatings, isEmpty);
+    // 앱도 이 데이터로 문제없이 시작한다
+    final c = ProviderContainer(
+      overrides: [storeProvider.overrideWithValue(MemoryStore(loaded)), clockProvider.overrideWithValue(() => day)],
+    );
+    expect(c.read(studyProvider).streakDays, 1);
+    c.dispose();
+  });
 }

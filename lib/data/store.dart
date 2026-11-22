@@ -76,13 +76,21 @@ class TodayProgress {
     'regenCount': regenCount,
   };
 
+  /// 필드가 빠졌거나(예전 버전) 일부가 깨져도 날짜만 맞으면 나머지는 기본값으로 읽는다.
   factory TodayProgress.fromJson(Map<String, Object?> j) => TodayProgress(
     date: j['date'] as String,
-    done: {...(j['done'] as List).cast<String>()},
-    expressionKnown: (j['expressionKnown'] as Map).cast<String, bool>(),
-    wordRatings: (j['wordRatings'] as Map).map((k, v) => MapEntry(k as String, SelfRating.values.byName(v as String))),
-    spoken: (j['spoken'] as Map).cast<String, String>(),
-    quizAnswers: (j['quizAnswers'] as Map).map((k, v) => MapEntry(int.parse(k as String), (v as num).toInt())),
+    done: {...((j['done'] as List?) ?? const []).whereType<String>()},
+    expressionKnown: ((j['expressionKnown'] as Map?) ?? const {}).cast<String, bool>(),
+    wordRatings: {
+      for (final e in ((j['wordRatings'] as Map?) ?? const {}).entries)
+        if (SelfRating.values.any((r) => r.name == e.value))
+          e.key as String: SelfRating.values.byName(e.value as String),
+    },
+    spoken: ((j['spoken'] as Map?) ?? const {}).cast<String, String>(),
+    quizAnswers: {
+      for (final e in ((j['quizAnswers'] as Map?) ?? const {}).entries)
+        if (int.tryParse('${e.key}') != null && e.value is num) int.parse('${e.key}'): (e.value as num).toInt(),
+    },
     levelDelta: (j['levelDelta'] as num?)?.toInt(),
     packId: j['packId'] as String?,
     cardsBefore: ((j['cardsBefore'] as Map?) ?? const {}).map(
@@ -149,6 +157,8 @@ class AppSettings {
           theme: j['theme'] as String? ?? 'system',
         );
 }
+
+bool _isDateKey(Object? k) => k is String && RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(k);
 
 /// 기기에 저장되는 전체 학습 데이터
 class SavedData {
@@ -224,10 +234,16 @@ class SavedData {
       ),
       contentStep: section(() => (j['contentStep'] as num).toInt(), overall.step),
       onboarded: j['onboarded'] as bool,
-      log: section(
-        () => (j['log'] as Map).map((k, v) => MapEntry(k as String, DayRecord.fromJson((v as Map).cast()))),
-        const {},
-      ),
+      // 기록은 하루씩 읽는다 (예전 형식 하나 때문에 연속 기록 전체가 사라지지 않게). 날짜 키가 이상하면 버린다.
+      log: section(() {
+        final log = <String, DayRecord>{};
+        for (final e in (j['log'] as Map).entries) {
+          try {
+            if (_isDateKey(e.key)) log[e.key as String] = DayRecord.fromJson((e.value as Map).cast());
+          } catch (_) {}
+        }
+        return log;
+      }, const {}),
       cards: section(() {
         final cards = <String, ReviewCard>{};
         for (final e in (j['cards'] as Map).entries) {
@@ -242,8 +258,10 @@ class SavedData {
       today: section(() => j['today'] == null ? null : TodayProgress.fromJson((j['today'] as Map).cast()), null),
       lastReasons: section(() => (j['lastReasons'] as List).cast<String>(), const []),
       packs: section(
-        () =>
-            ((j['packs'] as Map?) ?? const {}).map((k, v) => MapEntry(k as String, (v as Map).cast<String, Object?>())),
+        () => {
+          for (final e in ((j['packs'] as Map?) ?? const {}).entries)
+            if (_isDateKey(e.key) && e.value is Map) e.key as String: (e.value as Map).cast<String, Object?>(),
+        },
         const {},
       ),
       learned: section(

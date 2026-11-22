@@ -64,6 +64,13 @@ ThemeData buildAppTheme() {
       error: AppColors.error,
       onError: AppColors.card,
       outline: AppColors.line,
+      outlineVariant: AppColors.line,
+      onSurfaceVariant: AppColors.ink2,
+      surfaceContainerLowest: AppColors.card,
+      surfaceContainerLow: AppColors.card,
+      surfaceContainer: AppColors.muted,
+      surfaceContainerHigh: AppColors.sandDeep,
+      surfaceContainerHighest: AppColors.sandDeep,
     ),
     // 종이 질감에 맞게 반짝이(InkSparkle) 대신 잔잔한 물결
     splashFactory: InkRipple.splashFactory,
@@ -77,6 +84,13 @@ ThemeData buildAppTheme() {
       surfaceTintColor: Colors.transparent,
       elevation: 0,
       foregroundColor: AppColors.ink,
+    ),
+    // 띄운 면(시트)은 다크에서 카드보다 한 단계 밝게
+    bottomSheetTheme: BottomSheetThemeData(
+      backgroundColor: AppColors.isDark ? const Color(0xFF2A2621) : AppColors.card,
+      modalBackgroundColor: AppColors.isDark ? const Color(0xFF2A2621) : AppColors.card,
+      dragHandleColor: AppColors.lineStrong,
+      surfaceTintColor: Colors.transparent,
     ),
     dividerTheme: DividerThemeData(color: AppColors.line, space: 1),
     filledButtonTheme: FilledButtonThemeData(

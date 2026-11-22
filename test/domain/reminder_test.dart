@@ -50,7 +50,7 @@ void main() {
       restsLeft: 1,
       longest: 8,
     );
-    expect(plan.length, 6);
+    expect(plan.length, 13); // 14일 중 오늘(끝냄) 제외
     expect(plan.first.at, DateTime(2026, 11, 23, 20));
     expect(plan[0].title, '오늘 하면 9일');
     expect(plan[1].title, '쉬는 날로 지켜 둔 8일'); // 하루 빠짐 → 쉬는 날 1개로 지킴
@@ -65,7 +65,22 @@ void main() {
       longest: 8,
     );
     expect(notDone.first.at, DateTime(2026, 11, 22, 20)); // 오늘 저녁
-    expect(notDone.length, 7);
+    expect(notDone.length, 14);
+  });
+
+  test('새벽 4시 전 알림은 학습일의 다음 달력 날짜 새벽에 울린다', () {
+    final plan = planReminders(
+      now: DateTime(2026, 11, 22, 10),
+      studyToday: DateTime(2026, 11, 22),
+      minutes: 60,
+      doneToday: true,
+      streak: 3,
+      restsLeft: 0,
+      longest: 3,
+    );
+    // 22일 학습일을 끝냈으니 첫 알림은 23일 학습일 몫인 24일 01:00
+    expect(plan.first.at, DateTime(2026, 11, 24, 1));
+    expect(plan.first.title, '오늘 하면 4일');
   });
 
   test('시각 표시', () {

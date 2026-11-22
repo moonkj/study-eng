@@ -310,7 +310,7 @@ class _RateButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: dark ? AppColors.ink : AppColors.card,
+      color: dark ? AppColors.emphasis : AppColors.card,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: dark ? BorderSide.none : BorderSide(color: AppColors.line),
@@ -327,10 +327,10 @@ class _RateButton extends StatelessWidget {
             children: [
               Text(
                 label,
-                style: sans(15, weight: FontWeight.w600, color: dark ? AppColors.card : color),
+                style: sans(15, weight: FontWeight.w600, color: dark ? AppColors.onEmphasis : color),
               ),
               const SizedBox(height: 2),
-              Text(sub, style: sans(12, color: dark ? AppColors.onInkSoft : AppColors.ink2)),
+              Text(sub, style: sans(12, color: dark ? AppColors.onEmphasisSoft : AppColors.ink2)),
             ],
           ),
         ),

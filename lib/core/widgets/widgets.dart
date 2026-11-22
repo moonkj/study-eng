@@ -70,35 +70,38 @@ class HighlightText extends StatelessWidget {
     }
     // 줄 높이 단위로 반복되는 그라디언트로 글자 아래쪽 45%만 형광펜을 칠한다.
     final lineHeight = (style.fontSize ?? 16) * (style.height ?? 1.2);
+    // RepaintBoundary: 형광펜 셰이더 좌표가 이 글자 위치를 기준으로 반복되게 (없으면 띠가 위아래로 어긋난다)
     return englishSemantics(
       text,
-      Text.rich(
-        TextSpan(
-          children: [
-            TextSpan(text: text.substring(0, idx)),
-            TextSpan(
-              text: text.substring(idx, idx + h.length),
-              style: style.copyWith(
-                background: Paint()
-                  ..shader = LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    stops: [0.55, 0.55, 0.95, 0.95],
-                    colors: [
-                      AppColors.highlighter.withValues(alpha: 0),
-                      AppColors.highlighter,
-                      AppColors.highlighter,
-                      AppColors.highlighter.withValues(alpha: 0),
-                    ],
-                    tileMode: TileMode.repeated,
-                  ).createShader(Rect.fromLTWH(0, 0, 10, lineHeight)),
+      RepaintBoundary(
+        child: Text.rich(
+          TextSpan(
+            children: [
+              TextSpan(text: text.substring(0, idx)),
+              TextSpan(
+                text: text.substring(idx, idx + h.length),
+                style: style.copyWith(
+                  background: Paint()
+                    ..shader = LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      stops: [0.55, 0.55, 0.95, 0.95],
+                      colors: [
+                        AppColors.highlighter.withValues(alpha: 0),
+                        AppColors.highlighter,
+                        AppColors.highlighter,
+                        AppColors.highlighter.withValues(alpha: 0),
+                      ],
+                      tileMode: TileMode.repeated,
+                    ).createShader(Rect.fromLTWH(0, 0, 10, lineHeight)),
+                ),
               ),
-            ),
-            TextSpan(text: text.substring(idx + h.length)),
-          ],
+              TextSpan(text: text.substring(idx + h.length)),
+            ],
+          ),
+          style: style,
+          maxLines: maxLines,
         ),
-        style: style,
-        maxLines: maxLines,
       ),
     );
   }

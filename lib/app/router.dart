@@ -297,13 +297,14 @@ class _Focused extends StatelessWidget {
 /// 학습 화면 전환: 살짝 위로 떠오르며 나타난다 (240ms)
 GoRoute _focused(String path, Widget screen) => GoRoute(
   path: path,
-  pageBuilder: (_, state) => CustomTransitionPage<void>(
+  pageBuilder: (context, state) => CustomTransitionPage<void>(
     key: state.pageKey,
-    transitionDuration: const Duration(milliseconds: 240),
-    reverseTransitionDuration: const Duration(milliseconds: 200),
+    // '동작 줄이기'면 즉시 전환
+    transitionDuration: motion(context, AppMotion.base),
+    reverseTransitionDuration: motion(context, AppMotion.fast),
     child: _Focused(child: screen),
     transitionsBuilder: (_, animation, _, child) {
-      final curved = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+      final curved = CurvedAnimation(parent: animation, curve: AppMotion.curve);
       return FadeTransition(
         opacity: curved,
         child: SlideTransition(

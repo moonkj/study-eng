@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../core/theme/app_theme.dart';
 import '../core/theme/tokens.dart';
+import '../domain/study_log.dart';
 import 'study_controller.dart';
 
 const routinePaths = {
@@ -50,21 +51,15 @@ RoutineStep? nextStep(StudyState s) {
 
 /// 루틴 단계를 끝낸다. 홈으로 돌아가지 않고 다음 단계로 바로 이어갈 수 있게 묻는다.
 /// 모두 끝났으면 완료 화면으로 간다.
-bool _finishing = false;
-
 Future<void> finishStep(BuildContext context, WidgetRef ref, RoutineStep step) async {
-  if (_finishing) return; // 마지막 버튼을 빠르게 두 번 누른 경우
+  // 마지막 버튼을 빠르게 두 번 누른 경우: 이미 시트가 떠 있으면 무시 (전역 플래그 없이 화면 상태로 판단)
+  if (!(ModalRoute.of(context)?.isCurrent ?? true)) return;
   // 이미 끝낸 단계를 다시 본 것이면 축하·이어가기 없이 돌아간다
   if (ref.read(studyProvider).done.contains(step)) {
     context.pop();
     return;
   }
-  _finishing = true;
-  try {
-    await _finish(context, ref, step);
-  } finally {
-    _finishing = false;
-  }
+  await _finish(context, ref, step);
 }
 
 Future<void> _finish(BuildContext context, WidgetRef ref, RoutineStep step) async {
@@ -75,10 +70,11 @@ Future<void> _finish(BuildContext context, WidgetRef ref, RoutineStep step) asyn
     return;
   }
   final next = nextStep(s)!;
+  // 새벽 4시를 넘겨 학습일이 바뀐 상태(새로 고침을 미뤄 둔 상태)면 홈으로 가는 순간 어제 진행이 정리된다
+  final stale = s.today.date != dateKey(studyDay(ref.read(clockProvider)()));
   final remaining = RoutineStep.values.where((e) => !s.done.contains(e)).length;
   final go = await showModalBottomSheet<bool>(
     context: context,
-    backgroundColor: AppColors.card,
     showDragHandle: true,
     builder: (ctx) => SafeArea(
       child: Padding(
@@ -90,14 +86,19 @@ Future<void> _finish(BuildContext context, WidgetRef ref, RoutineStep step) asyn
             Text(_doneTitle(step), style: sans(20, weight: FontWeight.w700)),
             const SizedBox(height: 6),
             Text(
-              '남은 단계 $remaining개 · 약 ${remainingMinutes(s)}분 · 다음은 ${stepTitle(next, s)}',
+              stale
+                  ? '새벽 4시가 지나 어제 루틴이 됐어요. 지금 이어서 끝내야 어제 기록으로 남아요.'
+                  : '남은 단계 $remaining개 · 약 ${remainingMinutes(s)}분 · 다음은 ${stepTitle(next, s)}',
               style: sans(14, color: AppColors.ink2),
             ),
             const SizedBox(height: 20),
             // 키보드(Enter)로도 바로 이어갈 수 있게
             FilledButton(autofocus: true, onPressed: () => Navigator.pop(ctx, true), child: const Text('이어서 하기')),
             const SizedBox(height: 4),
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('나중에 할게요')),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(stale ? '그만하기 (어제 진행은 정리돼요)' : '나중에 할게요'),
+            ),
           ],
         ),
       ),

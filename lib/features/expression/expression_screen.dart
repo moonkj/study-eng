@@ -298,8 +298,8 @@ class _ChoicePill extends StatelessWidget {
       selected: selected,
       button: true,
       child: Material(
-        color: selected ? AppColors.ink : Colors.transparent,
-        shape: StadiumBorder(side: BorderSide(color: selected ? AppColors.ink : AppColors.line)),
+        color: selected ? AppColors.emphasis : Colors.transparent,
+        shape: StadiumBorder(side: BorderSide(color: selected ? AppColors.emphasis : AppColors.line)),
         child: InkWell(
           customBorder: const StadiumBorder(),
           onTap: onTap,
@@ -307,7 +307,7 @@ class _ChoicePill extends StatelessWidget {
             constraints: const BoxConstraints(minHeight: 44),
             padding: const EdgeInsets.symmetric(horizontal: 14),
             alignment: Alignment.center,
-            child: Text(label, style: sans(13, color: selected ? AppColors.card : AppColors.ink)),
+            child: Text(label, style: sans(13, color: selected ? AppColors.onEmphasis : AppColors.ink)),
           ),
         ),
       ),

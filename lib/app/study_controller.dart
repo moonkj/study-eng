@@ -95,8 +95,20 @@ class StudyState {
   /// 최고 연속 기록 (쉬는 날로 이어진 기록 포함)
   int get longestStreak => streak.best;
 
-  /// 오늘을 빼고 계산한 최고 기록 (오늘 완료로 기록을 새로 세웠는지 보려고)
-  int get previousLongest => computeStreakInfo(log.keys.where((k) => k != dateKey(now)), now).best;
+  /// 오늘 완료를 빼고 계산한 연속 상태 (오늘 기록을 새로 세웠는지, 쉬는 날이 새로 생겼는지 보려고)
+  late final StreakInfo previousStreak = computeStreakInfo(log.keys.where((k) => k != dateKey(now)), now);
+  int get previousLongest => previousStreak.best;
+
+  /// 어제부터 거슬러 올라가며 연달아 쓴 쉬는 날 수
+  int get restsUsedRecently {
+    var n = 0;
+    var d = DateTime(now.year, now.month, now.day - 1);
+    while (streak.restDays.contains(dateKey(d))) {
+      n++;
+      d = DateTime(d.year, d.month, d.day - 1);
+    }
+    return n;
+  }
 
   /// 이번 달에 루틴을 끝낸 날짜(일)
   Set<int> get studiedDays => {
@@ -265,7 +277,11 @@ class StudyController extends Notifier<StudyState> {
     // 오늘 진행이 다른 팩에 대한 것이면(캐시가 버려졌거나 바뀜) 번호 기준 진행이 어긋나므로 비운다
     final id = packIdOf(pack);
     var cards = saved?.cards ?? const <String, ReviewCard>{};
-    if (today.packId != null && today.packId != id) {
+    // (오늘 루틴을 이미 끝냈으면 기록·레벨이 반영됐으므로 진행을 지우지 않는다: 다시 하면 두 번 반영되므로)
+    final finishedToday = saved?.log.containsKey(todayKey) ?? false;
+    if (today.packId != null && today.packId != id && finishedToday) {
+      today = _withPackId(today, id);
+    } else if (today.packId != null && today.packId != id) {
       // 지운 진행으로 바뀐 복습 카드는 원래대로 돌린다 (다시 평가할 때 두 번 오르지 않게)
       cards = {...cards};
       for (final e in today.cardsBefore.entries) {
@@ -559,15 +575,15 @@ class StudyController extends Notifier<StudyState> {
     if (state.quizAnswers.containsKey(index) || index >= state.pack.quiz.length) return;
     final item = state.pack.quiz[index];
     // 문제가 다루는 표현·단어의 복습 일정을 바꾼다
-    final cardId = item.itemId ?? item.id;
-    final card = state.cards[cardId] ?? ReviewCard.fresh(cardId, _today);
+    // 어느 항목인지 모르는 문제는 복습 카드를 만들지 않는다 (복습에 나오지 않는 카드가 쌓이지 않게)
+    final cardId = item.itemId;
+    final card = cardId == null ? null : state.cards[cardId] ?? ReviewCard.fresh(cardId, _today);
     _set(
       state.copyWith(
         today: _progress(quizAnswers: {...state.quizAnswers, index: choice}),
-        cards: {
-          ...state.cards,
-          cardId: Srs.answer(card, correct: item.answerIndex == choice, today: _today),
-        },
+        cards: card == null
+            ? null
+            : {...state.cards, cardId!: Srs.answer(card, correct: item.answerIndex == choice, today: _today)},
       ),
     );
   }
@@ -625,8 +641,18 @@ class StudyController extends Notifier<StudyState> {
     }
   }
 
+  /// 알림 예약·취소를 한 줄로 세운다 (켜고 끄는 요청이 겹쳐 껐는데도 예약되는 일이 없게).
+  Future<void> _reminderQueue = Future.value();
+  Future<T> _serial<T>(Future<T> Function() op) {
+    final next = _reminderQueue.then((_) => op());
+    _reminderQueue = next.then((_) {}, onError: (_) {});
+    return next;
+  }
+
   /// 아침 알림을 켜거나(분) 끈다(null). 권한이 없어 예약하지 못하면 false.
-  Future<bool> setReminder(int? minutes) async {
+  Future<bool> setReminder(int? minutes) => _serial(() => _setReminder(minutes));
+
+  Future<bool> _setReminder(int? minutes) async {
     final reminder = ref.read(reminderProvider);
     if (minutes == null) {
       await reminder.cancel();
@@ -644,7 +670,11 @@ class StudyController extends Notifier<StudyState> {
 
   /// 앱을 열 때·루틴을 끝냈을 때 알림 문구(연속 학습일)를 새로 고친다. 권한은 묻지 않는다.
   /// 휴대폰 설정에서 알림을 꺼 두었으면 [reminderBlockedProvider] 로 알린다.
-  Future<void> syncReminder() async {
+  Future<void> syncReminder() => _serial(_syncReminder);
+
+  Future<void> _syncReminder() async {
+    if (!ref.mounted) return;
+    // 줄을 기다리는 사이 알림을 껐을 수 있으므로 실행할 때의 설정을 본다
     final minutes = state.settings.reminderMinutes;
     if (minutes == null) return;
     final ok = await ref.read(reminderProvider).schedule(_reminderPlan(minutes), askPermission: false);

@@ -35,12 +35,20 @@ List<ReminderSlot> planReminders({
   required int streak,
   required int restsLeft,
   required int longest,
-  int days = 7,
+  int days = 14,
 }) {
+  // 새벽 4시 전 알림(예: 01:00)은 그 학습일이 끝나 가는 밤이 아니라 '다음 달력 날짜'의 새벽에 울린다
+  final nextCalendarDay = minutes < 4 * 60 ? 1 : 0;
   final slots = <ReminderSlot>[];
   for (var k = 0; k < days; k++) {
     if (k == 0 && doneToday) continue;
-    final at = DateTime(studyToday.year, studyToday.month, studyToday.day + k, minutes ~/ 60, minutes % 60);
+    final at = DateTime(
+      studyToday.year,
+      studyToday.month,
+      studyToday.day + k + nextCalendarDay,
+      minutes ~/ 60,
+      minutes % 60,
+    );
     if (!at.isAfter(now)) continue;
     // 이 알림 전에 공부하지 않고 지나간 날 수
     final missed = doneToday ? k - 1 : k;
@@ -75,8 +83,8 @@ class DeviceReminder implements Reminder {
   final _plugin = FlutterLocalNotificationsPlugin();
   bool _initialized = false;
 
-  /// 날짜별 알림 id (1..7)
-  static const _ids = [1, 2, 3, 4, 5, 6, 7];
+  /// 날짜별 알림 id (1..14). 2주 동안 앱을 열지 않아도 알림이 이어진다 (iOS 예약 한도 64개 안).
+  static final _ids = [for (var i = 1; i <= 14; i++) i];
 
   bool get _supported => !kIsWeb;
 
@@ -132,9 +140,8 @@ class DeviceReminder implements Reminder {
     try {
       await _init();
       if (!await (askPermission ? _requestPermission() : _hasPermission())) return false;
-      for (final id in _ids) {
-        await _plugin.cancel(id: id);
-      }
+      // 예전 빌드가 다른 id 로 예약한 알림까지 모두 지운다
+      await _plugin.cancelAll();
       for (var i = 0; i < slots.length && i < _ids.length; i++) {
         await _scheduleOne(_ids[i], slots[i]);
       }
@@ -169,9 +176,7 @@ class DeviceReminder implements Reminder {
     if (!_supported) return;
     try {
       await _init();
-      for (final id in _ids) {
-        await _plugin.cancel(id: id);
-      }
+      await _plugin.cancelAll();
     } catch (_) {}
   }
 }

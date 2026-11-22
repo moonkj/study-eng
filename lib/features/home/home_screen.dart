@@ -6,7 +6,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../app/routine_flow.dart';
 import '../../app/study_controller.dart';
-import '../../domain/study_log.dart';
 import '../../core/layout/adaptive.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/tokens.dart';
@@ -49,9 +48,9 @@ class HomeScreen extends ConsumerWidget {
               Text(koreanDate(s.now), style: sans(13, color: AppColors.ink2, letterSpacing: 0.2)),
               const SizedBox(height: 4),
               Text(greeting(now), style: sans(26, weight: FontWeight.w700, letterSpacing: -0.5)),
-              if (!s.allDone && s.streak.restDays.contains(dateKey(s.now.subtract(const Duration(days: 1))))) ...[
+              if (!s.allDone && s.restsUsedRecently > 0) ...[
                 const SizedBox(height: 4),
-                Text('어제는 쉬는 날 1개로 연속 기록을 지켰어요', style: sans(13, color: AppColors.ink2)),
+                Text('쉬는 날 ${s.restsUsedRecently}개로 연속 기록을 지켰어요', style: sans(13, color: AppColors.ink2)),
               ],
             ],
           ),
@@ -336,10 +335,10 @@ class _DoneCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 18, 12, 18),
-      decoration: BoxDecoration(color: AppColors.ink, borderRadius: BorderRadius.circular(AppRadius.card)),
+      decoration: BoxDecoration(color: AppColors.emphasis, borderRadius: BorderRadius.circular(AppRadius.card)),
       child: Row(
         children: [
-          Icon(Icons.local_fire_department_rounded, color: AppColors.highlighter),
+          Icon(Icons.local_fire_department_rounded, color: AppColors.onEmphasisAccent),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -347,14 +346,14 @@ class _DoneCard extends StatelessWidget {
               children: [
                 Text(
                   '오늘 루틴 완료 · ${state.streakDays}일째',
-                  style: sans(15, weight: FontWeight.w700, color: AppColors.card),
+                  style: sans(15, weight: FontWeight.w700, color: AppColors.onEmphasis),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   state.dueCount > 0
                       ? '복습 카드 ${state.dueCount}장이 기다려요. ${state.reviewMinutes}분이면 돼요.'
                       : '오늘 복습까지 끝! 내일 만나요.',
-                  style: sans(13, color: AppColors.onInkSoft),
+                  style: sans(13, color: AppColors.onEmphasisSoft),
                 ),
               ],
             ),
@@ -362,7 +361,7 @@ class _DoneCard extends StatelessWidget {
           if (state.dueCount > 0)
             TextButton(
               onPressed: () => context.push('/review-session'),
-              style: TextButton.styleFrom(foregroundColor: AppColors.highlighter),
+              style: TextButton.styleFrom(foregroundColor: AppColors.onEmphasisAccent),
               child: const Text('복습하기'),
             ),
         ],
@@ -458,9 +457,9 @@ class _StreakChip extends StatelessWidget {
         constraints: const BoxConstraints(minHeight: 32),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
         decoration: BoxDecoration(
-          color: atRisk ? AppColors.ember : (doneToday ? AppColors.ink : AppColors.card),
+          color: atRisk ? AppColors.ember : (doneToday ? AppColors.emphasis : AppColors.card),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: atRisk ? AppColors.ember : (doneToday ? AppColors.ink : AppColors.line)),
+          border: Border.all(color: atRisk ? AppColors.ember : (doneToday ? AppColors.emphasis : AppColors.line)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -468,12 +467,16 @@ class _StreakChip extends StatelessWidget {
             Icon(
               doneToday ? Icons.local_fire_department_rounded : Icons.local_fire_department_outlined,
               size: 16,
-              color: atRisk ? AppColors.card : (doneToday ? AppColors.highlighter : AppColors.ember),
+              color: atRisk ? AppColors.card : (doneToday ? AppColors.onEmphasisAccent : AppColors.ember),
             ),
             const SizedBox(width: 4),
             Text(
               label,
-              style: sans(13, weight: FontWeight.w600, color: atRisk || doneToday ? AppColors.card : AppColors.ink),
+              style: sans(
+                13,
+                weight: FontWeight.w600,
+                color: atRisk || doneToday ? AppColors.onEmphasis : AppColors.ink,
+              ),
             ),
           ],
         ),
@@ -515,7 +518,7 @@ class _RoutineRow extends StatelessWidget {
 
     if (current) {
       return Material(
-        color: AppColors.ink,
+        color: AppColors.emphasis,
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
@@ -532,11 +535,11 @@ class _RoutineRow extends StatelessWidget {
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.highlighter, width: 2),
+                    border: Border.all(color: AppColors.onEmphasisAccent, width: 2),
                   ),
                   child: Text(
                     '$number',
-                    style: sans(13, weight: FontWeight.w700, color: AppColors.highlighter),
+                    style: sans(13, weight: FontWeight.w700, color: AppColors.onEmphasisAccent),
                   ),
                 ),
                 const SizedBox(width: 14),
@@ -547,13 +550,13 @@ class _RoutineRow extends StatelessWidget {
                     children: [
                       Text(
                         title,
-                        style: sans(15, weight: FontWeight.w600, color: AppColors.card),
+                        style: sans(15, weight: FontWeight.w600, color: AppColors.onEmphasis),
                       ),
                       SizedBox(height: 6),
                       ThinProgress(
                         _progress,
-                        color: AppColors.highlighter,
-                        track: AppColors.card.withValues(alpha: 0.2),
+                        color: AppColors.onEmphasisAccent,
+                        track: AppColors.onEmphasis.withValues(alpha: 0.2),
                       ),
                     ],
                   ),
@@ -561,9 +564,9 @@ class _RoutineRow extends StatelessWidget {
                 SizedBox(width: 12),
                 Text(
                   _progress > 0 ? '이어서' : '시작',
-                  style: sans(13, weight: FontWeight.w600, color: AppColors.card),
+                  style: sans(13, weight: FontWeight.w600, color: AppColors.onEmphasis),
                 ),
-                Icon(Icons.chevron_right_rounded, color: AppColors.card, size: 18),
+                Icon(Icons.chevron_right_rounded, color: AppColors.onEmphasis, size: 18),
               ],
             ),
           ),
