@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:todaye/domain/korean_pron_tips.dart';
 import 'package:todaye/domain/speech_score.dart';
 import 'package:todaye/domain/srs.dart';
 
@@ -95,9 +96,23 @@ void main() {
 
     test('다르게 들린 단어를 찾아낸다', () {
       final s = scoreSpeech("Actually, I'm a little tired.", "Actually I'm a liddle tired");
-      expect(s.score, 80 - 3);
+      expect(s.score, 79); // 기능어 a 는 비중 절반, 군말 1개 -3
       expect(s.missed, ['little']);
       expect(s.words.map((w) => w.word), ['Actually,', "I'm", 'a', 'little', 'tired.']);
+    });
+
+    test('명사 축약, 구어 축약, 숫자·시각을 같은 말로 본다', () {
+      expect(scoreSpeech("My commute's way shorter now.", 'my commute is way shorter now').score, 100);
+      expect(scoreSpeech("I've gotta go.", 'I have got to go').score, 100);
+      expect(scoreSpeech('I usually take the 8:10 bus.', 'I usually take the eight ten bus').score, 100);
+      expect(scoreSpeech("The meeting's at 3.", "the meeting's at three").score, 100);
+      expect(scoreSpeech('It starts at 7:05.', 'it starts at seven oh five').score, 100);
+    });
+
+    test('a·the·to 를 놓쳐도 크게 깎지 않고, 다르게 들린 단어 목록에서는 뺀다', () {
+      final s = scoreSpeech('I need to grab a coffee.', 'I need grab coffee');
+      expect(s.score, greaterThanOrEqualTo(80));
+      expect(s.missed, isEmpty);
     });
 
     test('축약형과 풀어 쓴 형태를 같은 말로 본다', () {
@@ -109,5 +124,13 @@ void main() {
     test('아무것도 인식되지 않으면 0점', () {
       expect(scoreSpeech('Hello there.', '').score, 0);
     });
+  });
+
+  test('한국인 발음 요령: 철자로 흔한 실수를 고른다', () {
+    expect(koreanPronTip('think'), contains('th'));
+    expect(koreanPronTip('very'), contains("'v'"));
+    expect(koreanPronTip('coffee'), contains("'f'"));
+    expect(koreanPronTip('crowded,'), contains("'r'"));
+    expect(koreanPronTips(['the', 'that', 'very']).length, 2);
   });
 }

@@ -9,6 +9,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/widgets.dart';
 import '../../data/models.dart';
+import '../../domain/korean_pron_tips.dart';
 import '../../domain/speech_score.dart';
 import '../../core/audio/tts.dart';
 import 'speech_input.dart';
@@ -407,7 +408,8 @@ class _TipCard extends StatelessWidget {
     final missed = result.missed;
     final tip = missed.isEmpty
         ? '모든 단어가 또렷하게 들렸어요. 이번엔 조금 더 빠르게, 자연스럽게 말해 볼까요?'
-        : '${missed.map((w) => "'$w'").join(', ')} 부분이 다르게 들렸어요. 천천히 듣기로 한 번 더 들은 뒤 따라 해 보세요.';
+        : '${missed.map((w) => "'$w'").join(', ')} 부분이 다르게 들렸어요. 천천히 듣기로 한 번 더 듣고, 단어를 끊지 말고 덩어리로 이어서 말해 보세요.';
+    final pronTips = koreanPronTips(missed);
     return Container(
       padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
       decoration: BoxDecoration(color: AppColors.penBlueTint, borderRadius: BorderRadius.circular(AppRadius.card)),
@@ -426,6 +428,10 @@ class _TipCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(tip, style: sans(14, height: 1.6)),
+          for (final t in pronTips) ...[
+            const SizedBox(height: 6),
+            Text('· $t', style: sans(13, height: 1.55, color: AppColors.inkSoft)),
+          ],
         ],
       ),
     );

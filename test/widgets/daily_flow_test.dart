@@ -203,7 +203,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('매일 오전 7:30'), findsOneWidget);
     expect(reminder.scheduled.single.$1, 450);
-    expect(reminder.scheduled.single.$2, '12일 연속 학습 중');
+    // 8시라 오늘 7:30은 지났다. 내일 아침까지 오늘을 빠지면 쉬는 날(12일 연속으로 1개)로 지킨 상태
+    expect(reminder.scheduled.single.$2, '쉬는 날로 지켜 둔 12일');
   });
 
   testWidgets('첫 실행이면 환영 화면이 나오고, 건너뛰면 B1.1로 시작한다', (tester) async {

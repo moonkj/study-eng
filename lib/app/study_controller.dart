@@ -92,14 +92,11 @@ class StudyState {
   late final StreakInfo streak = computeStreakInfo(log.keys, now);
   int get streakDays => streak.days;
 
-  /// 최고 연속 기록 (쉬는 날로 이어진 지금 기록이 더 길면 그것)
-  int get longestStreak {
-    final raw = computeLongestStreak(log.keys);
-    return raw > streakDays ? raw : streakDays;
-  }
+  /// 최고 연속 기록 (쉬는 날로 이어진 기록 포함)
+  int get longestStreak => streak.best;
 
   /// 오늘을 빼고 계산한 최고 기록 (오늘 완료로 기록을 새로 세웠는지 보려고)
-  int get previousLongest => computeLongestStreak(log.keys.where((k) => k != dateKey(now)));
+  int get previousLongest => computeStreakInfo(log.keys.where((k) => k != dateKey(now)), now).best;
 
   /// 이번 달에 루틴을 끝낸 날짜(일)
   Set<int> get studiedDays => {
@@ -636,8 +633,7 @@ class StudyController extends Notifier<StudyState> {
       _set(state.copyWith(settings: state.settings.copyWith(reminderMinutes: () => null)));
       return true;
     }
-    final (title, body) = reminderText(state.streakDays, longest: state.longestStreak);
-    final ok = await reminder.scheduleDaily(minutes, title: title, body: body, notBefore: _nextReminderStart());
+    final ok = await reminder.schedule(_reminderPlan(minutes));
     if (!ref.mounted) return ok;
     if (ok) {
       ref.read(reminderBlockedProvider.notifier).set(false);
@@ -651,18 +647,22 @@ class StudyController extends Notifier<StudyState> {
   Future<void> syncReminder() async {
     final minutes = state.settings.reminderMinutes;
     if (minutes == null) return;
-    final (title, body) = reminderText(state.streakDays, longest: state.longestStreak);
-    final ok = await ref
-        .read(reminderProvider)
-        .scheduleDaily(minutes, title: title, body: body, askPermission: false, notBefore: _nextReminderStart());
+    final ok = await ref.read(reminderProvider).schedule(_reminderPlan(minutes), askPermission: false);
     if (ref.mounted) ref.read(reminderBlockedProvider.notifier).set(!ok);
   }
 
-  /// 오늘 루틴을 이미 끝냈으면 오늘 남은 알림은 건너뛰고 다음 학습일(새벽 4시 이후)부터 알린다.
-  DateTime? _nextReminderStart() {
-    if (!state.allDone) return null;
-    final d = state.now;
-    return DateTime(d.year, d.month, d.day + 1, dayStartHour);
+  /// 앞으로 7일 알림 계획 (오늘 끝냈으면 오늘은 건너뛰고, 날마다 연속 기록 상태에 맞는 문구)
+  List<ReminderSlot> _reminderPlan(int minutes) {
+    final s = state;
+    return planReminders(
+      now: ref.read(clockProvider)(),
+      studyToday: s.now,
+      minutes: minutes,
+      doneToday: s.allDone,
+      streak: s.streakDays,
+      restsLeft: s.streak.restsLeft,
+      longest: s.longestStreak,
+    );
   }
 
   void _finishDay() {

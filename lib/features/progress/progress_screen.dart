@@ -75,7 +75,7 @@ class ProgressScreen extends ConsumerWidget {
               const SizedBox(width: 8),
               _Stat(label: '퀴즈 정답률', value: accuracy == null ? '-' : '${(accuracy * 100).round()}%'),
               const SizedBox(width: 8),
-              _Stat(label: '최고 연속', value: '${computeLongestStreak(s.log.keys)}일'),
+              _Stat(label: '최고 연속', value: '${s.longestStreak}일'),
             ],
           ),
           const SizedBox(height: 12),
@@ -98,9 +98,10 @@ class ProgressScreen extends ConsumerWidget {
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
-                        s.streak.restsLeft > 0
-                            ? '쉬는 날 ${s.streak.restsLeft}개 · 하루 빠져도 연속 기록이 이어져요'
-                            : '7일 연속 공부하면 쉬는 날이 1개 생겨요',
+                        [
+                          if (s.streak.restsLeft > 0) '쉬는 날 ${s.streak.restsLeft}개 (빠진 날을 자동으로 메워요)',
+                          if (s.streak.daysToNextRest > 0) '${s.streak.daysToNextRest}일 더 하면 쉬는 날 1개',
+                        ].join(' · '),
                         style: sans(12, color: AppColors.ink2),
                       ),
                     ),

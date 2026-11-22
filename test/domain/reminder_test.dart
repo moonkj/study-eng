@@ -8,21 +8,17 @@ import 'package:todaye/features/settings/settings_screen.dart';
 class FakeReminder implements Reminder {
   FakeReminder({this.allowed = true});
   bool allowed;
+
+  /// 예약할 때마다 첫 알림의 (시각, 제목)
   final scheduled = <(int, String)>[];
+  List<ReminderSlot> lastSlots = const [];
   int cancels = 0;
-  DateTime? lastNotBefore;
 
   @override
-  Future<bool> scheduleDaily(
-    int minutes, {
-    required String title,
-    required String body,
-    bool askPermission = true,
-    DateTime? notBefore,
-  }) async {
+  Future<bool> schedule(List<ReminderSlot> slots, {bool askPermission = true}) async {
     if (!allowed) return false;
-    scheduled.add((minutes, title));
-    lastNotBefore = notBefore;
+    scheduled.add((slots.first.minutes, slots.first.title));
+    lastSlots = slots;
     return true;
   }
 
@@ -42,6 +38,34 @@ void main() {
     expect(reminderText(3).$1, '3일째 이어가는 중');
     expect(reminderText(12).$1, '12일 연속 학습 중');
     expect(reminderText(0, longest: 9).$1, '다시 시작해 볼까요?'); // 끊겼으면 탓하지 않고 복귀 권유
+  });
+
+  test('알림 계획: 오늘 끝냈으면 오늘은 건너뛰고, 날마다 상태에 맞는 문구', () {
+    final plan = planReminders(
+      now: DateTime(2026, 11, 22, 9),
+      studyToday: DateTime(2026, 11, 22),
+      minutes: 20 * 60,
+      doneToday: true,
+      streak: 8,
+      restsLeft: 1,
+      longest: 8,
+    );
+    expect(plan.length, 6);
+    expect(plan.first.at, DateTime(2026, 11, 23, 20));
+    expect(plan[0].title, '오늘 하면 9일');
+    expect(plan[1].title, '쉬는 날로 지켜 둔 8일'); // 하루 빠짐 → 쉬는 날 1개로 지킴
+    expect(plan[2].title, '다시 시작해 볼까요?'); // 쉬는 날을 넘겨 끊김
+    final notDone = planReminders(
+      now: DateTime(2026, 11, 22, 9),
+      studyToday: DateTime(2026, 11, 22),
+      minutes: 20 * 60,
+      doneToday: false,
+      streak: 8,
+      restsLeft: 0,
+      longest: 8,
+    );
+    expect(notDone.first.at, DateTime(2026, 11, 22, 20)); // 오늘 저녁
+    expect(notDone.length, 7);
   });
 
   test('시각 표시', () {

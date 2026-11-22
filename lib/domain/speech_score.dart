@@ -17,9 +17,10 @@ class SpeechScore {
   final List<WordMatch> words;
   final String heard;
 
+  /// 다르게 들린 단어 (a/the/to 같은 약하게 발음되는 기능어는 빼고 알려 준다)
   List<String> get missed => [
     for (final w in words)
-      if (!w.matched) w.word,
+      if (!w.matched && !_functionWords.contains(_norm(w.word))) w.word,
   ];
 
   String get verdict => switch (score) {
@@ -30,67 +31,93 @@ class SpeechScore {
   };
 }
 
-String _norm(String w) => w.toLowerCase().replaceAll('’', "'").replaceAll(RegExp(r"[^a-z0-9']"), '');
+String _norm(String w) => w.toLowerCase().replaceAll('’', "'").replaceAll(RegExp(r"[^a-z0-9':]"), '');
 
-/// 풀어 쓴 두 단어 → 축약형. 음성 인식이 어느 쪽으로 돌려줘도 같은 말로 본다.
-const _contractions = {
-  'i am': "i'm",
-  'i will': "i'll",
-  'i have': "i've",
-  'i would': "i'd",
-  'you are': "you're",
-  'you will': "you'll",
-  'you have': "you've",
-  'we are': "we're",
-  'we will': "we'll",
-  'they are': "they're",
-  'he is': "he's",
-  'she is': "she's",
-  'it is': "it's",
-  'that is': "that's",
-  'there is': "there's",
-  'what is': "what's",
-  'let us': "let's",
-  'do not': "don't",
-  'does not': "doesn't",
-  'did not': "didn't",
-  'is not': "isn't",
-  'are not': "aren't",
-  'was not': "wasn't",
-  'can not': "can't",
-  'cannot': "can't",
-  'will not': "won't",
-  'would not': "wouldn't",
-  'should not': "shouldn't",
-  'have not': "haven't",
-  'going to': 'gonna',
-  'want to': 'wanna',
+/// 원어민이 약하게 발음해 음성 인식이 자주 놓치는 기능어. 점수 비중을 절반으로 둔다.
+const _functionWords = {'a', 'an', 'the', 'to', 'of'};
+
+/// 구어 축약 → 풀어 쓴 말 (음성 인식이 어느 쪽으로 돌려줘도 같게 본다)
+const _spoken = {
+  'gonna': ['going', 'to'],
+  'wanna': ['want', 'to'],
+  'gotta': ['got', 'to'],
+  'kinda': ['kind', 'of'],
+  'sorta': ['sort', 'of'],
+  'ok': ['okay'],
+  'cannot': ['can', 'not'],
+  "can't": ['can', 'not'],
+  "won't": ['will', 'not'],
+  "let's": ['let', 'us'],
+  "i'm": ['i', 'am'],
 };
 
-/// (화면에 보일 단어, 비교용 단어) 목록에서 풀어 쓴 형태를 축약형 하나로 합친다.
-List<(String, String)> _canonical(List<String> words) {
-  final out = <(String, String)>[];
-  for (var i = 0; i < words.length; i++) {
-    final n = _norm(words[i]);
-    if (n.isEmpty) continue;
-    if (i + 1 < words.length) {
-      final pair = _contractions['$n ${_norm(words[i + 1])}'];
-      if (pair != null) {
-        out.add(('${words[i]} ${words[i + 1]}', pair));
-        i++;
-        continue;
-      }
-    }
-    out.add((words[i], _contractions[n] ?? n));
-  }
-  return out;
+const _numbers = [
+  'zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', //
+  'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen',
+];
+const _tens = {20: 'twenty', 30: 'thirty', 40: 'forty', 50: 'fifty'};
+
+/// 0~59 숫자를 영어 단어로 (8:10 → eight ten 처럼 시각 읽기용)
+List<String>? _numberWords(int n) {
+  if (n < 0 || n > 59) return null;
+  if (n < 20) return [_numbers[n]];
+  final t = _tens[n - n % 10]!;
+  return n % 10 == 0 ? [t] : [t, _numbers[n % 10]];
 }
 
+/// 단어 하나를 비교용 토큰들로 펼친다. 축약형(I'll, commute's, don't), 구어(gonna), 숫자(3, 8:10)를
+/// 풀어 쓴 형태로 맞춰 어느 쪽으로 말하거나 인식돼도 같은 말로 본다.
+List<String> _expand(String raw) {
+  final w = _norm(raw);
+  if (w.isEmpty) return const [];
+  final spoken = _spoken[w];
+  if (spoken != null) return spoken;
+  final time = RegExp(r'^(\d{1,2}):(\d{2})$').firstMatch(w);
+  if (time != null) {
+    final h = _numberWords(int.parse(time[1]!));
+    final m = int.parse(time[2]!);
+    if (h != null) {
+      return [
+        ...h,
+        if (m > 0 && m < 10) ...['oh', ...?_numberWords(m)] else if (m > 0) ...?_numberWords(m),
+      ];
+    }
+  }
+  if (RegExp(r'^\d+$').hasMatch(w)) {
+    final n = _numberWords(int.parse(w));
+    if (n != null) return n;
+  }
+  if (w.endsWith("n't") && w.length > 3) return [w.substring(0, w.length - 3), 'not'];
+  for (final (suffix, full) in const [
+    ("'ll", 'will'),
+    ("'ve", 'have'),
+    ("'re", 'are'),
+    ("'d", 'would'),
+    ("'s", 'is'),
+  ]) {
+    if (w.endsWith(suffix) && w.length > suffix.length) return [w.substring(0, w.length - suffix.length), full];
+  }
+  return [w.replaceAll("'", '')];
+}
+
+class _Token {
+  const _Token(this.text, this.word);
+  final String text;
+
+  /// 이 토큰이 나온 화면 단어 번호
+  final int word;
+}
+
+List<_Token> _tokens(List<String> words) => [
+  for (var i = 0; i < words.length; i++)
+    for (final t in _expand(words[i])) _Token(t, i),
+];
+
 SpeechScore scoreSpeech(String target, String heard) {
-  final targetPairs = _canonical(target.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList());
-  final targetWords = [for (final p in targetPairs) p.$1];
-  final t = [for (final p in targetPairs) p.$2];
-  final h = [for (final p in _canonical(heard.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList())) p.$2];
+  final targetWords = target.split(RegExp(r'\s+')).where((w) => _norm(w).isNotEmpty).toList();
+  final tt = _tokens(targetWords);
+  final t = [for (final x in tt) x.text];
+  final h = [for (final x in _tokens(heard.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList())) x.text];
 
   // LCS 로 순서를 지키며 일치한 단어를 찾는다.
   final dp = List.generate(t.length + 1, (_) => List.filled(h.length + 1, 0));
@@ -113,13 +140,25 @@ SpeechScore scoreSpeech(String target, String heard) {
     }
   }
 
+  double weight(String token) => _functionWords.contains(token) ? 0.5 : 1;
+  var total = 0.0, got = 0.0;
+  for (var k = 0; k < t.length; k++) {
+    total += weight(t[k]);
+    if (matched[k]) got += weight(t[k]);
+  }
   final count = matched.where((m) => m).length;
-  // 단어 일치율에 덧붙인 단어(군말)는 약간만 감점
+  // 덧붙인 단어(군말)는 약간만 감점
   final extra = (h.length - count).clamp(0, 99);
-  final raw = t.isEmpty ? 0.0 : count / t.length * 100 - extra * 3;
+  final raw = total == 0 ? 0.0 : got / total * 100 - extra * 3;
+
+  // 화면 단어는 그 단어의 토큰이 모두 맞았을 때 맞은 것으로
+  final wordOk = List.filled(targetWords.length, true);
+  for (var k = 0; k < tt.length; k++) {
+    if (!matched[k]) wordOk[tt[k].word] = false;
+  }
   return SpeechScore(
     score: raw.clamp(0, 100).round(),
-    words: [for (var k = 0; k < targetWords.length; k++) WordMatch(targetWords[k], matched[k])],
+    words: [for (var k = 0; k < targetWords.length; k++) WordMatch(targetWords[k], wordOk[k])],
     heard: heard,
   );
 }

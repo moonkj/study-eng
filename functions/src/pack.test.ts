@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import { handleDailyPack } from "./handler.js";
-import { buildUserPrompt, generatePack, slug, toAppPack, validatePack } from "./pack.js";
+import { buildUserPrompt, containsWord, generatePack, slug, toAppPack, validatePack } from "./pack.js";
 import type { GeneratedPack, PackRequest } from "./schema.js";
 
 const req: PackRequest = {
@@ -70,7 +70,7 @@ test("개수, 단어 포함 여부, 중복, 복습 누락을 잡아낸다", () =
   p.quiz[0].answer_index = 5;
   const problems = validatePack(p, req).join("\n");
   assert.match(problems, /words 는 10개/);
-  assert.match(problems, /예문에 단어가 그대로 들어있지 않습니다/);
+  assert.match(problems, /예문에 단어가 들어있지 않습니다/);
   assert.match(problems, /최근에 배운 단어를 다시 냈습니다: commute/);
   assert.match(problems, /복습 항목 w-actually 의 퀴즈가 없습니다/);
   assert.match(problems, /answer_index 가 범위를 벗어났습니다/);
@@ -166,4 +166,15 @@ test("거절되면 바로 오류로 처리한다", async () => {
   const r = await handleDailyPack({ method: "POST", appToken: "t", authorization: "Bearer t", body: req, client: client as never });
   assert.equal(r.status, 502);
   assert.equal(client.calls.length, 1);
+});
+
+test("단어 포함 검사: 활용형과 분리된 구동사를 허용한다", () => {
+  assert.ok(containsWord("I took the bus.", "take"));
+  assert.ok(containsWord("The trains were so crowded.", "crowded"));
+  assert.ok(containsWord("She commutes by bike.", "commute"));
+  assert.ok(containsWord("I'll figure it out later.", "figure out"));
+  assert.ok(containsWord("We're figuring out the plan.", "figure out"));
+  assert.ok(containsWord("I'll definitely go.", "definitely"));
+  assert.ok(!containsWord("I'll go later.", "figure out"));
+  assert.ok(!containsWord("The cat sat.", "take"));
 });

@@ -43,18 +43,18 @@ class _CompleteScreenState extends ConsumerState<CompleteScreen> {
     final speaking = s.speakingAverage;
     final newWords = s.wordRatings.values.where((r) => r != SelfRating.know).length;
     final levelUp = before.step < now.step;
-    // 축하 문구 우선순위: 레벨 업 > 최고 기록 경신 > 복귀 > 연속 마일스톤
+    // 축하 문구 우선순위: 레벨 업 > 연속 마일스톤 > 최고 기록을 처음 넘은 날 > 복귀
     final streak = s.streakDays;
     final prevBest = s.previousLongest;
     final milestone = switch (streak) {
-      _ when streak >= 3 && streak > prevBest && prevBest >= 3 => '최고 기록 경신! $streak일 연속',
-      1 when prevBest >= 2 => '다시 시작! 최고 기록 $prevBest일까지 ${prevBest - 1}일',
       3 => '3일 연속! 작심삼일을 넘었어요',
       7 => '일주일 연속! 쉬는 날이 1개 생겼어요',
       14 => '2주 연속! 정말 대단해요',
       21 => '3주 연속! 이제 습관이에요',
       30 => '한 달 연속! 이제 영어가 일상이에요',
       50 || 100 || 200 || 365 => '$streak일 연속! 기록을 세웠어요',
+      _ when prevBest >= 3 && streak == prevBest + 1 => '최고 기록 경신! $streak일 연속',
+      1 when prevBest >= 2 => '다시 시작! 최고 기록 $prevBest일까지 ${prevBest - 1}일',
       _ => null,
     };
 

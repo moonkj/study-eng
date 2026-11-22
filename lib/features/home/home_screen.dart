@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../app/routine_flow.dart';
 import '../../app/study_controller.dart';
+import '../../domain/study_log.dart';
 import '../../core/layout/adaptive.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/tokens.dart';
@@ -47,10 +48,20 @@ class HomeScreen extends ConsumerWidget {
               Text(koreanDate(s.now), style: sans(13, color: AppColors.ink2, letterSpacing: 0.2)),
               const SizedBox(height: 4),
               Text(greeting(now), style: sans(26, weight: FontWeight.w700, letterSpacing: -0.5)),
+              if (!s.allDone && s.streak.restDays.contains(dateKey(s.now.subtract(const Duration(days: 1))))) ...[
+                const SizedBox(height: 4),
+                Text('어제는 쉬는 날 1개로 연속 기록을 지켰어요', style: sans(13, color: AppColors.ink2)),
+              ],
             ],
           ),
         ),
-        _StreakChip(days: s.streakDays, longest: s.longestStreak, doneToday: s.allDone, evening: now.hour >= 18),
+        _StreakChip(
+          days: s.streakDays,
+          longest: s.longestStreak,
+          doneToday: s.allDone,
+          // 쉬는 날이 남아 있으면 저녁이라도 겁주지 않는다
+          evening: now.hour >= 18 && s.streak.restsLeft == 0,
+        ),
       ],
     );
 
