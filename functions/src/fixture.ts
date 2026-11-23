@@ -29,6 +29,8 @@ const pack: GeneratedPack = {
       ],
       compare_en: "Give me ~",
       compare_ko: "는 명령처럼 들릴 수 있어요.",
+      pron_ko: "쿠다이 [겟]",
+      linking: "could 의 d 와 I 가 이어져 '쿠다이'처럼 들려요.",
     },
   ],
   words: [

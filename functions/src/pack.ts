@@ -19,6 +19,7 @@ export const SYSTEM_PROMPT = `당신은 한국인 성인 학습자를 위한 실
 
 발음 표기:
 - IPA 는 미국 일반 발음(General American) 기준으로, 플랩(t→d 소리) 같은 실제 발음을 반영합니다.
+- 표현의 pron_ko 는 highlight 부분을 실제 대화처럼 이어 말한 소리로 적고, linking 에는 연음·약음(to→트, and→은, want to→워너 등) 요령을 한 문장으로 씁니다.
 - 한글 발음(pron_ko)은 실제 대화 속도 기준으로 쓰고, 강세 음절을 [대괄호]로 표시합니다. 끝소리는 받침으로 적고 '으'를 덧붙이지 않습니다. 강세 괄호에는 강세 음절 전체(받침 포함)를 넣고, /ɑ/ 로 소리 나는 o 는 '아'로 적습니다. (예: actually → [액]슈얼리, crowded → [크라우]딛, commute → 커[뮤웃], on time → 안 [타임], definitely → [데]퍼닛리)
 
 퀴즈 (한국어 문장을 보고 알맞은 영어 고르기, 3지선다):
@@ -292,6 +293,7 @@ export function toAppPack(pack: GeneratedPack, req: PackRequest) {
       usage: e.usage,
       examples: e.examples,
       compare: e.compare_en ? { en: e.compare_en, ko: e.compare_ko } : null,
+      pron: e.pron_ko?.trim() ? { ko: e.pron_ko.trim(), tip: e.linking?.trim() ?? "" } : null,
       level: req.contentLevel.split(".")[0],
       topic: pack.topic,
     })),

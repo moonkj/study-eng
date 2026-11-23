@@ -17,6 +17,8 @@ class Expression {
     this.compare,
     required this.levelLabel,
     required this.topic,
+    this.pronKo,
+    this.linkTip,
   });
 
   final String id;
@@ -34,6 +36,12 @@ class Expression {
   final (String, String)? compare;
   final String levelLabel;
   final String topic;
+
+  /// 핵심 부분을 이어 말한 한글 발음 (예: "빈 [미]닝 트"), 옛 팩에는 없다
+  final String? pronKo;
+
+  /// 연음·약음 요령 한 문장
+  final String? linkTip;
 }
 
 class Word {

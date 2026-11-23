@@ -134,6 +134,11 @@ DailyPack packFromJson(Map<String, Object?> j, {required Map<String, LearnedItem
               : ((e['compare'] as Map)['en'] as String, (e['compare'] as Map)['ko'] as String),
           levelLabel: e['level'] as String? ?? '',
           topic: e['topic'] as String? ?? j['topic'] as String,
+          pronKo: (e['pron'] as Map?)?['ko'] as String?,
+          linkTip: switch ((e['pron'] as Map?)?['tip']) {
+            final String t when t.trim().isNotEmpty => t,
+            _ => null,
+          },
         ),
     ],
     words: [

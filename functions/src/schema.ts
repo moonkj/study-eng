@@ -49,6 +49,12 @@ export const GeneratedPack = z.object({
         examples: z.array(Example).describe("예문 정확히 2개"),
         compare_en: z.string().describe("헷갈리기 쉬운 비슷한 표현 (영어)"),
         compare_ko: z.string().describe("그 표현과의 차이 한 문장 (한국어)"),
+        pron_ko: z
+          .string()
+          .describe("highlight 부분을 실제 대화 속도로 이어 말한 한글 발음, 강세 음절은 [대괄호] (예: been meaning to → 빈 [미]닝 트)"),
+        linking: z
+          .string()
+          .describe("이어 말하기·약하게 말하기 요령 한 문장, 친근한 존댓말 (예: to 는 '투'가 아니라 '트'처럼 약하게 붙여요)"),
       }),
     )
     .describe("정확히 3개"),

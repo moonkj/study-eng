@@ -32,6 +32,8 @@ function goodPack(): GeneratedPack {
       ],
       compare_en: "I want ~",
       compare_ko: "는 조금 직설적이에요.",
+      pron_ko: i === 2 ? "" : "쿠다이 [겟]",
+      linking: "could 의 d 와 I 가 이어져요.",
     })),
     words: words.map((w, i) => ({
       word: w,
@@ -207,4 +209,10 @@ test("SDK 가 응답을 읽다 실패하면(출력 잘림) 짧게 다시 만든�
   } as unknown as Parameters<typeof generatePack>[0];
   const out = await generatePack(client, req);
   assert.equal(out.attempts, 2);
+});
+
+test("표현 발음·연음 안내를 pron 으로 내보내고, 비어 있으면 null 로 둔다", () => {
+  const out = toAppPack(goodPack(), req);
+  assert.deepEqual(out.expressions[0].pron, { ko: "쿠다이 [겟]", tip: "could 의 d 와 I 가 이어져요." });
+  assert.equal(out.expressions[2].pron, null);
 });

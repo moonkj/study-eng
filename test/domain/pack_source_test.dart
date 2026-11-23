@@ -78,6 +78,8 @@ void main() {
       expect(pack.contentStep, Level.parse('B1.3')!.step);
       expect(pack.expressions.single.id, 'exp-could-i-get');
       expect(pack.expressions.single.compare!.$1, 'Give me ~');
+      expect(pack.expressions.single.pronKo, '쿠다이 [겟]');
+      expect(pack.expressions.single.linkTip, contains('쿠다이'));
       expect(pack.words.single.pronKo, '리필');
       expect(pack.quiz.first.itemId, 'exp-could-i-get');
       expect(pack.quiz.first.isReview, isFalse);

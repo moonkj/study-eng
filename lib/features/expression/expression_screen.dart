@@ -192,6 +192,42 @@ class _ExpressionScreenState extends ConsumerState<ExpressionScreen> with StudyS
   }
 }
 
+/// 핵심 부분을 이어 말한 소리와 연음 요령
+class _Pron extends StatelessWidget {
+  const _Pron({required this.pron, this.tip});
+  final String pron;
+  final String? tip;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: '이어 말하면 $pron${tip == null ? '' : '. $tip'}',
+      excludeSemantics: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.graphic_eq_rounded, size: 16, color: context.colors.penBlue),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  pron,
+                  style: sans(15, weight: FontWeight.w600, color: context.colors.penBlue),
+                ),
+              ),
+            ],
+          ),
+          if (tip != null) ...[
+            const SizedBox(height: 2),
+            Text(tip!, style: sans(13, color: context.colors.ink2, height: 1.5)),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 class _ExpressionCard extends ConsumerWidget {
   const _ExpressionCard({required this.e});
   final Expression e;
@@ -220,6 +256,7 @@ class _ExpressionCard extends ConsumerWidget {
           ),
           const SizedBox(height: 8),
           Text(e.meaning, style: sans(17, weight: FontWeight.w600)),
+          if (e.pronKo != null) ...[const SizedBox(height: 8), _Pron(pron: e.pronKo!, tip: e.linkTip)],
           const SizedBox(height: 6),
           Text(e.usage, style: sans(14, color: context.colors.ink2, height: 1.6)),
           const SizedBox(height: 18),

@@ -20,6 +20,8 @@ DailyPack samplePack(DateTime date) => DailyPack(
       compare: ("I'm trying to ~", '는 지금 시도하는 중일 때 써요.'),
       levelLabel: 'B1',
       topic: '출근길 · 일상',
+      pronKo: '빈 [미]닝 트',
+      linkTip: "been 은 '빈'으로 짧게, to 는 '투'가 아니라 '트'처럼 약하게 붙여요.",
     ),
     Expression(
       id: 'exp-in-the-mood-for',
@@ -34,6 +36,8 @@ DailyPack samplePack(DateTime date) => DailyPack(
       compare: ('I want ~', '보다 그때그때의 기분을 말하는 느낌이에요.'),
       levelLabel: 'B1',
       topic: '출근길 · 일상',
+      pronKo: '인더 [무]드 퍼',
+      linkTip: "the 와 for 는 약하게, mood 에 힘을 줘요. for 는 '포'가 아니라 '퍼'에 가까워요.",
     ),
     Expression(
       id: 'exp-running-late',
@@ -48,6 +52,8 @@ DailyPack samplePack(DateTime date) => DailyPack(
       compare: ("I'm late.", '는 이미 늦은 상태일 때 써요.'),
       levelLabel: 'B1',
       topic: '출근길 · 일상',
+      pronKo: '[러]닝 [레잇]',
+      linkTip: "running 끝의 g 는 거의 들리지 않고, late 의 t 는 멈추듯 삼켜요.",
     ),
   ],
   words: const [
@@ -320,6 +326,8 @@ DailyPack samplePackA2(DateTime date) => DailyPack(
       compare: ('I want ~', '는 주문할 때 쓰면 조금 딱딱하게 들려요.'),
       levelLabel: 'A2',
       topic: '카페 · 주말 약속',
+      pronKo: '캐나이 [겟]',
+      linkTip: "can 과 I 가 이어져 '캐나이'가 되고, get 의 t 는 살짝 멈추듯 끝내요.",
     ),
     Expression(
       id: 'a2-exp-how-about',
@@ -334,6 +342,8 @@ DailyPack samplePackA2(DateTime date) => DailyPack(
       compare: ('What about ~?', '도 비슷하지만, 잊고 있던 것을 떠올릴 때도 써요.'),
       levelLabel: 'A2',
       topic: '카페 · 주말 약속',
+      pronKo: '하우어[바웃]',
+      linkTip: "how 와 about 이 이어지고, about 의 a 는 아주 약하게 말해요.",
     ),
     Expression(
       id: 'a2-exp-im-free',
@@ -345,6 +355,8 @@ DailyPack samplePackA2(DateTime date) => DailyPack(
       compare: ("I'm not busy.", '는 지금 한가하다는 느낌이 더 강해요.'),
       levelLabel: 'A2',
       topic: '카페 · 주말 약속',
+      pronKo: '암 [프리]',
+      linkTip: "I'm 은 '아임'보다 '암'에 가깝게 짧게, free 에 힘을 줘요.",
     ),
   ],
   words: const [
