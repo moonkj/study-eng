@@ -19,7 +19,17 @@ class TodayeApp extends ConsumerStatefulWidget {
   ConsumerState<TodayeApp> createState() => _TodayeAppState();
 }
 
-class _TodayeAppState extends ConsumerState<TodayeApp> with WidgetsBindingObserver {
+/// 설정값('system' | 'light' | 'dark')을 테마 모드로
+ThemeMode themeModeOf(String setting) => switch (setting) {
+  'light' => ThemeMode.light,
+  'dark' => ThemeMode.dark,
+  _ => ThemeMode.system,
+};
+
+final _lightTheme = buildAppTheme(AppPalette.light);
+final _darkTheme = buildAppTheme(AppPalette.dark);
+
+class _TodayeAppState extends ConsumerState<TodayeApp> {
   late final GoRouter _router = buildRouter(
     initialLocation: widget.initialLocation,
     isOnboarded: () => ref.read(studyProvider).onboarded,
@@ -30,12 +40,8 @@ class _TodayeAppState extends ConsumerState<TodayeApp> with WidgetsBindingObserv
   Timer? _midnight;
 
   @override
-  void didChangePlatformBrightness() => setState(() {});
-
-  @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
     // 다음 날 앱으로 돌아오면 오늘 기준으로 새로 고친다
     _lifecycle = AppLifecycleListener(
       onResume: () {
@@ -80,7 +86,6 @@ class _TodayeAppState extends ConsumerState<TodayeApp> with WidgetsBindingObserv
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
     _router.routerDelegate.removeListener(_onRoute);
     _midnight?.cancel();
     _lifecycle.dispose();
@@ -90,20 +95,18 @@ class _TodayeAppState extends ConsumerState<TodayeApp> with WidgetsBindingObserv
 
   @override
   Widget build(BuildContext context) {
-    // 테마: 설정이 system 이면 휴대폰의 밝기 설정을 따른다
+    // 테마: 설정이 system 이면 휴대폰의 밝기 설정을 따른다 (MaterialApp 이 처리).
+    // 색 토큰은 ThemeExtension(AppPalette)이라 테마가 바뀌어도 화면 상태는 그대로 두고 색만 다시 그린다.
     final theme = ref.watch(studyProvider.select((s) => s.settings.theme));
-    final dark =
-        theme == 'dark' ||
-        (theme == 'system' && WidgetsBinding.instance.platformDispatcher.platformBrightness == Brightness.dark);
-    AppColors.use(dark ? AppPalette.dark : AppPalette.light);
     return MaterialApp.router(
       title: '오늘의 영어',
       debugShowCheckedModeBanner: false,
-      theme: buildAppTheme(),
-      // 색 토큰은 화면을 그릴 때 읽으므로, 테마가 바뀌면 화면 전체를 새로 만든다 (위치는 라우터가 기억)
+      theme: _lightTheme,
+      darkTheme: _darkTheme,
+      themeMode: themeModeOf(theme),
       builder: (context, child) => AnnotatedRegion<SystemUiOverlayStyle>(
-        value: dark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
-        child: KeyedSubtree(key: ValueKey(dark), child: child ?? const SizedBox.shrink()),
+        value: context.colors.isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
+        child: child ?? const SizedBox.shrink(),
       ),
       routerConfig: _router,
       locale: const Locale('ko'),

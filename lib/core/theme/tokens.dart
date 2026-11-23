@@ -2,7 +2,7 @@ import 'package:material_ui/material_ui.dart';
 
 /// A안 "따뜻한 종이 노트" 색 팔레트. 밝은 종이(light)와 밤의 종이(dark) 두 벌.
 /// 값은 docs/design/design-system.md 와 Claude Design 캔버스(A 페이지)를 따른다.
-class AppPalette {
+class AppPalette extends ThemeExtension<AppPalette> {
   const AppPalette({
     required this.brightness,
     required this.paper,
@@ -58,9 +58,17 @@ class AppPalette {
   final Color errorTint;
   final Color ember;
   final Color caution;
+
+  /// 빈 칸·비활성 배경 (달력 빈 날, 카드 뒤 겹침)
   final Color muted;
+
+  /// 더 옅은 비활성 배경
   final Color mutedSoft;
+
+  /// 선택 안 된 점·보조 표시
   final Color dotIdle;
+
+  /// 잉크색 배경 위 보조 글자
   final Color onInkSoft;
 
   /// 강조 면(지금 할 루틴, 완료 카드, 오늘 칸)과 그 위의 글자
@@ -68,6 +76,115 @@ class AppPalette {
   final Color onEmphasis;
   final Color onEmphasisAccent;
   final Color onEmphasisSoft;
+
+  bool get isDark => brightness == Brightness.dark;
+
+  /// 결과 시트 그림자
+  Color get sheetShadow => isDark ? const Color(0x80000000) : const Color(0x4D3C2D14);
+
+  @override
+  AppPalette copyWith({
+    Brightness? brightness,
+    Color? paper,
+    Color? card,
+    Color? line,
+    Color? lineStrong,
+    Color? sand,
+    Color? sandDeep,
+    Color? track,
+    Color? ink,
+    Color? ink2,
+    Color? inkSoft,
+    Color? penBlue,
+    Color? penBlueDark,
+    Color? penBlueTint,
+    Color? penBlueSoft,
+    Color? highlighter,
+    Color? success,
+    Color? successTint,
+    Color? error,
+    Color? errorTint,
+    Color? ember,
+    Color? caution,
+    Color? muted,
+    Color? mutedSoft,
+    Color? dotIdle,
+    Color? onInkSoft,
+    Color? emphasis,
+    Color? onEmphasis,
+    Color? onEmphasisAccent,
+    Color? onEmphasisSoft,
+  }) {
+    return AppPalette(
+      brightness: brightness ?? this.brightness,
+      paper: paper ?? this.paper,
+      card: card ?? this.card,
+      line: line ?? this.line,
+      lineStrong: lineStrong ?? this.lineStrong,
+      sand: sand ?? this.sand,
+      sandDeep: sandDeep ?? this.sandDeep,
+      track: track ?? this.track,
+      ink: ink ?? this.ink,
+      ink2: ink2 ?? this.ink2,
+      inkSoft: inkSoft ?? this.inkSoft,
+      penBlue: penBlue ?? this.penBlue,
+      penBlueDark: penBlueDark ?? this.penBlueDark,
+      penBlueTint: penBlueTint ?? this.penBlueTint,
+      penBlueSoft: penBlueSoft ?? this.penBlueSoft,
+      highlighter: highlighter ?? this.highlighter,
+      success: success ?? this.success,
+      successTint: successTint ?? this.successTint,
+      error: error ?? this.error,
+      errorTint: errorTint ?? this.errorTint,
+      ember: ember ?? this.ember,
+      caution: caution ?? this.caution,
+      muted: muted ?? this.muted,
+      mutedSoft: mutedSoft ?? this.mutedSoft,
+      dotIdle: dotIdle ?? this.dotIdle,
+      onInkSoft: onInkSoft ?? this.onInkSoft,
+      emphasis: emphasis ?? this.emphasis,
+      onEmphasis: onEmphasis ?? this.onEmphasis,
+      onEmphasisAccent: onEmphasisAccent ?? this.onEmphasisAccent,
+      onEmphasisSoft: onEmphasisSoft ?? this.onEmphasisSoft,
+    );
+  }
+
+  @override
+  AppPalette lerp(covariant AppPalette? other, double t) {
+    if (other == null) return this;
+    return AppPalette(
+      brightness: t < 0.5 ? brightness : other.brightness,
+      paper: Color.lerp(paper, other.paper, t)!,
+      card: Color.lerp(card, other.card, t)!,
+      line: Color.lerp(line, other.line, t)!,
+      lineStrong: Color.lerp(lineStrong, other.lineStrong, t)!,
+      sand: Color.lerp(sand, other.sand, t)!,
+      sandDeep: Color.lerp(sandDeep, other.sandDeep, t)!,
+      track: Color.lerp(track, other.track, t)!,
+      ink: Color.lerp(ink, other.ink, t)!,
+      ink2: Color.lerp(ink2, other.ink2, t)!,
+      inkSoft: Color.lerp(inkSoft, other.inkSoft, t)!,
+      penBlue: Color.lerp(penBlue, other.penBlue, t)!,
+      penBlueDark: Color.lerp(penBlueDark, other.penBlueDark, t)!,
+      penBlueTint: Color.lerp(penBlueTint, other.penBlueTint, t)!,
+      penBlueSoft: Color.lerp(penBlueSoft, other.penBlueSoft, t)!,
+      highlighter: Color.lerp(highlighter, other.highlighter, t)!,
+      success: Color.lerp(success, other.success, t)!,
+      successTint: Color.lerp(successTint, other.successTint, t)!,
+      error: Color.lerp(error, other.error, t)!,
+      errorTint: Color.lerp(errorTint, other.errorTint, t)!,
+      ember: Color.lerp(ember, other.ember, t)!,
+      caution: Color.lerp(caution, other.caution, t)!,
+      muted: Color.lerp(muted, other.muted, t)!,
+      mutedSoft: Color.lerp(mutedSoft, other.mutedSoft, t)!,
+      dotIdle: Color.lerp(dotIdle, other.dotIdle, t)!,
+      onInkSoft: Color.lerp(onInkSoft, other.onInkSoft, t)!,
+      emphasis: Color.lerp(emphasis, other.emphasis, t)!,
+      onEmphasis: Color.lerp(onEmphasis, other.onEmphasis, t)!,
+      onEmphasisAccent: Color.lerp(onEmphasisAccent, other.onEmphasisAccent, t)!,
+      onEmphasisSoft: Color.lerp(onEmphasisSoft, other.onEmphasisSoft, t)!,
+    );
+  }
 
   static const light = AppPalette(
     brightness: Brightness.light,
@@ -136,54 +253,10 @@ class AppPalette {
   );
 }
 
-/// 화면 코드에서 쓰는 색 토큰. 지금 테마(밝게/어둡게)의 팔레트 값을 돌려준다.
-/// 테마가 바뀌면 앱이 화면을 다시 만든다 (app.dart).
-abstract final class AppColors {
-  static AppPalette _p = AppPalette.light;
-  static AppPalette get palette => _p;
-  static bool get isDark => _p.brightness == Brightness.dark;
-  static void use(AppPalette p) => _p = p;
-
-  static Color get paper => _p.paper;
-  static Color get card => _p.card;
-  static Color get line => _p.line;
-  static Color get lineStrong => _p.lineStrong;
-  static Color get sand => _p.sand;
-  static Color get sandDeep => _p.sandDeep;
-  static Color get track => _p.track;
-  static Color get ink => _p.ink;
-  static Color get ink2 => _p.ink2;
-  static Color get inkSoft => _p.inkSoft;
-  static Color get penBlue => _p.penBlue;
-  static Color get penBlueDark => _p.penBlueDark;
-  static Color get penBlueTint => _p.penBlueTint;
-  static Color get penBlueSoft => _p.penBlueSoft;
-  static Color get highlighter => _p.highlighter;
-  static Color get success => _p.success;
-  static Color get successTint => _p.successTint;
-  static Color get error => _p.error;
-  static Color get errorTint => _p.errorTint;
-  static Color get ember => _p.ember;
-  static Color get caution => _p.caution;
-
-  /// 빈 칸·비활성 배경 (달력 빈 날, 카드 뒤 겹침)
-  static Color get muted => _p.muted;
-
-  /// 더 옅은 비활성 배경
-  static Color get mutedSoft => _p.mutedSoft;
-
-  /// 선택 안 된 점·보조 표시
-  static Color get dotIdle => _p.dotIdle;
-
-  /// 잉크색 배경 위 보조 글자
-  static Color get onInkSoft => _p.onInkSoft;
-  static Color get emphasis => _p.emphasis;
-  static Color get onEmphasis => _p.onEmphasis;
-  static Color get onEmphasisAccent => _p.onEmphasisAccent;
-  static Color get onEmphasisSoft => _p.onEmphasisSoft;
-
-  /// 결과 시트 그림자
-  static Color get sheetShadow => isDark ? const Color(0x80000000) : const Color(0x4D3C2D14);
+/// 화면 코드에서 색 토큰을 읽는 곳. `context.colors.ink` 처럼 쓴다.
+/// 팔레트는 테마(ThemeData.extensions)에 들어 있어, 테마가 바뀌면 의존하는 위젯만 다시 그린다 (상태는 유지).
+extension AppColorsX on BuildContext {
+  AppPalette get colors => Theme.of(this).extension<AppPalette>() ?? AppPalette.light;
 }
 
 abstract final class AppSpace {
@@ -205,10 +278,10 @@ abstract final class AppRadius {
 }
 
 abstract final class AppShadow {
-  static List<BoxShadow> get card => [
-    BoxShadow(color: AppColors.line, offset: const Offset(0, 1)),
+  static List<BoxShadow> card(AppPalette c) => [
+    BoxShadow(color: c.line, offset: const Offset(0, 1)),
     BoxShadow(
-      color: AppColors.isDark ? const Color(0x66000000) : const Color(0x403C2D14),
+      color: c.isDark ? const Color(0x66000000) : const Color(0x403C2D14),
       offset: const Offset(0, 12),
       blurRadius: 24,
       spreadRadius: -16,

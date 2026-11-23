@@ -98,7 +98,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> with StudyScreenGuard {
                     const SizedBox(width: 12),
                     Text(
                       '${_index + 1}/${quiz.length}',
-                      style: sans(13, weight: FontWeight.w600, color: AppColors.ink2),
+                      style: sans(13, weight: FontWeight.w600, color: context.colors.ink2),
                     ),
                   ],
                 ),
@@ -113,15 +113,15 @@ class _QuizScreenState extends ConsumerState<QuizScreen> with StudyScreenGuard {
                           ? Tag(
                               '복습 · ${item.reviewLabel}',
                               icon: Icons.replay_rounded,
-                              color: AppColors.ink,
-                              background: AppColors.sand,
+                              color: context.colors.ink,
+                              background: context.colors.sand,
                             )
                           : Tag('오늘 배운 내용'),
                     ),
                     const SizedBox(height: 14),
                     Text(
                       item.isRecall ? '첫 글자를 보고 빈칸에 들어갈 영어를 써 주세요' : '알맞은 영어 문장을 골라주세요',
-                      style: sans(15, weight: FontWeight.w500, color: AppColors.ink2),
+                      style: sans(15, weight: FontWeight.w500, color: context.colors.ink2),
                     ),
                     const SizedBox(height: 8),
                     Text(item.prompt, style: sans(26, weight: FontWeight.w700, letterSpacing: -0.5, height: 1.35)),
@@ -214,10 +214,10 @@ class _Segments extends StatelessWidget {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(2),
                   color: !state.quizAnswers.containsKey(i)
-                      ? AppColors.track
+                      ? context.colors.track
                       : state.quizAnswers[i] == quiz[i].answerIndex
-                      ? AppColors.success
-                      : AppColors.error,
+                      ? context.colors.success
+                      : context.colors.error,
                 ),
               ),
             ),
@@ -238,9 +238,9 @@ class _Choice extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (bg, border, width) = switch (status) {
-      _Status.correct => (AppColors.successTint, AppColors.success, 2.0),
-      _Status.wrong => (AppColors.errorTint, AppColors.error, 2.0),
-      _ => (AppColors.card, AppColors.line, 1.0),
+      _Status.correct => (context.colors.successTint, context.colors.success, 2.0),
+      _Status.wrong => (context.colors.errorTint, context.colors.error, 2.0),
+      _ => (context.colors.card, context.colors.line, 1.0),
     };
     // 답한 뒤 나머지 보기: 흐리게(Opacity) 대신 글자색으로 구분해 대비를 지킨다
     return AnimatedContainer(
@@ -272,11 +272,11 @@ class _Choice extends StatelessWidget {
                               serif(
                                 18,
                                 color: status == _Status.wrong || status == _Status.dim
-                                    ? AppColors.ink2
-                                    : AppColors.ink,
+                                    ? context.colors.ink2
+                                    : context.colors.ink,
                               ).copyWith(
                                 decoration: status == _Status.wrong ? TextDecoration.lineThrough : null,
-                                decorationColor: AppColors.error,
+                                decorationColor: context.colors.error,
                               ),
                         ),
                       ),
@@ -284,12 +284,12 @@ class _Choice extends StatelessWidget {
                     if (status == _Status.correct)
                       Text(
                         '정답',
-                        style: sans(12, weight: FontWeight.w700, color: AppColors.success),
+                        style: sans(12, weight: FontWeight.w700, color: context.colors.success),
                       ),
                     if (status == _Status.wrong)
                       Text(
                         '내 답',
-                        style: sans(12, weight: FontWeight.w700, color: AppColors.error),
+                        style: sans(12, weight: FontWeight.w700, color: context.colors.error),
                       ),
                   ],
                 ),
@@ -340,10 +340,12 @@ class _Feedback extends StatelessWidget {
       width: double.infinity,
       padding: EdgeInsets.fromLTRB(22, 22, 22, 16 + MediaQuery.paddingOf(context).bottom),
       decoration: BoxDecoration(
-        color: AppColors.card,
+        color: context.colors.card,
         borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.sheet)),
-        border: Border(top: BorderSide(color: AppColors.line)),
-        boxShadow: [BoxShadow(color: AppColors.sheetShadow, offset: Offset(0, -12), blurRadius: 30, spreadRadius: -20)],
+        border: Border(top: BorderSide(color: context.colors.line)),
+        boxShadow: [
+          BoxShadow(color: context.colors.sheetShadow, offset: Offset(0, -12), blurRadius: 30, spreadRadius: -20),
+        ],
       ),
       child: SingleChildScrollView(
         child: Column(
@@ -354,11 +356,11 @@ class _Feedback extends StatelessWidget {
               children: [
                 CircleAvatar(
                   radius: 14,
-                  backgroundColor: correct ? AppColors.successTint : AppColors.errorTint,
+                  backgroundColor: correct ? context.colors.successTint : context.colors.errorTint,
                   child: Icon(
                     correct ? Icons.check_rounded : Icons.priority_high_rounded,
                     size: 16,
-                    color: correct ? AppColors.success : AppColors.error,
+                    color: correct ? context.colors.success : context.colors.error,
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -373,7 +375,7 @@ class _Feedback extends StatelessWidget {
               if (mine != null)
                 Text(
                   mine!,
-                  style: serif(16, color: AppColors.ink2).copyWith(decoration: TextDecoration.lineThrough),
+                  style: serif(16, color: context.colors.ink2).copyWith(decoration: TextDecoration.lineThrough),
                 ),
               const SizedBox(height: 4),
               Row(
@@ -392,10 +394,10 @@ class _Feedback extends StatelessWidget {
               ),
               const SizedBox(height: 10),
             ],
-            Text(item.explanation, style: sans(14, height: 1.65, color: AppColors.inkSoft)),
+            Text(item.explanation, style: sans(14, height: 1.65, color: context.colors.inkSoft)),
             if (!correct) ...[
               const SizedBox(height: 8),
-              Text('틀린 표현은 복습 카드로 곧 다시 만나요.', style: sans(12, color: AppColors.ink2)),
+              Text('틀린 표현은 복습 카드로 곧 다시 만나요.', style: sans(12, color: context.colors.ink2)),
             ],
             const SizedBox(height: 16),
             SizedBox(

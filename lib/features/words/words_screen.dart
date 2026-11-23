@@ -136,7 +136,7 @@ class _WordsScreenState extends ConsumerState<WordsScreen> with StudyScreenGuard
                 ),
               ),
               const SizedBox(height: 18),
-              Text('이 단어, 얼마나 알고 있었나요?', style: sans(13, color: AppColors.ink2)),
+              Text('이 단어, 얼마나 알고 있었나요?', style: sans(13, color: context.colors.ink2)),
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
                 child: Row(
@@ -145,7 +145,7 @@ class _WordsScreenState extends ConsumerState<WordsScreen> with StudyScreenGuard
                       child: _RateButton(
                         label: '몰라요',
                         sub: '내일 다시',
-                        color: AppColors.error,
+                        color: context.colors.error,
                         onTap: () => _rate(SelfRating.dontKnow),
                       ),
                     ),
@@ -154,7 +154,7 @@ class _WordsScreenState extends ConsumerState<WordsScreen> with StudyScreenGuard
                       child: _RateButton(
                         label: '헷갈려요',
                         sub: '3일 뒤',
-                        color: AppColors.caution,
+                        color: context.colors.caution,
                         onTap: () => _rate(SelfRating.confusing),
                       ),
                     ),
@@ -184,8 +184,14 @@ class _WordCard extends ConsumerWidget {
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        Positioned(left: 20, right: 20, top: 18, bottom: -14, child: _ghost(AppColors.muted)),
-        Positioned(left: 10, right: 10, top: 9, bottom: -6, child: _ghost(AppColors.mutedSoft)),
+        Positioned(left: 20, right: 20, top: 18, bottom: -14, child: _ghost(context.colors.muted, context.colors.line)),
+        Positioned(
+          left: 10,
+          right: 10,
+          top: 9,
+          bottom: -6,
+          child: _ghost(context.colors.mutedSoft, context.colors.line),
+        ),
         Positioned.fill(
           child: PaperCard(
             elevated: true,
@@ -202,7 +208,7 @@ class _WordCard extends ConsumerWidget {
                         Row(
                           children: [
                             Flexible(
-                              child: Text('${word.posKo} · ${word.posEn}', style: sans(12, color: AppColors.ink2)),
+                              child: Text('${word.posKo} · ${word.posEn}', style: sans(12, color: context.colors.ink2)),
                             ),
                             const SizedBox(width: 8),
                             const Spacer(),
@@ -225,10 +231,10 @@ class _WordCard extends ConsumerWidget {
                           children: [
                             englishSemantics(
                               word.ipa,
-                              Text(word.ipa, style: serif(16, italic: true, color: AppColors.ink2)),
+                              Text(word.ipa, style: serif(16, italic: true, color: context.colors.ink2)),
                             ),
-                            CircleAvatar(radius: 1.5, backgroundColor: AppColors.lineStrong),
-                            PronText(word.pronKo, style: sans(14, color: AppColors.ink2)),
+                            CircleAvatar(radius: 1.5, backgroundColor: context.colors.lineStrong),
+                            PronText(word.pronKo, style: sans(14, color: context.colors.ink2)),
                           ],
                         ),
                         const SizedBox(height: 14),
@@ -265,7 +271,7 @@ class _WordCard extends ConsumerWidget {
                                 width: double.infinity,
                                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                                 decoration: BoxDecoration(
-                                  color: AppColors.paper,
+                                  color: context.colors.paper,
                                   borderRadius: BorderRadius.circular(16),
                                 ),
                                 child: Column(
@@ -273,7 +279,7 @@ class _WordCard extends ConsumerWidget {
                                   children: [
                                     HighlightText(word.example.en, highlight: word.word, style: serif(17, height: 1.4)),
                                     const SizedBox(height: 4),
-                                    Text(word.example.ko, style: sans(13, color: AppColors.ink2)),
+                                    Text(word.example.ko, style: sans(13, color: context.colors.ink2)),
                                   ],
                                 ),
                               ),
@@ -292,31 +298,30 @@ class _WordCard extends ConsumerWidget {
     );
   }
 
-  Widget _ghost(Color c) => DecoratedBox(
+  Widget _ghost(Color c, Color border) => DecoratedBox(
     decoration: BoxDecoration(
       color: c,
       borderRadius: BorderRadius.circular(AppRadius.sheet),
-      border: Border.all(color: AppColors.line),
+      border: Border.all(color: border),
     ),
   );
 }
 
 class _RateButton extends StatelessWidget {
-  _RateButton({required this.label, required this.sub, required this.onTap, Color? color, this.dark = false})
-    : color = color ?? AppColors.ink;
+  const _RateButton({required this.label, required this.sub, required this.onTap, this.color, this.dark = false});
   final String label;
   final String sub;
-  final Color color;
+  final Color? color;
   final bool dark;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: dark ? AppColors.emphasis : AppColors.card,
+      color: dark ? context.colors.emphasis : context.colors.card,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: dark ? BorderSide.none : BorderSide(color: AppColors.line),
+        side: dark ? BorderSide.none : BorderSide(color: context.colors.line),
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
@@ -330,10 +335,14 @@ class _RateButton extends StatelessWidget {
             children: [
               Text(
                 label,
-                style: sans(15, weight: FontWeight.w600, color: dark ? AppColors.onEmphasis : color),
+                style: sans(
+                  15,
+                  weight: FontWeight.w600,
+                  color: dark ? context.colors.onEmphasis : (color ?? context.colors.ink),
+                ),
               ),
               const SizedBox(height: 2),
-              Text(sub, style: sans(12, color: dark ? AppColors.onEmphasisSoft : AppColors.ink2)),
+              Text(sub, style: sans(12, color: dark ? context.colors.onEmphasisSoft : context.colors.ink2)),
             ],
           ),
         ),

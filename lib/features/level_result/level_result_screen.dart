@@ -42,7 +42,7 @@ class LevelResultScreen extends ConsumerWidget {
                 children: [
                   Text(
                     '내 레벨',
-                    style: sans(13, weight: FontWeight.w600, color: AppColors.penBlue, letterSpacing: 0.8),
+                    style: sans(13, weight: FontWeight.w600, color: context.colors.penBlue, letterSpacing: 0.8),
                   ),
                   const SizedBox(height: 8),
                   Text(
@@ -72,14 +72,14 @@ class LevelResultScreen extends ConsumerWidget {
                                           style: serif(
                                             64,
                                             weight: 500,
-                                            color: AppColors.penBlue,
+                                            color: context.colors.penBlue,
                                             height: 0.95,
                                             letterSpacing: -1,
                                           ),
                                         ),
                                         TextSpan(
                                           text: '.${level.sub}',
-                                          style: serif(32, color: AppColors.ink2),
+                                          style: serif(32, color: context.colors.ink2),
                                         ),
                                       ],
                                     ),
@@ -89,7 +89,7 @@ class LevelResultScreen extends ConsumerWidget {
                                 ],
                               ),
                             ),
-                            Text('CEFR 기준', style: sans(12, color: AppColors.ink2)),
+                            Text('CEFR 기준', style: sans(12, color: context.colors.ink2)),
                           ],
                         ),
                         const SizedBox(height: 18),
@@ -107,13 +107,13 @@ class LevelResultScreen extends ConsumerWidget {
                   const SizedBox(height: 10),
                   Container(
                     padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
-                    decoration: BoxDecoration(color: AppColors.sand, borderRadius: BorderRadius.circular(16)),
+                    decoration: BoxDecoration(color: context.colors.sand, borderRadius: BorderRadius.circular(16)),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Padding(
                           padding: EdgeInsets.only(top: 2),
-                          child: Icon(Icons.edit_outlined, size: 20, color: AppColors.penBlue),
+                          child: Icon(Icons.edit_outlined, size: 20, color: context.colors.penBlue),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
@@ -182,7 +182,7 @@ class _Scale extends StatelessWidget {
                     ThinProgress(
                       cefr.index < c ? 1 : (cefr.index == c ? within : 0),
                       height: 6,
-                      color: cefr.index < c ? AppColors.penBlueSoft : AppColors.penBlue,
+                      color: cefr.index < c ? context.colors.penBlueSoft : context.colors.penBlue,
                     ),
                     const SizedBox(height: 6),
                     Text(
@@ -190,7 +190,7 @@ class _Scale extends StatelessWidget {
                       style: sans(
                         11,
                         weight: cefr.index == c ? FontWeight.w700 : FontWeight.w400,
-                        color: cefr.index == c ? AppColors.penBlue : AppColors.ink2,
+                        color: cefr.index == c ? context.colors.penBlue : context.colors.ink2,
                       ),
                     ),
                   ],
@@ -218,8 +218,8 @@ class _SkillBar extends StatelessWidget {
           child: ThinProgress(
             (level.score + 1) / (Level.maxScore + 1),
             height: 8,
-            color: weak ? AppColors.ember : AppColors.penBlue,
-            track: AppColors.line,
+            color: weak ? context.colors.ember : context.colors.penBlue,
+            track: context.colors.line,
           ),
         ),
         SizedBox(
@@ -227,7 +227,7 @@ class _SkillBar extends StatelessWidget {
           child: Text(
             level.label,
             textAlign: TextAlign.right,
-            style: sans(13, weight: FontWeight.w600, color: weak ? AppColors.error : AppColors.ink),
+            style: sans(13, weight: FontWeight.w600, color: weak ? context.colors.error : context.colors.ink),
           ),
         ),
       ],

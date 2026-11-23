@@ -136,7 +136,7 @@ void _pick<T>(
               ListTile(
                 minTileHeight: 52,
                 title: Text(e.value, style: sans(15)),
-                trailing: e.key == selected ? Icon(Icons.check_rounded, color: AppColors.penBlue) : null,
+                trailing: e.key == selected ? Icon(Icons.check_rounded, color: context.colors.penBlue) : null,
                 onTap: () {
                   onSelect(e.key);
                   Navigator.pop(ctx);
@@ -181,13 +181,13 @@ class _Item extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       minTileHeight: 56,
-      leading: Icon(icon, color: AppColors.penBlue),
+      leading: Icon(icon, color: context.colors.penBlue),
       title: Text(title, style: sans(15, weight: FontWeight.w500)),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (value != null) Text(value!, style: sans(14, color: AppColors.ink2)),
-          if (onTap != null) Icon(Icons.chevron_right_rounded, color: AppColors.ink2),
+          if (value != null) Text(value!, style: sans(14, color: context.colors.ink2)),
+          if (onTap != null) Icon(Icons.chevron_right_rounded, color: context.colors.ink2),
         ],
       ),
       onTap: onTap,
@@ -222,7 +222,7 @@ class _ReminderItem extends ConsumerWidget {
     return Column(
       children: [
         SwitchListTile(
-          secondary: Icon(Icons.notifications_none_rounded, color: AppColors.penBlue),
+          secondary: Icon(Icons.notifications_none_rounded, color: context.colors.penBlue),
           title: Text('아침 알림', style: sans(15, weight: FontWeight.w500)),
           subtitle: Consumer(
             builder: (_, ref, _) {
@@ -233,13 +233,13 @@ class _ReminderItem extends ConsumerWidget {
                     : blocked
                     ? '휴대폰 설정에서 알림 권한이 꺼져 있어요'
                     : '매일 ${formatMinutes(minutes!)}',
-                style: sans(13, color: on && blocked ? AppColors.error : AppColors.ink2),
+                style: sans(13, color: on && blocked ? context.colors.error : context.colors.ink2),
               );
             },
           ),
           value: on,
-          activeThumbColor: AppColors.card,
-          activeTrackColor: AppColors.penBlue,
+          activeThumbColor: context.colors.card,
+          activeTrackColor: context.colors.penBlue,
           onChanged: (v) => _set(context, ref, v ? (minutes ?? 7 * 60 + 30) : null),
         ),
         if (on)
@@ -249,7 +249,7 @@ class _ReminderItem extends ConsumerWidget {
             title: Text('알림 시각', style: sans(14)),
             trailing: Text(
               formatMinutes(minutes!),
-              style: sans(14, weight: FontWeight.w600, color: AppColors.penBlue),
+              style: sans(14, weight: FontWeight.w600, color: context.colors.penBlue),
             ),
             onTap: () async {
               final picked = await showTimePicker(

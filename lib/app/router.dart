@@ -106,7 +106,7 @@ class TabShell extends StatelessWidget {
           body: Row(
             children: [
               _SideNav(current: shell.currentIndex, onSelect: _go, extended: size == WindowSize.expanded),
-              VerticalDivider(width: 1, thickness: 1, color: AppColors.line),
+              VerticalDivider(width: 1, thickness: 1, color: context.colors.line),
               // 내용 영역의 실제 폭을 MediaQuery 로 알려 준다 (여백·단 나눔이 내비게이션 폭을 빼고 계산되게)
               Expanded(
                 child: LayoutBuilder(
@@ -131,8 +131,8 @@ class TabShell extends StatelessWidget {
         body: shell,
         bottomNavigationBar: DecoratedBox(
           decoration: BoxDecoration(
-            color: AppColors.paper,
-            border: Border(top: BorderSide(color: AppColors.line)),
+            color: context.colors.paper,
+            border: Border(top: BorderSide(color: context.colors.line)),
           ),
           child: SafeArea(
             top: false,
@@ -155,7 +155,7 @@ class TabShell extends StatelessWidget {
                                 Icon(
                                   shell.currentIndex == i ? tabs[i].$2 : tabs[i].$1,
                                   size: 22,
-                                  color: shell.currentIndex == i ? AppColors.ink : AppColors.ink2,
+                                  color: shell.currentIndex == i ? context.colors.ink : context.colors.ink2,
                                 ),
                                 const SizedBox(height: 3),
                                 Text(
@@ -163,7 +163,7 @@ class TabShell extends StatelessWidget {
                                   style: sans(
                                     12,
                                     weight: shell.currentIndex == i ? FontWeight.w700 : FontWeight.w500,
-                                    color: shell.currentIndex == i ? AppColors.ink : AppColors.ink2,
+                                    color: shell.currentIndex == i ? context.colors.ink : context.colors.ink2,
                                   ),
                                 ),
                               ],
@@ -193,7 +193,7 @@ class _SideNav extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: extended ? 220 : 88,
-      color: AppColors.paper,
+      color: context.colors.paper,
       child: SafeArea(
         right: false,
         child: Padding(
@@ -217,14 +217,14 @@ class _SideNav extends StatelessWidget {
                     label: TabShell.tabs[i].$3,
                     excludeSemantics: true,
                     child: Material(
-                      color: current == i ? AppColors.sand : Colors.transparent,
+                      color: current == i ? context.colors.sand : Colors.transparent,
                       borderRadius: BorderRadius.circular(14),
                       child: DecoratedBox(
                         // 선택 표시를 배경색만이 아니라 왼쪽 막대로도 (배경과 대비가 낮아서)
                         position: DecorationPosition.foreground,
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(14),
-                          border: current == i ? Border(left: BorderSide(color: AppColors.ink, width: 3)) : null,
+                          border: current == i ? Border(left: BorderSide(color: context.colors.ink, width: 3)) : null,
                         ),
                         child: InkWell(
                           borderRadius: BorderRadius.circular(14),
@@ -243,7 +243,7 @@ class _SideNav extends StatelessWidget {
                                       Icon(
                                         current == i ? TabShell.tabs[i].$2 : TabShell.tabs[i].$1,
                                         size: 22,
-                                        color: current == i ? AppColors.ink : AppColors.ink2,
+                                        color: current == i ? context.colors.ink : context.colors.ink2,
                                       ),
                                       const SizedBox(width: 14),
                                       Text(
@@ -251,7 +251,7 @@ class _SideNav extends StatelessWidget {
                                         style: sans(
                                           15,
                                           weight: current == i ? FontWeight.w700 : FontWeight.w500,
-                                          color: current == i ? AppColors.ink : AppColors.ink2,
+                                          color: current == i ? context.colors.ink : context.colors.ink2,
                                         ),
                                       ),
                                     ],
@@ -262,7 +262,7 @@ class _SideNav extends StatelessWidget {
                                       Icon(
                                         current == i ? TabShell.tabs[i].$2 : TabShell.tabs[i].$1,
                                         size: 22,
-                                        color: current == i ? AppColors.ink : AppColors.ink2,
+                                        color: current == i ? context.colors.ink : context.colors.ink2,
                                       ),
                                       const SizedBox(height: 4),
                                       Text(
@@ -270,7 +270,7 @@ class _SideNav extends StatelessWidget {
                                         style: sans(
                                           12,
                                           weight: current == i ? FontWeight.w700 : FontWeight.w500,
-                                          color: current == i ? AppColors.ink : AppColors.ink2,
+                                          color: current == i ? context.colors.ink : context.colors.ink2,
                                         ),
                                       ),
                                     ],
@@ -297,7 +297,7 @@ class _Focused extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ColoredBox(
-      color: AppColors.paper,
+      color: context.colors.paper,
       child: ReadableWidth(maxWidth: 680, child: child),
     );
   }

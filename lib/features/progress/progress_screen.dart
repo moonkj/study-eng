@@ -43,7 +43,7 @@ class ProgressScreen extends ConsumerWidget {
                     const Spacer(),
                     Text(
                       '지금 ${s.profile.overall.label}',
-                      style: sans(12, weight: FontWeight.w600, color: AppColors.success),
+                      style: sans(12, weight: FontWeight.w600, color: context.colors.success),
                     ),
                   ],
                 ),
@@ -55,7 +55,7 @@ class ProgressScreen extends ConsumerWidget {
                       child: Text(
                         '루틴을 이틀 이상 끝내면\n레벨 변화가 여기에 그려져요',
                         textAlign: TextAlign.center,
-                        style: sans(13, color: AppColors.ink2, height: 1.5),
+                        style: sans(13, color: context.colors.ink2, height: 1.5),
                       ),
                     ),
                   )
@@ -63,7 +63,9 @@ class ProgressScreen extends ConsumerWidget {
                   SizedBox(
                     height: 110,
                     width: double.infinity,
-                    child: CustomPaint(painter: _GrowthPainter(points: points)),
+                    child: CustomPaint(
+                      painter: _GrowthPainter(colors: context.colors, points: points),
+                    ),
                   ),
               ],
             ),
@@ -88,13 +90,16 @@ class ProgressScreen extends ConsumerWidget {
                   children: [
                     Text('${now.month}월', style: sans(14, weight: FontWeight.w600)),
                     const Spacer(),
-                    Text('${s.studiedDays.length}일 학습 · 연속 ${s.streakDays}일', style: sans(12, color: AppColors.ink2)),
+                    Text(
+                      '${s.studiedDays.length}일 학습 · 연속 ${s.streakDays}일',
+                      style: sans(12, color: context.colors.ink2),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    Icon(Icons.weekend_outlined, size: 14, color: AppColors.ink2),
+                    Icon(Icons.weekend_outlined, size: 14, color: context.colors.ink2),
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
@@ -102,7 +107,7 @@ class ProgressScreen extends ConsumerWidget {
                           if (s.streak.restsLeft > 0) '쉬는 날 ${s.streak.restsLeft}개 (빠진 날을 자동으로 메워요)',
                           if (s.streak.daysToNextRest > 0) '${s.streak.daysToNextRest}일 더 하면 쉬는 날 1개',
                         ].join(' · '),
-                        style: sans(12, color: AppColors.ink2),
+                        style: sans(12, color: context.colors.ink2),
                       ),
                     ),
                   ],
@@ -116,7 +121,7 @@ class ProgressScreen extends ConsumerWidget {
           Text('자동 조정 내역', style: sans(14, weight: FontWeight.w600)),
           const SizedBox(height: 8),
           if (s.lastAdjustmentReasons.isEmpty)
-            Text('첫 루틴을 끝내면 내일 학습을 어떻게 바꿨는지 알려드려요.', style: sans(13, color: AppColors.ink2)),
+            Text('첫 루틴을 끝내면 내일 학습을 어떻게 바꿨는지 알려드려요.', style: sans(13, color: context.colors.ink2)),
           for (final r in s.lastAdjustmentReasons)
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
@@ -127,7 +132,7 @@ class ProgressScreen extends ConsumerWidget {
                     height: 8,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: r.contains('말하기') ? AppColors.ember : AppColors.success,
+                      color: r.contains('말하기') ? context.colors.ember : context.colors.success,
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -155,7 +160,7 @@ class _Stat extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: sans(12, color: AppColors.ink2)),
+            Text(label, style: sans(12, color: context.colors.ink2)),
             const SizedBox(height: 2),
             Text(value, style: serif(24, weight: 500)),
           ],
@@ -187,7 +192,7 @@ class _MonthGrid extends StatelessWidget {
       children: [
         for (final h in heads)
           Center(
-            child: Text(h, style: sans(10, color: AppColors.ink2)),
+            child: Text(h, style: sans(10, color: context.colors.ink2)),
           ),
         for (var i = 0; i < lead; i++) const SizedBox.shrink(),
         for (var d = 1; d <= days; d++)
@@ -211,15 +216,17 @@ class _DayCell extends StatelessWidget {
     final isToday = day == today;
     final future = day > today;
     final (bg, fg) = isToday
-        ? (AppColors.emphasis, AppColors.onEmphasisAccent)
+        ? (context.colors.emphasis, context.colors.onEmphasisAccent)
         : future
-        ? (Colors.transparent, AppColors.ink2)
+        ? (Colors.transparent, context.colors.ink2)
         : studied
         // 밤의 종이에서는 밝은 파랑 타일이 눈부시지 않게 차분한 파랑에 잉크 글자
-        ? (AppColors.isDark ? (AppColors.penBlueSoft, AppColors.ink) : (AppColors.penBlue, AppColors.card))
+        ? (context.colors.isDark
+              ? (context.colors.penBlueSoft, context.colors.ink)
+              : (context.colors.penBlue, context.colors.card))
         : rested
-        ? (AppColors.sand, AppColors.ink)
-        : (AppColors.muted, AppColors.ink2);
+        ? (context.colors.sand, context.colors.ink)
+        : (context.colors.muted, context.colors.ink2);
     return Semantics(
       label:
           '$day일, ${isToday
@@ -237,7 +244,7 @@ class _DayCell extends StatelessWidget {
         decoration: BoxDecoration(
           color: bg,
           borderRadius: BorderRadius.circular(8),
-          border: future ? Border.all(color: AppColors.track) : null,
+          border: future ? Border.all(color: context.colors.track) : null,
         ),
         // 색만으로 구분하지 않도록 학습한 날에는 점을 찍는다
         child: Column(
@@ -264,7 +271,8 @@ class _DayCell extends StatelessWidget {
 
 /// 날짜별 레벨 점수 곡선
 class _GrowthPainter extends CustomPainter {
-  _GrowthPainter({required this.points});
+  _GrowthPainter({required this.colors, required this.points});
+  final AppPalette colors;
   final List<(DateTime, double)> points;
 
   @override
@@ -278,7 +286,7 @@ class _GrowthPainter extends CustomPainter {
       30 + points[i].$1.difference(first).inDays / span * (size.width - 42),
       size.height - 18 - (values[i] - minV) / (maxV - minV) * (size.height - 30),
     );
-    final grid = Paint()..color = AppColors.muted;
+    final grid = Paint()..color = colors.muted;
     for (var i = 0; i < 3; i++) {
       final y = 8 + i * (size.height - 26) / 2;
       canvas.drawLine(Offset(0, y), Offset(size.width, y), grid);
@@ -290,7 +298,7 @@ class _GrowthPainter extends CustomPainter {
       final tp = TextPainter(
         text: TextSpan(
           text: Level(v.round()).label,
-          style: sans(10, color: AppColors.ink2),
+          style: sans(10, color: colors.ink2),
         ),
         textDirection: TextDirection.ltr,
       )..layout();
@@ -306,24 +314,24 @@ class _GrowthPainter extends CustomPainter {
       ..lineTo(p(points.length - 1).dx, size.height - 14)
       ..lineTo(p(0).dx, size.height - 14)
       ..close();
-    canvas.drawPath(fill, Paint()..color = AppColors.penBlue.withValues(alpha: 0.07));
+    canvas.drawPath(fill, Paint()..color = colors.penBlue.withValues(alpha: 0.07));
     canvas.drawPath(
       path,
       Paint()
-        ..color = AppColors.penBlue
+        ..color = colors.penBlue
         ..strokeWidth = 2.5
         ..style = PaintingStyle.stroke
         ..strokeCap = StrokeCap.round,
     );
     final last = p(points.length - 1);
-    canvas.drawCircle(last, 6, Paint()..color = AppColors.card);
-    canvas.drawCircle(last, 4.5, Paint()..color = AppColors.penBlue);
+    canvas.drawCircle(last, 6, Paint()..color = colors.card);
+    canvas.drawCircle(last, 4.5, Paint()..color = colors.penBlue);
     for (final i in {0, points.length - 1}) {
       final d = points[i].$1;
       final tp = TextPainter(
         text: TextSpan(
           text: '${d.month}/${d.day}',
-          style: sans(10, color: AppColors.ink2),
+          style: sans(10, color: colors.ink2),
         ),
         textDirection: TextDirection.ltr,
       )..layout();
@@ -334,6 +342,7 @@ class _GrowthPainter extends CustomPainter {
   @override
   // 60일이 넘으면 개수는 같고 내용만 밀리므로 값까지 비교한다
   bool shouldRepaint(_GrowthPainter old) =>
+      old.colors != colors ||
       old.points.length != points.length ||
       (points.isNotEmpty && (old.points.first != points.first || old.points.last != points.last));
 }

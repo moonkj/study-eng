@@ -1,6 +1,10 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:todaye/app/app.dart';
+import 'package:todaye/app/study_controller.dart';
 import 'package:todaye/core/theme/tokens.dart';
+import 'package:todaye/core/widgets/widgets.dart';
 import 'package:todaye/data/pack_source.dart';
 import 'package:todaye/data/store.dart';
 import 'package:todaye/domain/srs.dart';
@@ -63,19 +67,53 @@ void main() {
 
   testWidgets('설정에서 어둡게를 고르면 밤의 종이 팔레트로 바뀐다 (화면 위치 유지)', (tester) async {
     await setPhone(tester);
-    addTearDown(() => AppColors.use(AppPalette.light));
     await tester.pumpWidget(app(initial: '/settings'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('화면 테마'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('어둡게 (밤의 종이)'));
     await tester.pumpAndSettle();
-    expect(AppColors.isDark, isTrue);
+    expect(tester.element(find.byType(Scaffold).first).colors.isDark, isTrue);
     expect(find.text('어둡게 (밤의 종이)'), findsOneWidget); // 설정 화면 그대로
     final scaffold = tester.widget<Scaffold>(find.byType(Scaffold).first);
     final bg =
         scaffold.backgroundColor ?? Theme.of(tester.element(find.byType(Scaffold).first)).scaffoldBackgroundColor;
     expect(bg, AppPalette.dark.paper);
+    expect(tester.takeException(), isNull);
+  });
+  testWidgets('테마를 바꿔도 화면의 로컬 상태(뒤집은 단어 카드)는 유지되고 색만 바뀐다', (tester) async {
+    await setPhone(tester);
+    await tester.pumpWidget(app(initial: '/words'));
+    await tester.pumpAndSettle();
+    bool revealed() =>
+        tester.widget<AnimatedCrossFade>(find.byType(AnimatedCrossFade).first).crossFadeState ==
+        CrossFadeState.showSecond;
+    expect(revealed(), isFalse);
+    await tester.tap(find.text('탭해서 뜻 보기'));
+    await tester.pumpAndSettle();
+    expect(revealed(), isTrue); // 뜻이 열린 상태
+
+    Color cardColor() {
+      final box = tester.widget<Container>(
+        find.descendant(of: find.byType(PaperCard).first, matching: find.byType(Container)).first,
+      );
+      return (box.decoration! as BoxDecoration).color!;
+    }
+
+    expect(cardColor(), AppPalette.light.card);
+    final container = ProviderScope.containerOf(tester.element(find.byType(TodayeApp)));
+    final notifier = container.read(studyProvider.notifier);
+    notifier.updateSettings(container.read(studyProvider).settings.copyWith(theme: 'dark'));
+    await tester.pumpAndSettle();
+
+    expect(revealed(), isTrue); // 화면을 새로 만들지 않아 뜻이 그대로 열려 있다
+    expect(cardColor(), AppPalette.dark.card);
+    expect(tester.element(find.byType(PaperCard).first).colors.isDark, isTrue);
+
+    notifier.updateSettings(container.read(studyProvider).settings.copyWith(theme: 'light'));
+    await tester.pumpAndSettle();
+    expect(revealed(), isTrue);
+    expect(cardColor(), AppPalette.light.card);
     expect(tester.takeException(), isNull);
   });
 }

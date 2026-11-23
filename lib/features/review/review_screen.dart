@@ -31,7 +31,7 @@ class ReviewScreen extends ConsumerWidget {
         children: [
           Text('복습', style: sans(26, weight: FontWeight.w700, letterSpacing: -0.5)),
           const SizedBox(height: 6),
-          Text('잊어버릴 때쯤 다시 보여드려요 (1 · 3 · 7 · 14 · 30일)', style: sans(13, color: AppColors.ink2)),
+          Text('잊어버릴 때쯤 다시 보여드려요 (1 · 3 · 7 · 14 · 30일)', style: sans(13, color: context.colors.ink2)),
           const SizedBox(height: 16),
           PaperCard(
             elevated: true,
@@ -41,7 +41,7 @@ class ReviewScreen extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('오늘 복습할 카드', style: sans(13, color: AppColors.ink2)),
+                      Text('오늘 복습할 카드', style: sans(13, color: context.colors.ink2)),
                       const SizedBox(height: 2),
                       Text('$dueCount장', style: serif(32, weight: 500)),
                     ],
@@ -71,10 +71,10 @@ class ReviewScreen extends ConsumerWidget {
                     const SizedBox(height: 6),
                     englishSemantics(
                       q.choices[q.answerIndex],
-                      Text(q.choices[q.answerIndex], style: serif(17, color: AppColors.success)),
+                      Text(q.choices[q.answerIndex], style: serif(17, color: context.colors.success)),
                     ),
                     const SizedBox(height: 6),
-                    Text(q.explanation, style: sans(13, color: AppColors.ink2, height: 1.5)),
+                    Text(q.explanation, style: sans(13, color: context.colors.ink2, height: 1.5)),
                   ],
                 ),
               ),
@@ -95,7 +95,7 @@ class ReviewScreen extends ConsumerWidget {
                       constraints: const BoxConstraints(minHeight: 52),
                       padding: const EdgeInsets.symmetric(vertical: 6),
                       decoration: BoxDecoration(
-                        border: c == scheduled.first ? null : Border(top: BorderSide(color: AppColors.line)),
+                        border: c == scheduled.first ? null : Border(top: BorderSide(color: context.colors.line)),
                       ),
                       child: Row(
                         children: [
@@ -108,7 +108,7 @@ class ReviewScreen extends ConsumerWidget {
                           Flexible(
                             child: Text(
                               words[c.itemId]!.meaning,
-                              style: sans(13, color: AppColors.ink2),
+                              style: sans(13, color: context.colors.ink2),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -116,8 +116,8 @@ class ReviewScreen extends ConsumerWidget {
                           const SizedBox(width: 12),
                           Tag(
                             '${c.due.difference(DateTime(now.year, now.month, now.day)).inDays}일 뒤',
-                            color: AppColors.ink,
-                            background: AppColors.sand,
+                            color: context.colors.ink,
+                            background: context.colors.sand,
                           ),
                         ],
                       ),
@@ -141,9 +141,9 @@ class _Empty extends StatelessWidget {
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.line),
+        border: Border.all(color: context.colors.line),
       ),
-      child: Text(text, style: sans(14, color: AppColors.ink2, height: 1.5)),
+      child: Text(text, style: sans(14, color: context.colors.ink2, height: 1.5)),
     );
   }
 }

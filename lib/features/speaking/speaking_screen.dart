@@ -177,13 +177,16 @@ class _SpeakingScreenState extends ConsumerState<SpeakingScreen> with StudyScree
                     Align(
                       alignment: Alignment.centerLeft,
                       child: FilterChip(
-                        label: Text('소리 내기 어려워요', style: sans(13, weight: FontWeight.w500)),
+                        label: Text(
+                          '소리 내기 어려워요',
+                          style: sans(13, weight: FontWeight.w500, color: context.colors.ink),
+                        ),
                         avatar: Icon(_quiet ? Icons.volume_off_rounded : Icons.volume_off_outlined, size: 16),
                         selected: _quiet,
                         showCheckmark: false,
-                        selectedColor: AppColors.sand,
-                        backgroundColor: AppColors.paper,
-                        side: BorderSide(color: AppColors.line),
+                        selectedColor: context.colors.sand,
+                        backgroundColor: context.colors.paper,
+                        side: BorderSide(color: context.colors.line),
                         onSelected: (v) => setState(() {
                           _stopListening();
                           ref.read(quietModeProvider.notifier).set(v);
@@ -197,7 +200,7 @@ class _SpeakingScreenState extends ConsumerState<SpeakingScreen> with StudyScree
                     Row(
                       children: [
                         Expanded(
-                          child: Text(sentence.ko, style: sans(15, color: AppColors.ink2)),
+                          child: Text(sentence.ko, style: sans(15, color: context.colors.ink2)),
                         ),
                         RoundIconButton(
                           icon: Icons.volume_up_rounded,
@@ -262,14 +265,16 @@ class _SpeakingScreenState extends ConsumerState<SpeakingScreen> with StudyScree
                                     width: 84,
                                     height: 84,
                                     decoration: BoxDecoration(
-                                      color: _listening ? AppColors.penBlue : AppColors.ink,
+                                      color: _listening ? context.colors.penBlue : context.colors.ink,
                                       shape: BoxShape.circle,
-                                      boxShadow: [BoxShadow(color: AppColors.sand, spreadRadius: _listening ? 14 : 8)],
+                                      boxShadow: [
+                                        BoxShadow(color: context.colors.sand, spreadRadius: _listening ? 14 : 8),
+                                      ],
                                     ),
                                     child: Icon(
                                       _listening ? Icons.stop_rounded : Icons.mic_none_rounded,
                                       size: 32,
-                                      color: AppColors.highlighter,
+                                      color: context.colors.highlighter,
                                     ),
                                   ),
                                 ),
@@ -277,7 +282,7 @@ class _SpeakingScreenState extends ConsumerState<SpeakingScreen> with StudyScree
                               SizedBox(height: 14),
                               Text(
                                 _listening ? '다 말했으면 누르기' : (result == null ? '눌러서 말하기' : '한 번 더 말하기'),
-                                style: sans(12, color: AppColors.ink2),
+                                style: sans(12, color: context.colors.ink2),
                               ),
                             ],
                           ),
@@ -309,7 +314,7 @@ class _QuietCard extends StatelessWidget {
     return PaperCard(
       child: Row(
         children: [
-          Icon(Icons.hearing_rounded, color: AppColors.penBlue),
+          Icon(Icons.hearing_rounded, color: context.colors.penBlue),
           SizedBox(width: 12),
           Expanded(child: Text('이어폰으로 문장을 듣고, 입 모양만 따라 하거나 속으로 따라 해 보세요. 점수는 매기지 않아요.', style: sans(14, height: 1.55))),
         ],
@@ -340,15 +345,18 @@ class _SentenceView extends StatelessWidget {
               padding: EdgeInsets.only(bottom: 2),
               decoration: BoxDecoration(
                 border: Border(
-                  bottom: BorderSide(color: w.matched ? AppColors.success : AppColors.error, width: w.matched ? 2 : 4),
+                  bottom: BorderSide(
+                    color: w.matched ? context.colors.success : context.colors.error,
+                    width: w.matched ? 2 : 4,
+                  ),
                 ),
               ),
               // 색만으로 구분하지 않도록: 다르게 들린 단어에는 표시 아이콘을 붙인다
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(w.word, style: style.copyWith(color: w.matched ? AppColors.ink : AppColors.error)),
-                  if (!w.matched) Icon(Icons.hearing_disabled_rounded, size: 16, color: AppColors.error),
+                  Text(w.word, style: style.copyWith(color: w.matched ? context.colors.ink : context.colors.error)),
+                  if (!w.matched) Icon(Icons.hearing_disabled_rounded, size: 16, color: context.colors.error),
                 ],
               ),
             ),
@@ -370,11 +378,11 @@ class _ScoreCard extends StatelessWidget {
       label:
           '${result.score}점, ${result.verdict}${result.missed.isEmpty ? '' : '. 다르게 들린 단어: ${result.missed.join(', ')}'}',
       excludeSemantics: true,
-      child: _card(),
+      child: _card(context),
     );
   }
 
-  Widget _card() {
+  Widget _card(BuildContext context) {
     return PaperCard(
       padding: const EdgeInsets.all(18),
       child: Row(
@@ -389,8 +397,8 @@ class _ScoreCard extends StatelessWidget {
                   child: CircularProgressIndicator(
                     value: result.score / 100,
                     strokeWidth: 6,
-                    backgroundColor: AppColors.muted,
-                    color: result.score >= 80 ? AppColors.success : AppColors.ember,
+                    backgroundColor: context.colors.muted,
+                    color: result.score >= 80 ? context.colors.success : context.colors.ember,
                     strokeCap: StrokeCap.round,
                   ),
                 ),
@@ -410,7 +418,7 @@ class _ScoreCard extends StatelessWidget {
                     children: [
                       TextSpan(
                         text: '들린 문장: ',
-                        style: sans(13, color: AppColors.ink2),
+                        style: sans(13, color: context.colors.ink2),
                       ),
                       TextSpan(text: '"${result.heard}"', style: serif(15, italic: true)),
                     ],
@@ -438,17 +446,17 @@ class _TipCard extends StatelessWidget {
     final pronTips = koreanPronTips(missed);
     return Container(
       padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
-      decoration: BoxDecoration(color: AppColors.penBlueTint, borderRadius: BorderRadius.circular(AppRadius.card)),
+      decoration: BoxDecoration(color: context.colors.penBlueTint, borderRadius: BorderRadius.circular(AppRadius.card)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(Icons.auto_awesome_outlined, size: 14, color: AppColors.penBlue),
+              Icon(Icons.auto_awesome_outlined, size: 14, color: context.colors.penBlue),
               const SizedBox(width: 6),
               Text(
                 '선생님 한마디',
-                style: sans(12, weight: FontWeight.w600, color: AppColors.penBlue),
+                style: sans(12, weight: FontWeight.w600, color: context.colors.penBlue),
               ),
             ],
           ),
@@ -456,7 +464,7 @@ class _TipCard extends StatelessWidget {
           Text(tip, style: sans(14, height: 1.6)),
           for (final t in pronTips) ...[
             const SizedBox(height: 6),
-            Text('· $t', style: sans(13, height: 1.55, color: AppColors.inkSoft)),
+            Text('· $t', style: sans(13, height: 1.55, color: context.colors.inkSoft)),
           ],
         ],
       ),
@@ -474,7 +482,7 @@ class _HintCard extends StatelessWidget {
     return PaperCard(
       child: Row(
         children: [
-          Icon(listening ? Icons.hearing_rounded : Icons.record_voice_over_outlined, color: AppColors.penBlue),
+          Icon(listening ? Icons.hearing_rounded : Icons.record_voice_over_outlined, color: context.colors.penBlue),
           const SizedBox(width: 12),
           Expanded(
             child: listening && partial.isNotEmpty
@@ -499,7 +507,7 @@ class _ErrorCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PaperCard(
-      color: AppColors.errorTint,
+      color: context.colors.errorTint,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -553,13 +561,13 @@ class _SideButton extends StatelessWidget {
                 height: 44,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: filled ? (enabled ? AppColors.penBlue : AppColors.track) : AppColors.card,
-                  border: filled ? null : Border.all(color: AppColors.line),
+                  color: filled ? (enabled ? context.colors.penBlue : context.colors.track) : context.colors.card,
+                  border: filled ? null : Border.all(color: context.colors.line),
                 ),
-                child: Icon(icon, size: 20, color: filled ? AppColors.card : AppColors.penBlue),
+                child: Icon(icon, size: 20, color: filled ? context.colors.card : context.colors.penBlue),
               ),
               const SizedBox(height: 4),
-              Text(label, style: sans(12, color: enabled ? AppColors.ink : AppColors.ink2)),
+              Text(label, style: sans(12, color: enabled ? context.colors.ink : context.colors.ink2)),
             ],
           ),
         ),

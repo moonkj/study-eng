@@ -28,7 +28,7 @@ class WelcomeScreen extends ConsumerWidget {
                     style: serif(44, weight: 500, letterSpacing: -1, height: 1.2),
                   ),
                   const SizedBox(height: 6),
-                  Text('오늘의 영어', style: sans(15, color: AppColors.ink2)),
+                  Text('오늘의 영어', style: sans(15, color: context.colors.ink2)),
                   const SizedBox(height: 40),
                   Text(
                     '하루 15분,\n내 레벨에 딱 맞는 영어 루틴',
@@ -75,7 +75,7 @@ void _askLevel(BuildContext context, WidgetRef ref) {
           children: [
             Text('영어로 짧은 대화를 할 수 있나요?', style: sans(18, weight: FontWeight.w700)),
             const SizedBox(height: 6),
-            Text('나중에 설정에서 언제든 진단받을 수 있어요.', style: sans(13, color: AppColors.ink2)),
+            Text('나중에 설정에서 언제든 진단받을 수 있어요.', style: sans(13, color: context.colors.ink2)),
             const SizedBox(height: 20),
             FilledButton(onPressed: () => start(false), child: const Text('네, 간단한 대화는 돼요 (B1부터)')),
             const SizedBox(height: 8),
@@ -106,11 +106,11 @@ class _Point extends StatelessWidget {
             alignment: Alignment.center,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(color: AppColors.lineStrong, width: 1.5),
+              border: Border.all(color: context.colors.lineStrong, width: 1.5),
             ),
             child: Text(
               n,
-              style: sans(13, weight: FontWeight.w600, color: AppColors.ink2),
+              style: sans(13, weight: FontWeight.w600, color: context.colors.ink2),
             ),
           ),
           const SizedBox(width: 14),
@@ -120,7 +120,7 @@ class _Point extends StatelessWidget {
               children: [
                 Text(title, style: sans(16, weight: FontWeight.w700)),
                 const SizedBox(height: 2),
-                Text(body, style: sans(14, color: AppColors.ink2, height: 1.5)),
+                Text(body, style: sans(14, color: context.colors.ink2, height: 1.5)),
               ],
             ),
           ),

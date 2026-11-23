@@ -74,15 +74,15 @@ class _RecallQuestionState extends State<RecallQuestion> {
             labelText: '빈칸에 들어갈 영어',
             hintText: '첫 글자를 보고 떠올려 보세요',
             filled: true,
-            fillColor: AppColors.card,
+            fillColor: context.colors.card,
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide(color: AppColors.line),
+              borderSide: BorderSide(color: context.colors.line),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide(color: AppColors.ink, width: 1.5),
+              borderSide: BorderSide(color: context.colors.ink, width: 1.5),
             ),
           ),
         ),
