@@ -72,7 +72,7 @@ void main() {
     expect(find.text('정답이에요!'), findsOneWidget);
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
     await tester.pumpAndSettle();
-    expect(find.text('2/10'), findsOneWidget);
+    expect(find.text('2/12'), findsOneWidget); // 고르는 문제 10 + 첫 글자 쓰기 2
   });
 
   testWidgets('키보드: 키를 누르고 있어도 평가는 한 번만 들어간다', (tester) async {

@@ -9,6 +9,8 @@ import '../../core/theme/tokens.dart';
 import '../../core/widgets/study_shortcuts.dart';
 import '../../core/widgets/widgets.dart';
 import '../../data/models.dart';
+import '../../domain/pack_prep.dart';
+import 'recall_input.dart';
 
 class QuizScreen extends ConsumerStatefulWidget {
   const QuizScreen({super.key});
@@ -32,10 +34,20 @@ class _QuizScreenState extends ConsumerState<QuizScreen> with StudyScreenGuard {
     setState(() => _index++);
   }
 
+  /// 회상형 문제에서 이번에 쓴 답 (문제 번호별, 화면을 다시 열면 비어 있다)
+  final _typed = <int, String>{};
+
+  /// 회상형 문제: 맞으면 0(정답 위치), 틀리면 1 을 답으로 기록한다
+  void _answerRecall(String typed) {
+    final item = ref.read(studyProvider).pack.quiz[_index];
+    _typed[_index] = typed.trim();
+    _answer(isRecallCorrect(item, typed) ? item.answerIndex : 1);
+  }
+
   void _answer(int choice) {
     final s = ref.read(studyProvider);
     final item = s.pack.quiz[_index];
-    if (s.quizAnswers.containsKey(_index) || choice >= item.choices.length) return;
+    if (s.quizAnswers.containsKey(_index) || (!item.isRecall && choice >= item.choices.length)) return;
     ref.read(studyProvider.notifier).answerQuiz(_index, choice);
     choice == item.answerIndex ? HapticFeedback.lightImpact() : HapticFeedback.mediumImpact();
   }
@@ -56,13 +68,14 @@ class _QuizScreenState extends ConsumerState<QuizScreen> with StudyScreenGuard {
         // iPad 하드웨어 키보드: 1~4 보기 선택, Enter 다음, Esc 닫기
         child: StudyShortcuts(
           bindings: {
-            for (final (i, key) in [
-              LogicalKeyboardKey.digit1,
-              LogicalKeyboardKey.digit2,
-              LogicalKeyboardKey.digit3,
-              LogicalKeyboardKey.digit4,
-            ].indexed)
-              SingleActivator(key): () => _answer(i),
+            if (!item.isRecall)
+              for (final (i, key) in [
+                LogicalKeyboardKey.digit1,
+                LogicalKeyboardKey.digit2,
+                LogicalKeyboardKey.digit3,
+                LogicalKeyboardKey.digit4,
+              ].indexed)
+                SingleActivator(key): () => _answer(i),
             const SingleActivator(LogicalKeyboardKey.enter): () {
               if (answered) _next();
             },
@@ -107,26 +120,36 @@ class _QuizScreenState extends ConsumerState<QuizScreen> with StudyScreenGuard {
                     ),
                     const SizedBox(height: 14),
                     Text(
-                      '알맞은 영어 문장을 골라주세요',
+                      item.isRecall ? '첫 글자를 보고 빈칸에 들어갈 영어를 써 주세요' : '알맞은 영어 문장을 골라주세요',
                       style: sans(15, weight: FontWeight.w500, color: AppColors.ink2),
                     ),
                     const SizedBox(height: 8),
                     Text(item.prompt, style: sans(26, weight: FontWeight.w700, letterSpacing: -0.5, height: 1.35)),
                     const SizedBox(height: 22),
-                    for (var i = 0; i < item.choices.length; i++) ...[
-                      _Choice(
-                        text: item.choices[i],
-                        status: !answered
-                            ? _Status.idle
-                            : i == item.answerIndex
-                            ? _Status.correct
-                            : i == picked
-                            ? _Status.wrong
-                            : _Status.dim,
-                        onTap: answered ? null : () => _answer(i),
-                      ),
-                      const SizedBox(height: 8),
-                    ],
+                    if (item.isRecall)
+                      RecallQuestion(
+                        key: ValueKey(item.id),
+                        item: item,
+                        answered: answered,
+                        typed: _typed[_index],
+                        onSubmit: _answerRecall,
+                        onGiveUp: () => _answer(1),
+                      )
+                    else
+                      for (var i = 0; i < item.choices.length; i++) ...[
+                        _Choice(
+                          text: item.choices[i],
+                          status: !answered
+                              ? _Status.idle
+                              : i == item.answerIndex
+                              ? _Status.correct
+                              : i == picked
+                              ? _Status.wrong
+                              : _Status.dim,
+                          onTap: answered ? null : () => _answer(i),
+                        ),
+                        const SizedBox(height: 8),
+                      ],
                   ],
                 ),
               ),
@@ -136,8 +159,17 @@ class _QuizScreenState extends ConsumerState<QuizScreen> with StudyScreenGuard {
                 child: answered
                     ? _Feedback(
                         item: item,
-                        picked: picked,
-                        onListen: () => ref.read(sayProvider)(item.choices[item.answerIndex]),
+                        mine: picked == item.answerIndex
+                            ? null
+                            : item.isRecall
+                            ? (_typed[_index]?.isEmpty ?? true ? null : _typed[_index])
+                            : item.choices[picked],
+                        // 회상형은 단어만이 아니라 빈칸을 채운 문장 전체를 읽어 준다
+                        onListen: () => ref.read(sayProvider)(
+                          item.isRecall
+                              ? item.clue!.replaceFirst(blankFor(item.choices[0]), item.choices[0])
+                              : item.choices[item.answerIndex],
+                        ),
                         correct: picked == item.answerIndex,
                         onNext: _next,
                         nextLabel: _index < quiz.length - 1
@@ -273,14 +305,16 @@ class _Choice extends StatelessWidget {
 class _Feedback extends StatelessWidget {
   const _Feedback({
     required this.item,
-    required this.picked,
+    required this.mine,
     required this.correct,
     required this.onNext,
     required this.onListen,
     required this.nextLabel,
   });
   final QuizItem item;
-  final int? picked;
+
+  /// 틀렸을 때 내 답 (고른 보기 또는 쓴 답, 없으면 null)
+  final String? mine;
   final bool correct;
   final VoidCallback onListen;
   final VoidCallback onNext;
@@ -334,12 +368,13 @@ class _Feedback extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
-            if (!correct && picked != null) ...[
+            if (!correct) ...[
               // 내 답(취소선) → 정답(굵게) 을 나란히 보여 차이가 바로 보이게
-              Text(
-                item.choices[picked!],
-                style: serif(16, color: AppColors.ink2).copyWith(decoration: TextDecoration.lineThrough),
-              ),
+              if (mine != null)
+                Text(
+                  mine!,
+                  style: serif(16, color: AppColors.ink2).copyWith(decoration: TextDecoration.lineThrough),
+                ),
               const SizedBox(height: 4),
               Row(
                 children: [

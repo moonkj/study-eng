@@ -79,6 +79,8 @@ class QuizItem {
     required this.explanation,
     this.reviewLabel,
     this.itemId,
+    this.clue,
+    this.accept = const [],
   });
 
   final String id;
@@ -96,6 +98,15 @@ class QuizItem {
   final String? itemId;
 
   bool get isReview => reviewLabel != null;
+
+  /// 회상형 문제(첫 글자 단서를 보고 직접 입력)일 때 빈칸 문장. 예: "A_______, I'm a little tired."
+  /// 회상형 문제의 [choices] 는 정답 하나뿐이고, 틀리면 답으로 1 을 기록한다.
+  final String? clue;
+
+  /// 회상형 문제에서 정답으로 받아 주는 다른 형태 (예: 원형)
+  final List<String> accept;
+
+  bool get isRecall => clue != null;
 }
 
 class DailyPack {

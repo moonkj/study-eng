@@ -191,6 +191,8 @@ void main() {
       ],
     );
     final ctl2 = next.read(studyProvider.notifier);
+    // 오늘 퀴즈에 나오는 항목은 퀴즈를 끝낸 뒤 복습에 나온다 (기본 팩을 다시 하는 날이라 같은 단어가 퀴즈에 있다)
+    ctl2.complete(RoutineStep.quiz);
     expect(ctl2.dueReviews().map((i) => i.text), ['actually']);
     ctl2.reviewCard('w-actually', SelfRating.know);
     // 복습 카드의 '알았어요'는 한 단계씩 오른다 (내일 → 3일 뒤)

@@ -9,6 +9,7 @@ import '../data/store.dart';
 import '../domain/daily_adjuster.dart';
 import '../domain/level.dart';
 import '../domain/pack_check.dart';
+import '../domain/pack_prep.dart';
 import '../domain/speech_score.dart';
 import '../domain/srs.dart';
 import '../domain/study_log.dart';
@@ -22,8 +23,8 @@ enum RoutineStep { expressions, words, speaking, quiz }
 /// 테스트에서 날짜를 고정할 수 있도록 시계를 주입한다.
 final clockProvider = Provider<DateTime Function()>((ref) => DateTime.now);
 
-/// 서버를 쓸 수 없을 때의 기본 팩
-final fallbackPackProvider = Provider<DailyPack Function(DateTime)>((ref) => samplePack);
+/// 서버를 쓸 수 없을 때의 기본 팩 (콘텐츠 난이도 단계에 맞는 것: A2 이하 / B1 이상)
+final fallbackPackProvider = Provider<DailyPack Function(DateTime date, int contentStep)>((ref) => samplePackFor);
 
 class StudyState {
   StudyState({
@@ -288,15 +289,12 @@ class StudyController extends Notifier<StudyState> {
     };
 
     final source = ref.read(packSourceProvider);
+    final log = saved?.log ?? const <String, DayRecord>{};
+    final contentStep = saved?.contentStep ?? profile.overall.step;
     final cachedPack = packs[todayKey] == null ? null : _parsePack(packs[todayKey]!, learned, now);
     if (packs[todayKey] != null && cachedPack == null) packs.remove(todayKey); // 깨진 캐시는 버린다
-    DailyPack pack;
     var loading = false;
-    if (cachedPack != null) {
-      pack = cachedPack;
-    } else {
-      pack = ref.read(fallbackPackProvider)(now);
-    }
+    final pack = _prepare(cachedPack ?? ref.read(fallbackPackProvider)(now, contentStep), log, now);
 
     // 오늘 진행이 다른 팩에 대한 것이면(캐시가 버려졌거나 바뀜) 번호 기준 진행이 어긋나므로 비운다
     final id = packIdOf(pack);
@@ -325,9 +323,9 @@ class StudyController extends Notifier<StudyState> {
       now: now,
       pack: pack,
       profile: profile,
-      contentStep: saved?.contentStep ?? profile.overall.step,
+      contentStep: contentStep,
       onboarded: onboarded,
-      log: saved?.log ?? const {},
+      log: log,
       cards: cards,
       today: today,
       lastAdjustmentReasons: saved?.lastReasons ?? const [],
@@ -364,6 +362,10 @@ class StudyController extends Notifier<StudyState> {
       return null;
     }
   }
+
+  /// 받은 팩을 오늘 보여 줄 형태로 (처음 며칠은 분량을 줄이고 회상형 문제를 붙인다)
+  static DailyPack _prepare(DailyPack raw, Map<String, DayRecord> log, DateTime now) =>
+      prepareDailyPack(raw, dayNumber: dayNumberOf(log.keys, now));
 
   /// 요청이 겹치면 가장 최근 요청의 결과만 반영한다.
   int _packRequest = 0;
@@ -413,8 +415,9 @@ class StudyController extends Notifier<StudyState> {
         ),
       );
       if (!ref.mounted || request != _packRequest) return; // 더 새 요청이 있다
-      final pack = _parsePack(json, state.learned, state.now);
-      if (pack == null) throw const PackFetchException('받은 학습 내용에 문제가 있어요.');
+      final parsed = _parsePack(json, state.learned, state.now);
+      if (parsed == null) throw const PackFetchException('받은 학습 내용에 문제가 있어요.');
+      final pack = _prepare(parsed, state.log, state.now);
       if (!state.untouched) {
         // 기다리는 동안 기본 팩으로 이미 시작했다면 오늘 팩은 바꾸지 않는다 (시작한 팩은 배운 항목으로 등록).
         _set(state.copyWith(packLoading: false, learned: registerLearned(state.learned, state.pack)));
@@ -648,7 +651,11 @@ class StudyController extends Notifier<StudyState> {
       for (final e in state.packs.entries)
         if (e.key == todayKey && !dropToday) e.key: e.value,
     };
-    final fallback = dropToday ? ref.read(fallbackPackProvider)(state.now) : null;
+    // 기본 팩으로 하는 날(서버 없음)도 아직 시작 전이면 새 레벨에 맞는 기본 팩(A2 / B1)으로 바꾼다
+    final swapFallback = dropToday || (untouched && !state.pack.fromClaude);
+    final fallback = swapFallback
+        ? _prepare(ref.read(fallbackPackProvider)(state.now, profile.overall.step), state.log, state.now)
+        : null;
     _set(
       state.copyWith(
         profile: profile,
@@ -661,6 +668,8 @@ class StudyController extends Notifier<StudyState> {
             ? null
             : TodayProgress(date: todayKey, packId: packIdOf(fallback), regenCount: state.today.regenCount),
         packLoading: false,
+        // 새 팩을 받지 않고 바로 시작하는 팩은 지금 배운 항목으로 등록한다
+        learned: dropToday ? null : registerLearned(state.learned, fallback ?? state.pack),
       ),
     );
     // 진단 결과에 맞춰 오늘의 팩을 만든다
@@ -773,6 +782,8 @@ class StudyController extends Notifier<StudyState> {
             levelScore: profile.overall.score,
             speakingAverage: result.speakingAverage,
             newAccuracy: result.newAccuracy,
+            quizCorrect: result.quizCorrect,
+            quizTotal: result.quizTotal,
           ),
         },
         lastAdjustmentReasons: repeat ? const ['오늘은 이미 배운 기본 학습을 다시 해서 레벨과 난이도는 그대로 둬요.'] : adj.reasons,

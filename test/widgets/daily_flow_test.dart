@@ -133,16 +133,25 @@ void main() {
     await tester.pumpAndSettle();
     final container = ProviderScope.containerOf(tester.element(find.byType(Scaffold).first));
     final quiz = container.read(studyProvider).pack.quiz;
+    expect(quiz.where((q) => q.isRecall).length, 2); // 끝에 첫 글자 보고 쓰기 2문제
     for (var i = 0; i < quiz.length; i++) {
-      await tester.tap(find.text(quiz[i].choices[quiz[i].answerIndex]));
+      if (quiz[i].isRecall) {
+        expect(find.text(quiz[i].clue!), findsOneWidget);
+        await tester.enterText(find.byType(TextField), ' ${quiz[i].choices[0].toUpperCase()} ');
+        await tester.pump();
+        await tester.tap(find.text('확인'));
+      } else {
+        await tester.tap(find.text(quiz[i].choices[quiz[i].answerIndex]));
+      }
       await tester.pumpAndSettle();
+      expect(find.text('정답이에요!'), findsOneWidget);
       await tester.tap(find.text(i < quiz.length - 1 ? '다음 문제' : '결과 보기'));
       await tester.pumpAndSettle();
     }
 
     expect(find.text('최고 기록 경신! 13일 연속'), findsOneWidget); // 어제까지 12일이 최고 기록
     expect(find.textContaining('13', findRichText: true), findsWidgets); // 연속 학습일 +1
-    expect(find.text('10/10'), findsOneWidget);
+    expect(find.text('12/12'), findsOneWidget);
     expect(find.text('내일 몇 시에 알려 드릴까요?'), findsOneWidget); // 첫 완료 때 알림 제안
 
     final s = container.read(studyProvider);

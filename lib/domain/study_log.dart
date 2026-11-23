@@ -20,7 +20,14 @@ DateTime parseDateKey(String key) {
 
 /// 하루 루틴을 끝낸 날의 기록
 class DayRecord {
-  const DayRecord({required this.accuracy, required this.levelScore, this.speakingAverage, this.newAccuracy});
+  const DayRecord({
+    required this.accuracy,
+    required this.levelScore,
+    this.speakingAverage,
+    this.newAccuracy,
+    this.quizCorrect,
+    this.quizTotal,
+  });
 
   /// 퀴즈 정답률 0~1
   final double accuracy;
@@ -32,11 +39,17 @@ class DayRecord {
   /// 그날 배운 것만의 퀴즈 정답률 (난이도 판단용, 문항이 적으면 null)
   final double? newAccuracy;
 
+  /// 그날 퀴즈 맞힌 수 / 문항 수 (완료 화면이 팩이 바뀐 뒤에도 그날 결과를 보여 주게, 옛 기록은 null)
+  final int? quizCorrect;
+  final int? quizTotal;
+
   Map<String, Object?> toJson() => {
     'accuracy': accuracy,
     'levelScore': levelScore,
     'speaking': speakingAverage,
     if (newAccuracy != null) 'new': newAccuracy,
+    if (quizCorrect != null) 'qc': quizCorrect,
+    if (quizTotal != null) 'qt': quizTotal,
   };
 
   factory DayRecord.fromJson(Map<String, Object?> j) => DayRecord(
@@ -44,6 +57,8 @@ class DayRecord {
     levelScore: (j['levelScore'] as num).toInt(),
     speakingAverage: (j['speaking'] as num?)?.toDouble(),
     newAccuracy: (j['new'] as num?)?.toDouble(),
+    quizCorrect: (j['qc'] as num?)?.toInt(),
+    quizTotal: (j['qt'] as num?)?.toInt(),
   );
 }
 

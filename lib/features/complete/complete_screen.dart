@@ -8,6 +8,7 @@ import '../../core/theme/tokens.dart';
 import '../../core/widgets/widgets.dart';
 import '../../domain/level.dart';
 import '../../domain/srs.dart';
+import '../../domain/study_log.dart';
 import '../settings/settings_screen.dart' show formatMinutes;
 
 class CompleteScreen extends ConsumerStatefulWidget {
@@ -40,7 +41,11 @@ class _CompleteScreenState extends ConsumerState<CompleteScreen> {
     final delta = s.todayLevelDelta;
     final now = s.profile.overall;
     final before = delta == null ? now : Level(now.score - delta);
-    final speaking = s.speakingAverage;
+    // 점수는 루틴을 끝낼 때 저장한 기록으로 보여 준다 (그 뒤 팩이 바뀌어도 그날 결과 그대로)
+    final record = s.log[dateKey(s.now)];
+    final speaking = record != null ? record.speakingAverage : s.speakingAverage;
+    final quizCorrect = record?.quizCorrect ?? s.quizCorrect;
+    final quizTotal = record?.quizTotal ?? s.pack.quiz.length;
     final newWords = s.wordRatings.values.where((r) => r != SelfRating.know).length;
     final levelUp = before.step < now.step;
     // 축하 문구 우선순위: 레벨 업 > 연속 마일스톤 > 최고 기록을 처음 넘은 날 > 복귀
@@ -135,7 +140,7 @@ class _CompleteScreenState extends ConsumerState<CompleteScreen> {
                   const SizedBox(height: 26),
                   Row(
                     children: [
-                      _Stat(value: '${s.quizCorrect}/${s.pack.quiz.length}', label: '퀴즈'),
+                      _Stat(value: '$quizCorrect/$quizTotal', label: '퀴즈'),
                       const SizedBox(width: 8),
                       _Stat(value: speaking == null ? '-' : '${speaking.round()}', label: '말하기 평균'),
                       const SizedBox(width: 8),
@@ -254,7 +259,7 @@ class _CompleteScreenState extends ConsumerState<CompleteScreen> {
                     onPressed: () => context.pushReplacement('/review-session'),
                     child: Text('복습 카드 ${s.dueCount}장도 넘기기 · ${s.reviewMinutes}분'),
                   ),
-                if (s.quizCorrect < s.pack.quiz.length)
+                if (quizCorrect < quizTotal)
                   TextButton(onPressed: () => context.go('/review'), child: const Text('틀린 문제 다시 보기')),
               ],
             ),

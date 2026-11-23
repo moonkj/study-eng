@@ -9,7 +9,7 @@ List<String> checkPack(DailyPack p) {
   if (p.sentences.isEmpty) problems.add('따라 말하기 문장이 없어요');
   if (p.quiz.isEmpty) problems.add('퀴즈가 없어요');
   for (final q in p.quiz) {
-    if (q.choices.length < 2) problems.add('보기가 부족한 퀴즈: ${q.id}');
+    if (q.choices.length < (q.isRecall ? 1 : 2)) problems.add('보기가 부족한 퀴즈: ${q.id}');
     if (q.answerIndex < 0 || q.answerIndex >= q.choices.length) problems.add('정답 위치가 잘못된 퀴즈: ${q.id}');
   }
   for (final e in p.expressions) {
