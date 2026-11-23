@@ -45,7 +45,7 @@ class _ExpressionScreenState extends ConsumerState<ExpressionScreen> with StudyS
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => ColoredBox(
-          color: AppColors.paper,
+          color: context.colors.paper,
           child: ReadableWidth(
             maxWidth: 680,
             child: SpeakingScreen(
@@ -120,7 +120,7 @@ class _ExpressionScreenState extends ConsumerState<ExpressionScreen> with StudyS
                       child: Text(
                         '${_index + 1}/${items.length}',
                         textAlign: TextAlign.right,
-                        style: sans(13, color: AppColors.ink2),
+                        style: sans(13, color: context.colors.ink2),
                       ),
                     ),
                   ],
@@ -146,7 +146,7 @@ class _ExpressionScreenState extends ConsumerState<ExpressionScreen> with StudyS
                   spacing: 8,
                   runSpacing: 8,
                   children: [
-                    Text('이 표현은', style: sans(13, color: AppColors.ink2)),
+                    Text('이 표현은', style: sans(13, color: context.colors.ink2)),
                     _ChoicePill(
                       label: '이미 알아요',
                       selected: known == true,
@@ -209,7 +209,7 @@ class _ExpressionCard extends ConsumerWidget {
             children: [
               Tag(e.levelLabel),
               const SizedBox(width: 6),
-              Tag(e.topic, color: AppColors.ink2, background: AppColors.mutedSoft),
+              Tag(e.topic, color: context.colors.ink2, background: context.colors.mutedSoft),
             ],
           ),
           const SizedBox(height: 18),
@@ -221,7 +221,7 @@ class _ExpressionCard extends ConsumerWidget {
           const SizedBox(height: 8),
           Text(e.meaning, style: sans(17, weight: FontWeight.w600)),
           const SizedBox(height: 6),
-          Text(e.usage, style: sans(14, color: AppColors.ink2, height: 1.6)),
+          Text(e.usage, style: sans(14, color: context.colors.ink2, height: 1.6)),
           const SizedBox(height: 18),
           for (var i = 0; i < e.examples.length; i++)
             ExampleRow(
@@ -234,13 +234,13 @@ class _ExpressionCard extends ConsumerWidget {
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              decoration: BoxDecoration(color: AppColors.paper, borderRadius: BorderRadius.circular(14)),
+              decoration: BoxDecoration(color: context.colors.paper, borderRadius: BorderRadius.circular(14)),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     '헷갈리기 쉬운 표현',
-                    style: sans(12, weight: FontWeight.w600, color: AppColors.penBlue),
+                    style: sans(12, weight: FontWeight.w600, color: context.colors.penBlue),
                   ),
                   const SizedBox(height: 4),
                   Text.rich(
@@ -279,7 +279,7 @@ class _Dots extends StatelessWidget {
               width: i == index ? 22 : 6,
               height: 6,
               decoration: BoxDecoration(
-                color: i == index ? AppColors.ink : AppColors.dotIdle,
+                color: i == index ? context.colors.ink : context.colors.dotIdle,
                 borderRadius: BorderRadius.circular(3),
               ),
             ),
@@ -301,8 +301,8 @@ class _ChoicePill extends StatelessWidget {
       selected: selected,
       button: true,
       child: Material(
-        color: selected ? AppColors.emphasis : Colors.transparent,
-        shape: StadiumBorder(side: BorderSide(color: selected ? AppColors.emphasis : AppColors.line)),
+        color: selected ? context.colors.emphasis : Colors.transparent,
+        shape: StadiumBorder(side: BorderSide(color: selected ? context.colors.emphasis : context.colors.line)),
         child: InkWell(
           customBorder: const StadiumBorder(),
           onTap: onTap,
@@ -310,7 +310,7 @@ class _ChoicePill extends StatelessWidget {
             constraints: const BoxConstraints(minHeight: 44),
             padding: const EdgeInsets.symmetric(horizontal: 14),
             alignment: Alignment.center,
-            child: Text(label, style: sans(13, color: selected ? AppColors.onEmphasis : AppColors.ink)),
+            child: Text(label, style: sans(13, color: selected ? context.colors.onEmphasis : context.colors.ink)),
           ),
         ),
       ),

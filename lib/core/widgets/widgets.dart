@@ -7,30 +7,33 @@ import '../theme/tokens.dart';
 
 /// 종이 카드
 class PaperCard extends StatelessWidget {
-  PaperCard({
+  const PaperCard({
     super.key,
     required this.child,
     this.padding = const EdgeInsets.all(AppSpace.xl),
     this.radius = AppRadius.card,
     this.elevated = false,
-    Color? color,
-  }) : color = color ?? AppColors.card;
+    this.color,
+  });
 
   final Widget child;
   final EdgeInsetsGeometry padding;
   final double radius;
   final bool elevated;
-  final Color color;
+
+  /// 비우면 카드색
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     return Container(
       padding: padding,
       decoration: BoxDecoration(
-        color: color,
+        color: color ?? c.card,
         borderRadius: BorderRadius.circular(radius),
-        border: Border.all(color: AppColors.line),
-        boxShadow: elevated ? AppShadow.card : null,
+        border: Border.all(color: c.line),
+        boxShadow: elevated ? AppShadow.card(c) : null,
       ),
       child: child,
     );
@@ -87,10 +90,10 @@ class HighlightText extends StatelessWidget {
                       end: Alignment.bottomCenter,
                       stops: [0.55, 0.55, 0.95, 0.95],
                       colors: [
-                        AppColors.highlighter.withValues(alpha: 0),
-                        AppColors.highlighter,
-                        AppColors.highlighter,
-                        AppColors.highlighter.withValues(alpha: 0),
+                        context.colors.highlighter.withValues(alpha: 0),
+                        context.colors.highlighter,
+                        context.colors.highlighter,
+                        context.colors.highlighter.withValues(alpha: 0),
                       ],
                       tileMode: TileMode.repeated,
                     ).createShader(Rect.fromLTWH(0, 0, 10, lineHeight)),
@@ -109,17 +112,19 @@ class HighlightText extends StatelessWidget {
 
 /// 작은 라벨 칩
 class Tag extends StatelessWidget {
-  Tag(this.label, {super.key, Color? color, Color? background, this.icon})
-    : color = color ?? AppColors.penBlue,
-      background = background ?? AppColors.penBlueTint;
+  const Tag(this.label, {super.key, this.color, this.background, this.icon});
 
   final String label;
-  final Color color;
-  final Color background;
+
+  /// 비우면 펜 파랑 / 옅은 파랑 배경
+  final Color? color;
+  final Color? background;
   final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
+    final color = this.color ?? context.colors.penBlue;
+    final background = this.background ?? context.colors.penBlueTint;
     return Container(
       constraints: const BoxConstraints(minHeight: 26),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
@@ -142,17 +147,19 @@ class Tag extends StatelessWidget {
 
 /// 얇은 진행 바
 class ThinProgress extends StatelessWidget {
-  ThinProgress(this.value, {super.key, this.height = 4, Color? color, Color? track})
-    : color = color ?? AppColors.ink,
-      track = track ?? AppColors.track;
+  const ThinProgress(this.value, {super.key, this.height = 4, this.color, this.track});
 
   final double value;
   final double height;
-  final Color color;
-  final Color track;
+
+  /// 비우면 잉크 / 트랙색
+  final Color? color;
+  final Color? track;
 
   @override
   Widget build(BuildContext context) {
+    final color = this.color ?? context.colors.ink;
+    final track = this.track ?? context.colors.track;
     return ClipRRect(
       borderRadius: BorderRadius.circular(height / 2),
       child: SizedBox(
@@ -199,15 +206,15 @@ class RoundIconButton extends StatelessWidget {
       label: label,
       excludeSemantics: true,
       child: Material(
-        color: filled ? AppColors.penBlue : AppColors.paper,
-        shape: CircleBorder(side: filled ? BorderSide.none : BorderSide(color: AppColors.line)),
+        color: filled ? context.colors.penBlue : context.colors.paper,
+        shape: CircleBorder(side: filled ? BorderSide.none : BorderSide(color: context.colors.line)),
         child: InkWell(
           customBorder: const CircleBorder(),
           onTap: onPressed,
           child: SizedBox(
             width: size,
             height: size,
-            child: Icon(icon, size: size * 0.42, color: filled ? AppColors.card : AppColors.penBlue),
+            child: Icon(icon, size: size * 0.42, color: filled ? context.colors.card : context.colors.penBlue),
           ),
         ),
       ),
@@ -261,7 +268,7 @@ class StudyTopBar extends StatelessWidget {
         ExcludeSemantics(
           child: Text(
             '$index/$total',
-            style: sans(13, weight: FontWeight.w600, color: AppColors.ink2),
+            style: sans(13, weight: FontWeight.w600, color: context.colors.ink2),
           ),
         ),
         if (trailing != null) trailing! else const SizedBox(width: 8),
@@ -286,7 +293,7 @@ class ExampleRow extends StatelessWidget {
       decoration: divider
           ? BoxDecoration(
               border: Border(
-                top: BorderSide(color: AppColors.line, style: BorderStyle.solid),
+                top: BorderSide(color: context.colors.line, style: BorderStyle.solid),
               ),
             )
           : null,
@@ -298,7 +305,7 @@ class ExampleRow extends StatelessWidget {
               children: [
                 englishSemantics(en, Text(en, style: serif(18, height: 1.35))),
                 const SizedBox(height: 3),
-                Text(ko, style: sans(13, color: AppColors.ink2)),
+                Text(ko, style: sans(13, color: context.colors.ink2)),
               ],
             ),
           ),
@@ -340,7 +347,7 @@ class PronText extends StatelessWidget {
       spans.add(
         TextSpan(
           text: m.group(1),
-          style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.ink),
+          style: TextStyle(fontWeight: FontWeight.w700, color: context.colors.ink),
         ),
       );
       last = m.end;

@@ -76,10 +76,10 @@ class _LevelTestScreenState extends ConsumerState<LevelTestScreen> {
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(2),
                                 color: i < _test.answered
-                                    ? AppColors.ink
+                                    ? context.colors.ink
                                     : i == _test.answered
-                                    ? AppColors.penBlue
-                                    : AppColors.track,
+                                    ? context.colors.penBlue
+                                    : context.colors.track,
                               ),
                             ),
                           ),
@@ -89,7 +89,7 @@ class _LevelTestScreenState extends ConsumerState<LevelTestScreen> {
                   const SizedBox(width: 12),
                   Text(
                     '${_test.answered + 1}/${_test.totalItems}',
-                    style: sans(13, weight: FontWeight.w600, color: AppColors.ink2),
+                    style: sans(13, weight: FontWeight.w600, color: context.colors.ink2),
                   ),
                 ],
               ),
@@ -102,7 +102,7 @@ class _LevelTestScreenState extends ConsumerState<LevelTestScreen> {
                   const SizedBox(height: 32),
                   Text(
                     item.skill.ko,
-                    style: sans(13, weight: FontWeight.w600, color: AppColors.penBlue, letterSpacing: 0.4),
+                    style: sans(13, weight: FontWeight.w600, color: context.colors.penBlue, letterSpacing: 0.4),
                   ),
                   const SizedBox(height: 8),
                   Text(item.instruction, style: sans(19, weight: FontWeight.w600, height: 1.45)),
@@ -110,9 +110,9 @@ class _LevelTestScreenState extends ConsumerState<LevelTestScreen> {
                   Container(
                     padding: const EdgeInsets.fromLTRB(22, 24, 22, 24),
                     decoration: BoxDecoration(
-                      color: AppColors.card,
+                      color: context.colors.card,
                       borderRadius: BorderRadius.circular(AppRadius.card),
-                      border: Border.all(color: AppColors.line),
+                      border: Border.all(color: context.colors.line),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -123,7 +123,7 @@ class _LevelTestScreenState extends ConsumerState<LevelTestScreen> {
                           Text(item.sentence, style: serif(25, height: 1.35)),
                         if (item.translation.isNotEmpty) ...[
                           const SizedBox(height: 10),
-                          Text(item.translation, style: sans(14, color: AppColors.ink2)),
+                          Text(item.translation, style: sans(14, color: context.colors.ink2)),
                         ],
                       ],
                     ),
@@ -156,7 +156,7 @@ class _LevelTestScreenState extends ConsumerState<LevelTestScreen> {
                     onPressed: () => _submit(Answer.unsure),
                     child: Text(
                       '잘 모르겠어요 (찍지 않기)',
-                      style: sans(14, color: AppColors.ink2).copyWith(decoration: TextDecoration.underline),
+                      style: sans(14, color: context.colors.ink2).copyWith(decoration: TextDecoration.underline),
                     ),
                   ),
                 ],
@@ -180,9 +180,9 @@ class _DifficultyCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: AppColors.card,
+        color: context.colors.card,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.line),
+        border: Border.all(color: context.colors.line),
       ),
       child: Row(
         children: [
@@ -192,7 +192,7 @@ class _DifficultyCard extends StatelessWidget {
               children: [
                 Text(
                   test.correctStreak >= 2 ? '연속 ${test.correctStreak}문제 정답! 조금 더 어렵게' : '답에 따라 난이도가 바뀌어요',
-                  style: sans(12, color: AppColors.ink2),
+                  style: sans(12, color: context.colors.ink2),
                 ),
                 SizedBox(height: 2),
                 Text.rich(
@@ -204,7 +204,7 @@ class _DifficultyCard extends StatelessWidget {
                       ),
                       TextSpan(
                         text: current.cefr.label,
-                        style: sans(14, weight: FontWeight.w700, color: AppColors.penBlue),
+                        style: sans(14, weight: FontWeight.w700, color: context.colors.penBlue),
                       ),
                     ],
                   ),
@@ -216,7 +216,11 @@ class _DifficultyCard extends StatelessWidget {
             width: 120,
             height: 36,
             child: CustomPaint(
-              painter: _TrailPainter(steps: steps, correct: test.history.map((h) => h.isCorrect).toList()),
+              painter: _TrailPainter(
+                colors: context.colors,
+                steps: steps,
+                correct: test.history.map((h) => h.isCorrect).toList(),
+              ),
             ),
           ),
         ],
@@ -227,7 +231,8 @@ class _DifficultyCard extends StatelessWidget {
 
 /// 문항별 난이도 흐름 미니 그래프
 class _TrailPainter extends CustomPainter {
-  _TrailPainter({required this.steps, required this.correct});
+  _TrailPainter({required this.colors, required this.steps, required this.correct});
+  final AppPalette colors;
   final List<int> steps;
   final List<bool> correct;
 
@@ -242,7 +247,7 @@ class _TrailPainter extends CustomPainter {
       size.height - 6 - (shown[i] - minS) / (maxS - minS) * (size.height - 12),
     );
     final line = Paint()
-      ..color = AppColors.lineStrong
+      ..color = colors.lineStrong
       ..strokeWidth = 1.5
       ..style = PaintingStyle.stroke;
     final path = Path()..moveTo(pos(0).dx, pos(0).dy);
@@ -254,16 +259,16 @@ class _TrailPainter extends CustomPainter {
       final isCurrent = i == shown.length - 1;
       final gi = i + offset;
       if (isCurrent) {
-        canvas.drawCircle(pos(i), 5, Paint()..color = AppColors.penBlue);
+        canvas.drawCircle(pos(i), 5, Paint()..color = colors.penBlue);
       } else if (correct[gi]) {
-        canvas.drawCircle(pos(i), 3.5, Paint()..color = AppColors.success);
+        canvas.drawCircle(pos(i), 3.5, Paint()..color = colors.success);
       } else {
-        canvas.drawCircle(pos(i), 3.5, Paint()..color = AppColors.card);
+        canvas.drawCircle(pos(i), 3.5, Paint()..color = colors.card);
         canvas.drawCircle(
           pos(i),
           3.5,
           Paint()
-            ..color = AppColors.error
+            ..color = colors.error
             ..style = PaintingStyle.stroke
             ..strokeWidth = 1.5,
         );
@@ -272,7 +277,7 @@ class _TrailPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_TrailPainter old) => old.steps.length != steps.length;
+  bool shouldRepaint(_TrailPainter old) => old.steps.length != steps.length || old.colors != colors;
 }
 
 class _BlankSentence extends StatelessWidget {
@@ -295,7 +300,7 @@ class _BlankSentence extends StatelessWidget {
               width: 110,
               margin: EdgeInsets.symmetric(horizontal: 4),
               decoration: BoxDecoration(
-                border: Border(bottom: BorderSide(color: AppColors.penBlue, width: 2)),
+                border: Border(bottom: BorderSide(color: context.colors.penBlue, width: 2)),
               ),
               child: Text(' ', style: style),
             ),
@@ -320,10 +325,10 @@ class _Option extends StatelessWidget {
       inMutuallyExclusiveGroup: true,
       selected: selected,
       child: Material(
-        color: selected ? AppColors.penBlueTint : AppColors.card,
+        color: selected ? context.colors.penBlueTint : context.colors.card,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(14),
-          side: BorderSide(color: selected ? AppColors.penBlue : AppColors.line, width: selected ? 2 : 1),
+          side: BorderSide(color: selected ? context.colors.penBlue : context.colors.line, width: selected ? 2 : 1),
         ),
         child: InkWell(
           borderRadius: BorderRadius.circular(14),
@@ -335,7 +340,7 @@ class _Option extends StatelessWidget {
               child: Row(
                 children: [
                   Expanded(child: Text(label, style: serifFont ? serif(18) : sans(16))),
-                  if (selected) Icon(Icons.check_rounded, color: AppColors.penBlue, size: 20),
+                  if (selected) Icon(Icons.check_rounded, color: context.colors.penBlue, size: 20),
                 ],
               ),
             ),

@@ -163,7 +163,11 @@ class _Card extends StatelessWidget {
                     Row(
                       children: [
                         Flexible(
-                          child: Tag(reviewLabelFor(item, today), color: AppColors.ink, background: AppColors.sand),
+                          child: Tag(
+                            reviewLabelFor(item, today),
+                            color: context.colors.ink,
+                            background: context.colors.sand,
+                          ),
                         ),
                         const SizedBox(width: 8),
                         const Spacer(),
@@ -185,7 +189,7 @@ class _Card extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    Text('뜻을 먼저 떠올려 보세요', style: sans(13, color: AppColors.ink2)),
+                    Text('뜻을 먼저 떠올려 보세요', style: sans(13, color: context.colors.ink2)),
                     const Spacer(),
                     const Divider(),
                     const SizedBox(height: 16),
@@ -242,7 +246,7 @@ class _Summary extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.task_alt_rounded, size: 56, color: AppColors.success),
+            Icon(Icons.task_alt_rounded, size: 56, color: context.colors.success),
             const SizedBox(height: 16),
             Text('${results.length}장 복습 완료', style: sans(22, weight: FontWeight.w700)),
             const SizedBox(height: 8),
@@ -253,7 +257,7 @@ class _Summary extends StatelessWidget {
                   ? '모두 기억하고 있었어요. 다음 복습은 더 뒤로 미뤄 둘게요.'
                   : '$known장은 기억하고 있었어요. 헷갈린 카드는 곧 다시 보여 드릴게요.',
               textAlign: TextAlign.center,
-              style: sans(14, color: AppColors.ink2, height: 1.5),
+              style: sans(14, color: context.colors.ink2, height: 1.5),
             ),
           ],
         ),
@@ -273,7 +277,7 @@ class _Empty extends StatelessWidget {
         child: Text(
           '오늘 복습할 카드가 없어요.\n잊어버릴 때쯤 다시 보여 드릴게요.',
           textAlign: TextAlign.center,
-          style: sans(15, color: AppColors.ink2, height: 1.6),
+          style: sans(15, color: context.colors.ink2, height: 1.6),
         ),
       ),
     );

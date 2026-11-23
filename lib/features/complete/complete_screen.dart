@@ -81,18 +81,24 @@ class _CompleteScreenState extends ConsumerState<CompleteScreen> {
                         height: 112,
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
-                          color: AppColors.emphasis,
+                          color: context.colors.emphasis,
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: AppColors.isDark ? AppColors.highlighter.withValues(alpha: 0.25) : AppColors.sand,
+                              color: context.colors.isDark
+                                  ? context.colors.highlighter.withValues(alpha: 0.25)
+                                  : context.colors.sand,
                               spreadRadius: 10,
                             ),
                           ],
                         ),
                         child: levelUp
-                            ? Text(now.label, style: serif(34, weight: 600, color: AppColors.onEmphasisAccent))
-                            : Icon(Icons.local_fire_department_rounded, size: 46, color: AppColors.onEmphasisAccent),
+                            ? Text(now.label, style: serif(34, weight: 600, color: context.colors.onEmphasisAccent))
+                            : Icon(
+                                Icons.local_fire_department_rounded,
+                                size: 46,
+                                color: context.colors.onEmphasisAccent,
+                              ),
                       ),
                     ),
                   ),
@@ -129,7 +135,7 @@ class _CompleteScreenState extends ConsumerState<CompleteScreen> {
                     child: Text(
                       '표현 ${s.pack.expressions.length}개 · 단어 ${s.pack.words.length}개 · 문장 ${s.spokenCount}개 완료',
                       textAlign: TextAlign.center,
-                      style: sans(14, color: AppColors.ink2),
+                      style: sans(14, color: context.colors.ink2),
                     ),
                   ),
                   const SizedBox(height: 26),
@@ -159,7 +165,7 @@ class _CompleteScreenState extends ConsumerState<CompleteScreen> {
                                 style: sans(
                                   13,
                                   weight: FontWeight.w700,
-                                  color: delta >= 0 ? AppColors.success : AppColors.error,
+                                  color: delta >= 0 ? context.colors.success : context.colors.error,
                                 ),
                               ),
                           ],
@@ -167,7 +173,7 @@ class _CompleteScreenState extends ConsumerState<CompleteScreen> {
                         const SizedBox(height: 10),
                         Row(
                           children: [
-                            Text(now.label, style: serif(18, weight: 600, color: AppColors.penBlue)),
+                            Text(now.label, style: serif(18, weight: 600, color: context.colors.penBlue)),
                             const SizedBox(width: 10),
                             Expanded(
                               child: ClipRRect(
@@ -177,18 +183,18 @@ class _CompleteScreenState extends ConsumerState<CompleteScreen> {
                                   width: double.infinity,
                                   child: Stack(
                                     children: [
-                                      Positioned.fill(child: ColoredBox(color: AppColors.line)),
+                                      Positioned.fill(child: ColoredBox(color: context.colors.line)),
                                       FractionallySizedBox(
                                         alignment: Alignment.centerLeft,
                                         heightFactor: 1,
                                         widthFactor: now.progressToNext,
-                                        child: ColoredBox(color: AppColors.highlighter),
+                                        child: ColoredBox(color: context.colors.highlighter),
                                       ),
                                       FractionallySizedBox(
                                         alignment: Alignment.centerLeft,
                                         heightFactor: 1,
                                         widthFactor: before.step == now.step ? before.progressToNext : 0,
-                                        child: ColoredBox(color: AppColors.penBlue),
+                                        child: ColoredBox(color: context.colors.penBlue),
                                       ),
                                     ],
                                   ),
@@ -196,14 +202,14 @@ class _CompleteScreenState extends ConsumerState<CompleteScreen> {
                               ),
                             ),
                             const SizedBox(width: 10),
-                            Text(now.next.label, style: serif(18, color: AppColors.ink2)),
+                            Text(now.next.label, style: serif(18, color: context.colors.ink2)),
                           ],
                         ),
                         if (before.step < now.step) ...[
                           const SizedBox(height: 10),
                           Text(
                             '레벨 업! ${before.label} → ${now.label}',
-                            style: sans(13, weight: FontWeight.w700, color: AppColors.success),
+                            style: sans(13, weight: FontWeight.w700, color: context.colors.success),
                           ),
                         ],
                       ],
@@ -214,7 +220,7 @@ class _CompleteScreenState extends ConsumerState<CompleteScreen> {
                   Container(
                     padding: const EdgeInsets.all(18),
                     decoration: BoxDecoration(
-                      color: AppColors.penBlueTint,
+                      color: context.colors.penBlueTint,
                       borderRadius: BorderRadius.circular(AppRadius.card),
                     ),
                     child: Column(
@@ -222,7 +228,7 @@ class _CompleteScreenState extends ConsumerState<CompleteScreen> {
                       children: [
                         Text(
                           '내일은 이렇게 준비할게요',
-                          style: sans(12, weight: FontWeight.w600, color: AppColors.penBlue, letterSpacing: 0.4),
+                          style: sans(12, weight: FontWeight.w600, color: context.colors.penBlue, letterSpacing: 0.4),
                         ),
                         const SizedBox(height: 10),
                         for (final r in s.lastAdjustmentReasons)
@@ -233,7 +239,7 @@ class _CompleteScreenState extends ConsumerState<CompleteScreen> {
                               children: [
                                 Padding(
                                   padding: EdgeInsets.only(top: 2),
-                                  child: Icon(Icons.north_east_rounded, size: 16, color: AppColors.penBlue),
+                                  child: Icon(Icons.north_east_rounded, size: 16, color: context.colors.penBlue),
                                 ),
                                 const SizedBox(width: 10),
                                 Expanded(child: Text(r, style: sans(14, height: 1.55))),
@@ -280,7 +286,7 @@ class _Stat extends StatelessWidget {
           children: [
             Text(value, style: serif(26, weight: 500)),
             const SizedBox(height: 2),
-            Text(label, style: sans(12, color: AppColors.ink2)),
+            Text(label, style: sans(12, color: context.colors.ink2)),
           ],
         ),
       ),
@@ -315,7 +321,7 @@ class _ReminderSuggestionState extends ConsumerState<_ReminderSuggestion> {
           Text('내일 몇 시에 알려 드릴까요?', style: sans(15, weight: FontWeight.w700)),
           const SizedBox(height: 10),
           if (_message != null)
-            Text(_message!, style: sans(14, color: AppColors.ink2))
+            Text(_message!, style: sans(14, color: context.colors.ink2))
           else
             Wrap(
               spacing: 8,
@@ -323,15 +329,18 @@ class _ReminderSuggestionState extends ConsumerState<_ReminderSuggestion> {
               children: [
                 for (final m in const [7 * 60 + 30, 8 * 60, 12 * 60 + 30, 21 * 60])
                   ActionChip(
-                    label: Text(formatMinutes(m), style: sans(14, weight: FontWeight.w500)),
-                    backgroundColor: AppColors.paper,
-                    side: BorderSide(color: AppColors.line),
+                    label: Text(
+                      formatMinutes(m),
+                      style: sans(14, weight: FontWeight.w500, color: context.colors.ink),
+                    ),
+                    backgroundColor: context.colors.paper,
+                    side: BorderSide(color: context.colors.line),
                     onPressed: () => _pick(m),
                   ),
                 ActionChip(
-                  label: Text('괜찮아요', style: sans(14, color: AppColors.ink2)),
-                  backgroundColor: AppColors.paper,
-                  side: BorderSide(color: AppColors.line),
+                  label: Text('괜찮아요', style: sans(14, color: context.colors.ink2)),
+                  backgroundColor: context.colors.paper,
+                  side: BorderSide(color: context.colors.line),
                   onPressed: () => setState(() => _message = '알림은 설정에서 언제든 켤 수 있어요.'),
                 ),
               ],

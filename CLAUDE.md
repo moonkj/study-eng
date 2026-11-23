@@ -29,7 +29,7 @@ SLA 연구자 · 원어민 강사 · 한국인 학습 코치 · UX · UI · 접�
 - `flutter analyze` / `flutter test` / `flutter run -d chrome`
 - 서버: `cd functions && npm test` (가짜 Claude 클라이언트, 비용 없음). 서버 JSON 형식을 바꾸면 `npm run fixture` 로 앱 계약 테스트 픽스처도 갱신
 - Flutter 3.50+: Material 위젯은 `package:material_ui/material_ui.dart` 로 import (flutter/material.dart 는 deprecated)
-- 디자인은 A안 "따뜻한 종이 노트" 확정. 색·간격은 `lib/core/theme/tokens.dart`, 글꼴 스타일은 `serif()`(영어) / `sans()`(한글)
+- 디자인은 A안 "따뜻한 종이 노트" 확정. 색·간격은 `lib/core/theme/tokens.dart`(색은 `context.colors.xxx` — ThemeExtension, ADR 002), 글꼴 스타일은 `serif()`(영어) / `sans()`(한글)
 
 ## 규칙
 - 앱 코드에 LLM API 키를 넣지 않는다. AI 호출은 모두 Cloud Functions 경유.

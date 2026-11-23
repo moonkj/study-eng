@@ -90,7 +90,7 @@ Future<void> _finish(BuildContext context, WidgetRef ref, RoutineStep step) asyn
               stale
                   ? '날짜가 바뀌었어요. 마저 하면 어제 기록으로 남고, 지금 그만두면 어제 진행은 기록되지 않아요.'
                   : '남은 단계 $remaining개 · 약 ${remainingMinutes(s)}분 · 다음은 ${stepTitle(next, s)}',
-              style: sans(14, color: AppColors.ink2),
+              style: sans(14, color: context.colors.ink2),
             ),
             const SizedBox(height: 20),
             // 키보드(Enter)로도 바로 이어갈 수 있게
