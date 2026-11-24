@@ -74,6 +74,7 @@ Map<String, Object?> buildPackRequest({
   List<String> weakErrorTypes = const [],
   SeriesState? series,
   String? topicHint,
+  String? toeicTarget,
 }) {
   final today = dateOnly(date);
   bool recent(LearnedItem i, int days) => daysBetween(parseDateKey(i.firstSeen), today) <= days;
@@ -87,6 +88,7 @@ Map<String, Object?> buildPackRequest({
     'contentLevel': Level.fromStep(contentStep).label,
     'skills': {for (final e in profile.skills.entries) e.key.name: e.value.label},
     'focusSkill': focus.name,
+    'toeicTarget': ?toeicTarget,
     'speakingSentences': focus == Skill.speaking ? 12 : 10,
     'avoid': {
       'expressions': [

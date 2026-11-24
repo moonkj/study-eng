@@ -44,7 +44,7 @@ class _CompleteScreenState extends ConsumerState<CompleteScreen> {
     final before = delta == null ? now : Level(now.score - delta);
     // 점수는 루틴을 끝낼 때 저장한 기록으로 보여 준다 (그 뒤 팩이 바뀌어도 그날 결과 그대로)
     final record = s.log[dateKey(s.now)];
-    final speaking = record != null ? record.speakingAverage : s.speakingAverage;
+    final speaking = record != null ? record.speakingAverage : (s.toeicAverage ?? s.speakingAverage);
     final quizCorrect = record?.quizCorrect ?? s.quizCorrect;
     final quizTotal = record?.quizTotal ?? s.pack.quiz.length;
     final newWords = s.wordRatings.values.where((r) => r != SelfRating.know).length;

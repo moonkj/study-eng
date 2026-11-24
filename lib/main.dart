@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app/app.dart';
 import 'data/store.dart';
+import 'data/toeic.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -14,5 +15,12 @@ Future<void> main() async {
   } catch (_) {
     store = MemoryStore();
   }
-  runApp(ProviderScope(overrides: [storeProvider.overrideWithValue(store)], child: const TodayeApp()));
+  // 토스 문항 모음 (없으면 말하기 단계는 예전 따라 말하기)
+  final toeic = await loadToeicBank();
+  runApp(
+    ProviderScope(
+      overrides: [storeProvider.overrideWithValue(store), toeicBankProvider.overrideWithValue(toeic)],
+      child: const TodayeApp(),
+    ),
+  );
 }
