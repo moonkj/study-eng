@@ -300,7 +300,7 @@ class _PreparingCardState extends State<_PreparingCard> {
           Text('내 레벨에 맞춰\n오늘의 학습을 만들고 있어요', style: sans(20, weight: FontWeight.w700, height: 1.4)),
           const SizedBox(height: 8),
           Text(
-            _slow ? '조금 오래 걸리고 있어요. 기본 학습으로 먼저 시작해도 돼요.' : '표현 3개, 단어 10개, 문장과 퀴즈까지 · 보통 30초~1분',
+            _slow ? '조금 오래 걸리고 있어요. 기본 학습으로 먼저 시작해도 돼요.' : '오늘의 표현·단어·문장과 퀴즈를 만들고 있어요 · 보통 30초~1분',
             style: sans(13, color: context.colors.ink2),
           ),
           const SizedBox(height: 18),
@@ -492,13 +492,13 @@ class _RoutineRow extends StatelessWidget {
   final StudyState state;
 
   (String, String) get _texts => switch (step) {
-    RoutineStep.expressions => (stepTitle(step, state), '${stepMinutes(step)}분'),
-    RoutineStep.words => (stepTitle(step, state), '${stepMinutes(step)}분'),
-    RoutineStep.speaking => (stepTitle(step, state), '${state.pack.sentences.length}문장 · ${stepMinutes(step)}분'),
+    RoutineStep.expressions => (stepTitle(step, state), '${stepMinutes(step, state)}분'),
+    RoutineStep.words => (stepTitle(step, state), '${stepMinutes(step, state)}분'),
+    RoutineStep.speaking => (stepTitle(step, state), '${state.pack.sentences.length}문장 · ${stepMinutes(step, state)}분'),
     RoutineStep.quiz => (
       stepTitle(step, state),
       state.pack.reviewCount == 0
-          ? '${state.pack.quiz.length}문항 · ${stepMinutes(step)}분'
+          ? '${state.pack.quiz.length}문항 · ${stepMinutes(step, state)}분'
           : '오늘 ${state.pack.quiz.length - state.pack.reviewCount}문항 + 지난 복습 ${state.pack.reviewCount}문항',
     ),
   };

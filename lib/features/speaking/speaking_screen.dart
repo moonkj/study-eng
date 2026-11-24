@@ -37,15 +37,33 @@ class _SpeakingScreenState extends ConsumerState<SpeakingScreen> with StudyScree
   String _partial = '';
   String? _error;
 
-  /// 연습 모드 결과 (오늘 기록에 넣지 않는다)
+  /// 연습 모드 최고 결과 (오늘 기록에 넣지 않는다)
   final _practiceResults = <String, SpeechScore>{};
 
-  SpeechScore? _resultFor(StudyState st, Sentence s) => _practice ? _practiceResults[s.id] : st.speaking[s.id];
+  /// 방금 말한 결과와 그 전 최고 점수 (다시 말하면 변화를 보여 준다. 기록에는 최고 점수가 남는다)
+  final _latest = <String, SpeechScore>{};
+  final _previousBest = <String, int>{};
+
+  /// 앞 시도가 잘 안 들린 문장: 다음 시도에는 인식 힌트를 준다 (처음부터 주면 점수가 부풀어서)
+  final _needHint = <String>{};
+
+  /// 기록된 최고 결과
+  SpeechScore? _bestFor(StudyState st, Sentence s) => _practice ? _practiceResults[s.id] : st.speaking[s.id];
+
+  /// 화면에 보여 줄 결과: 이번 화면에서 방금 말한 것, 없으면 기록된 최고
+  SpeechScore? _resultFor(StudyState st, Sentence s) => _latest[s.id] ?? _bestFor(st, s);
   bool _done(StudyState st, Sentence s) => _practice ? _practiceResults.containsKey(s.id) : st.hasSpoken(s.id);
 
   void _record(Sentence s, String heard) {
+    final score = scoreSpeech(s.en, heard);
+    final best = _bestFor(ref.read(studyProvider), s);
+    setState(() {
+      if (best != null) _previousBest[s.id] = best.score;
+      _latest[s.id] = score;
+      score.score < 70 ? _needHint.add(s.id) : _needHint.remove(s.id);
+    });
     if (_practice) {
-      setState(() => _practiceResults[s.id] = scoreSpeech(s.en, heard));
+      if (best == null || score.score > best.score) setState(() => _practiceResults[s.id] = score);
     } else {
       ref.read(studyProvider.notifier).recordSpeaking(s, heard);
     }
@@ -89,6 +107,7 @@ class _SpeakingScreenState extends ConsumerState<SpeakingScreen> with StudyScree
     if (!mounted) return;
     final attempt = await input.listen(
       expected: s.en,
+      hint: _needHint.contains(s.id),
       onPartial: (p) {
         if (mounted) setState(() => _partial = p);
       },
@@ -102,6 +121,7 @@ class _SpeakingScreenState extends ConsumerState<SpeakingScreen> with StudyScree
     setState(() {
       _listening = false;
       _error = attempt.ok ? null : attempt.error;
+      if (!attempt.ok) _needHint.add(s.id);
     });
   }
 
@@ -218,7 +238,11 @@ class _SpeakingScreenState extends ConsumerState<SpeakingScreen> with StudyScree
                     else if (_error != null)
                       _ErrorCard(message: _error!, onSelfCheck: _selfCheck, onRetry: _toggleMic)
                     else if (result != null) ...[
-                      _ScoreCard(result: result),
+                      _ScoreCard(
+                        result: result,
+                        previousBest: _latest.containsKey(sentence.id) ? _previousBest[sentence.id] : null,
+                        best: _bestFor(st, sentence)?.score,
+                      ),
                       const SizedBox(height: 12),
                       _TipCard(result: result),
                     ] else
@@ -367,8 +391,27 @@ class _SentenceView extends StatelessWidget {
 }
 
 class _ScoreCard extends StatelessWidget {
-  const _ScoreCard({required this.result});
+  const _ScoreCard({required this.result, this.previousBest, this.best});
   final SpeechScore result;
+
+  /// 다시 말했을 때 그 전 최고 점수 (처음 말했으면 null)
+  final int? previousBest;
+
+  /// 기록된 최고 점수
+  final int? best;
+
+  /// "지난번 72점 → 이번 80점 · 최고 기록!" 같은 변화 안내
+  String? get _change {
+    final p = previousBest;
+    if (p == null) return null;
+    final n = result.score;
+    final tail = n > p
+        ? ' · 최고 기록!'
+        : best != null && best! > n
+        ? ' · 최고 $best점이 기록돼요'
+        : '';
+    return '지난번 $p점 → 이번 $n점$tail';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -376,7 +419,7 @@ class _ScoreCard extends StatelessWidget {
     return Semantics(
       liveRegion: true,
       label:
-          '${result.score}점, ${result.verdict}${result.missed.isEmpty ? '' : '. 다르게 들린 단어: ${result.missed.join(', ')}'}',
+          '${result.score}점, ${result.verdict}${_change == null ? '' : '. $_change'}${result.missed.isEmpty ? '' : '. 다르게 들린 단어: ${result.missed.join(', ')}'}',
       excludeSemantics: true,
       child: _card(context),
     );
@@ -412,6 +455,13 @@ class _ScoreCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(result.verdict, style: sans(15, weight: FontWeight.w700)),
+                if (_change != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    _change!,
+                    style: sans(13, weight: FontWeight.w600, color: context.colors.penBlue),
+                  ),
+                ],
                 const SizedBox(height: 4),
                 Text.rich(
                   TextSpan(

@@ -69,6 +69,8 @@ void main() {
     await setPhone(tester);
     await tester.pumpWidget(app(initial: '/words'));
     await tester.pumpAndSettle();
+    await tester.tap(find.text('탭해서 뜻 보기'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('헷갈려요'));
     await tester.pumpAndSettle();
     expect(find.text('actually → 헷갈려요 (3일 뒤)'), findsOneWidget);
@@ -79,10 +81,16 @@ void main() {
     await tester.tap(find.text('되돌리기'));
     await tester.pumpAndSettle();
     expect(find.text('actually'), findsWidgets); // 첫 단어로 돌아옴
-    expect(find.text('이 단어, 얼마나 알고 있었나요?'), findsOneWidget);
+    expect(find.text('먼저 뜻을 떠올려 본 뒤, 뜻을 확인하고 평가해요'), findsOneWidget);
+    // 뜻을 보기 전에는 평가 버튼이 눌리지 않는다
+    await tester.tap(find.text('알아요'), warnIfMissed: false);
+    await tester.pumpAndSettle();
+    expect(find.text('actually → 알아요 (7일 뒤)'), findsNothing);
+    await tester.tap(find.text('탭해서 뜻 보기'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('알아요'));
     await tester.pump(const Duration(seconds: 4));
     await tester.pumpAndSettle();
-    expect(find.text('이 단어, 얼마나 알고 있었나요?'), findsOneWidget); // 3초 뒤 사라짐
+    expect(find.text('먼저 뜻을 떠올려 본 뒤, 뜻을 확인하고 평가해요'), findsOneWidget); // 3초 뒤 사라짐
   });
 }

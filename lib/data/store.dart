@@ -38,6 +38,7 @@ class TodayProgress {
     this.packId,
     this.cardsBefore = const {},
     this.regenCount = 0,
+    this.selfGraded = const {},
   });
 
   final String date;
@@ -63,6 +64,9 @@ class TodayProgress {
   /// 오늘 팩을 서버(Claude)에 요청한 횟수 (재시도·재진단 포함, 비용 상한용)
   final int regenCount;
 
+  /// 회상형 문제 중 직접 쓰지 않고 '떠올렸어요'로 스스로 채점한 문제 번호 (레벨·어휘 점수에서 뺀다)
+  final Set<int> selfGraded;
+
   Map<String, Object?> toJson() => {
     'date': date,
     'done': done.toList(),
@@ -74,6 +78,7 @@ class TodayProgress {
     'packId': packId,
     'cardsBefore': cardsBefore.map((k, c) => MapEntry(k, c == null ? null : cardToJson(c))),
     'regenCount': regenCount,
+    'selfGraded': selfGraded.toList(),
   };
 
   /// 필드가 빠졌거나(예전 버전) 일부가 깨져도 날짜만 맞으면 나머지는 기본값으로 읽는다.
@@ -102,6 +107,7 @@ class TodayProgress {
     packId: j['packId'] as String?,
     cardsBefore: _cardsBefore(j['cardsBefore']),
     regenCount: (j['regenCount'] as num?)?.toInt() ?? 0,
+    selfGraded: {...((j['selfGraded'] as List?) ?? const []).whereType<num>().map((n) => n.toInt())},
   );
 }
 
@@ -113,6 +119,7 @@ class AppSettings {
     this.reminderMinutes,
     this.reminderOffered = false,
     this.theme = 'system',
+    this.quiet = false,
   });
 
   /// 발음 음성: en-US(미국) / en-GB(영국)
@@ -130,18 +137,23 @@ class AppSettings {
   /// 화면 테마: system(휴대폰 설정 따라) / light / dark
   final String theme;
 
+  /// '소리 내기 어려워요' 모드를 켜 둔 상태 (앱을 다시 켜도 유지)
+  final bool quiet;
+
   AppSettings copyWith({
     String? voice,
     double? speed,
     int? Function()? reminderMinutes,
     bool? reminderOffered,
     String? theme,
+    bool? quiet,
   }) => AppSettings(
     voice: voice ?? this.voice,
     speed: speed ?? this.speed,
     reminderMinutes: reminderMinutes == null ? this.reminderMinutes : reminderMinutes(),
     reminderOffered: reminderOffered ?? this.reminderOffered,
     theme: theme ?? this.theme,
+    quiet: quiet ?? this.quiet,
   );
 
   Map<String, Object?> toJson() => {
@@ -150,6 +162,7 @@ class AppSettings {
     'reminder': reminderMinutes,
     'reminderOffered': reminderOffered,
     'theme': theme,
+    'quiet': quiet,
   };
 
   factory AppSettings.fromJson(Map<String, Object?>? j) => j == null
@@ -160,6 +173,7 @@ class AppSettings {
           reminderMinutes: (j['reminder'] as num?)?.toInt(),
           reminderOffered: j['reminderOffered'] as bool? ?? false,
           theme: j['theme'] as String? ?? 'system',
+          quiet: j['quiet'] as bool? ?? false,
         );
 }
 

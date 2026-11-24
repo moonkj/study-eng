@@ -14,7 +14,11 @@ import '../domain/reminder_test.dart' show FakeReminder;
 
 class _PerfectSpeech implements SpeechInput {
   @override
-  Future<SpeechAttempt> listen({required String expected, void Function(String partial)? onPartial}) async {
+  Future<SpeechAttempt> listen({
+    required String expected,
+    bool hint = false,
+    void Function(String partial)? onPartial,
+  }) async {
     onPartial?.call(expected);
     return SpeechAttempt.heard(expected);
   }
@@ -110,6 +114,8 @@ void main() {
 
     // ② 단어
     for (var i = 0; i < 10; i++) {
+      await tester.tap(find.text('탭해서 뜻 보기'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('알아요'));
       await tester.pumpAndSettle();
     }
@@ -117,7 +123,8 @@ void main() {
     // ③ 말하기
     await tester.tap(find.text('이어서 하기'));
     await tester.pumpAndSettle();
-    for (var i = 0; i < 10; i++) {
+    for (var i = 0; i < 13; i++) {
+      // 단어 문장 10 + 표현 문장 3
       await tester.tap(find.bySemanticsLabel('말하기 시작'));
       await tester.pumpAndSettle();
       expect(find.text('완벽해요'), findsOneWidget);
@@ -284,12 +291,16 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('오늘의 단어 10개'));
     await tester.pumpAndSettle();
+    await tester.tap(find.text('탭해서 뜻 보기'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('알아요'));
     await tester.pumpAndSettle();
     final container = ProviderScope.containerOf(tester.element(find.byType(Scaffold).first));
     expect(container.read(studyProvider).today.date, '2026-11-21'); // 새벽 3:50 은 전날 학습일
 
     now = DateTime(2026, 11, 22, 4, 5);
+    await tester.tap(find.text('탭해서 뜻 보기'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('알아요'));
     await tester.pumpAndSettle();
     var st = container.read(studyProvider);
@@ -306,8 +317,11 @@ void main() {
 
 class _FailingSpeech implements SpeechInput {
   @override
-  Future<SpeechAttempt> listen({required String expected, void Function(String partial)? onPartial}) async =>
-      const SpeechAttempt.failed('마이크 권한이 필요해요.');
+  Future<SpeechAttempt> listen({
+    required String expected,
+    bool hint = false,
+    void Function(String partial)? onPartial,
+  }) async => const SpeechAttempt.failed('마이크 권한이 필요해요.');
 
   @override
   Future<void> stop() async {}

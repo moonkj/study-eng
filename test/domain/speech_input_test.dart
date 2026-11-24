@@ -17,7 +17,11 @@ class FakeEngine implements SttEngine {
   }
 
   @override
-  Future<void> listen({required String expected, required void Function(String, bool) onResult}) async {
+  Future<void> listen({
+    required String expected,
+    required bool hint,
+    required void Function(String, bool) onResult,
+  }) async {
     this.onResult = onResult;
     listening = true;
     listens++;

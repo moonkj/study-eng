@@ -19,8 +19,9 @@ class SpeechAttempt {
 /// 따라 말하기 입력
 abstract class SpeechInput {
   /// 사용자가 [expected] 문장을 말하는 동안 [onPartial] 로 중간 결과를 알리고, 끝나면 결과를 돌려준다.
-  /// [expected] 는 인식 힌트로도 쓰인다 (iOS contextual phrases).
-  Future<SpeechAttempt> listen({required String expected, void Function(String partial)? onPartial});
+  /// [hint] 이면 [expected] 를 인식 힌트로 준다 (iOS contextual phrases).
+  /// 힌트를 주면 비슷하게만 말해도 정답 문장으로 인식돼 점수가 부풀므로, 앞 시도에서 잘 안 들렸을 때만 쓴다.
+  Future<SpeechAttempt> listen({required String expected, bool hint = false, void Function(String partial)? onPartial});
 
   /// 말하기를 끝낸다 (버튼을 한 번 더 누를 때).
   Future<void> stop();
@@ -32,7 +33,11 @@ abstract class SttEngine {
     required void Function(String errorMsg) onError,
     required void Function(String status) onStatus,
   });
-  Future<void> listen({required String expected, required void Function(String words, bool isFinal) onResult});
+  Future<void> listen({
+    required String expected,
+    required bool hint,
+    required void Function(String words, bool isFinal) onResult,
+  });
   Future<void> stop();
   Future<void> cancel();
   bool get isListening;
@@ -46,7 +51,11 @@ class _PluginEngine implements SttEngine {
       _stt.initialize(onError: (e) => onError(e.errorMsg), onStatus: onStatus);
 
   @override
-  Future<void> listen({required String expected, required void Function(String, bool) onResult}) async {
+  Future<void> listen({
+    required String expected,
+    required bool hint,
+    required void Function(String, bool) onResult,
+  }) async {
     await _stt.listen(
       onResult: (r) => onResult(r.recognizedWords, r.finalResult),
       listenOptions: SpeechListenOptions(
@@ -56,7 +65,7 @@ class _PluginEngine implements SttEngine {
         partialResults: true,
         listenMode: ListenMode.dictation,
         cancelOnError: true,
-        contextualPhrases: [expected],
+        contextualPhrases: hint ? [expected] : null,
       ),
     );
   }
@@ -137,7 +146,11 @@ class DeviceSpeechInput implements SpeechInput {
   }
 
   @override
-  Future<SpeechAttempt> listen({required String expected, void Function(String partial)? onPartial}) async {
+  Future<SpeechAttempt> listen({
+    required String expected,
+    bool hint = false,
+    void Function(String partial)? onPartial,
+  }) async {
     if (!await _ensure()) {
       return SpeechAttempt.failed(
         _initError == null ? '이 기기에서는 음성 인식을 쓸 수 없어요. 마이크 권한을 확인해 주세요.' : '음성 인식을 시작하지 못했어요.',
@@ -153,6 +166,7 @@ class DeviceSpeechInput implements SpeechInput {
     try {
       await _stt.listen(
         expected: expected,
+        hint: hint,
         onResult: (words, isFinal) {
           if (attempt != _attempt) return;
           _started = true;

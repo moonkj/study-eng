@@ -15,15 +15,18 @@ void main() {
       final p = prepareDailyPack(samplePack(day), dayNumber: 1);
       expect(p.expressions.length, 2);
       expect(p.words.length, 5);
-      expect(p.sentences.length, 5);
+      expect(p.sentences.length, 7); // 단어 문장 5 + 표현 문장 2
       expect(p.quiz.where((q) => !q.isRecall).length, 5);
       expect(p.quiz.where((q) => q.isRecall).length, 1);
       // 빠진 표현·단어를 묻는 문제는 없다
       final ids = {...p.expressions.map((e) => e.id), ...p.words.map((w) => w.id)};
       expect(p.quiz.every((q) => ids.contains(q.itemId)), isTrue);
-      // 문장은 남긴 단어를 쓰는 것
+      // 문장은 남긴 단어를 쓰는 것, 표현 문장은 남긴 표현의 예문
       final words = p.words.map((w) => w.word).toSet();
-      expect(p.sentences.every((s) => words.contains(s.focus)), isTrue);
+      final highlights = p.expressions.map((e) => e.highlight).toSet();
+      expect(p.sentences.every((s) => words.contains(s.focus) || highlights.contains(s.focus)), isTrue);
+      // 남긴 표현마다 그 표현을 묻는 문제가 있다
+      expect(p.expressions.every((e) => p.quiz.any((q) => q.itemId == e.id)), isTrue);
       expect(checkPack(p), isEmpty);
     });
 

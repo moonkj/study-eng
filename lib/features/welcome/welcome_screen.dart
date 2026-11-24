@@ -31,12 +31,16 @@ class WelcomeScreen extends ConsumerWidget {
                   Text('오늘의 영어', style: sans(15, color: context.colors.ink2)),
                   const SizedBox(height: 40),
                   Text(
-                    '하루 15분,\n내 레벨에 딱 맞는 영어 루틴',
+                    '하루 10~15분,\n내 레벨에 딱 맞는 영어 루틴',
                     style: sans(26, weight: FontWeight.w700, height: 1.35, letterSpacing: -0.5),
                   ),
                   const SizedBox(height: 28),
                   const _Point(n: '1', title: '레벨 진단 4분', body: '12문항이면 지금 실력과 약한 영역을 알 수 있어요.'),
-                  const _Point(n: '2', title: '매일 맞춤 학습', body: '표현 3개, 단어 10개, 따라 말하기, 복습 퀴즈까지.'),
+                  const _Point(
+                    n: '2',
+                    title: '매일 맞춤 학습',
+                    body: '첫 3일은 표현 2~3개·단어 5~8개로 가볍게. 그다음부터 표현 3개, 단어 10개, 따라 말하기, 복습 퀴즈까지.',
+                  ),
                   const _Point(n: '3', title: '알아서 난이도 조정', body: '정답률을 보고 내일 학습을 조금씩 바꿔 드려요.'),
                 ],
               ),

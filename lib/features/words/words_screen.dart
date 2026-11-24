@@ -42,6 +42,8 @@ class _WordsScreenState extends ConsumerState<WordsScreen> with StudyScreenGuard
   }
 
   void _rate(SelfRating r) {
+    // 뜻을 확인하기 전에는 평가하지 않는다 (안 보고 '알아요'를 누르면 복습 일정이 실제보다 늦어진다)
+    if (!_revealed) return;
     final s = ref.read(studyProvider);
     final words = s.pack.words;
     final id = words[_index].id;
@@ -136,7 +138,11 @@ class _WordsScreenState extends ConsumerState<WordsScreen> with StudyScreenGuard
               AnimatedSwitcher(
                 duration: motion(context, AppMotion.fast),
                 child: _undo == null
-                    ? Text('이 단어, 얼마나 알고 있었나요?', style: sans(13, color: context.colors.ink2))
+                    ? Text(
+                        _revealed ? '이 단어, 얼마나 알고 있었나요?' : '먼저 뜻을 떠올려 본 뒤, 뜻을 확인하고 평가해요',
+                        key: ValueKey(_revealed),
+                        style: sans(13, color: context.colors.ink2),
+                      )
                     : Semantics(
                         key: ValueKey(_undo),
                         liveRegion: true,
@@ -171,7 +177,7 @@ class _WordsScreenState extends ConsumerState<WordsScreen> with StudyScreenGuard
                         label: '몰라요',
                         sub: '내일 다시',
                         color: context.colors.error,
-                        onTap: () => _rate(SelfRating.dontKnow),
+                        onTap: _revealed ? () => _rate(SelfRating.dontKnow) : null,
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -180,12 +186,17 @@ class _WordsScreenState extends ConsumerState<WordsScreen> with StudyScreenGuard
                         label: '헷갈려요',
                         sub: '3일 뒤',
                         color: context.colors.caution,
-                        onTap: () => _rate(SelfRating.confusing),
+                        onTap: _revealed ? () => _rate(SelfRating.confusing) : null,
                       ),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: _RateButton(label: '알아요', sub: '7일 뒤', dark: true, onTap: () => _rate(SelfRating.know)),
+                      child: _RateButton(
+                        label: '알아요',
+                        sub: '7일 뒤',
+                        dark: true,
+                        onTap: _revealed ? () => _rate(SelfRating.know) : null,
+                      ),
                     ),
                   ],
                 ),
@@ -338,10 +349,19 @@ class _RateButton extends StatelessWidget {
   final String sub;
   final Color? color;
   final bool dark;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
+    // 뜻을 보기 전(누를 수 없음)에는 흐리게 보인다
+    return AnimatedOpacity(
+      duration: motion(context, AppMotion.fast),
+      opacity: onTap == null ? 0.45 : 1,
+      child: Semantics(enabled: onTap != null, button: true, child: _button(context)),
+    );
+  }
+
+  Widget _button(BuildContext context) {
     return Material(
       color: dark ? context.colors.emphasis : context.colors.card,
       shape: RoundedRectangleBorder(

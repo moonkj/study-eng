@@ -44,6 +44,15 @@ class _QuizScreenState extends ConsumerState<QuizScreen> with StudyScreenGuard {
     _answer(isRecallCorrect(item, typed) ? item.answerIndex : 1);
   }
 
+  /// 회상형 문제를 스스로 채점: 복습 일정에는 반영하고 점수에서는 뺀다
+  void _selfGrade(bool correct) {
+    final s = ref.read(studyProvider);
+    final item = s.pack.quiz[_index];
+    if (s.quizAnswers.containsKey(_index)) return;
+    ref.read(studyProvider.notifier).answerQuiz(_index, correct ? item.answerIndex : 1, selfGraded: true);
+    correct ? HapticFeedback.lightImpact() : HapticFeedback.mediumImpact();
+  }
+
   void _answer(int choice) {
     final s = ref.read(studyProvider);
     final item = s.pack.quiz[_index];
@@ -134,6 +143,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> with StudyScreenGuard {
                         typed: _typed[_index],
                         onSubmit: _answerRecall,
                         onGiveUp: () => _answer(1),
+                        onSelfGrade: _selfGrade,
                       )
                     else
                       for (var i = 0; i < item.choices.length; i++) ...[

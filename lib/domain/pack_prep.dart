@@ -20,7 +20,22 @@ int dayNumberOf(Iterable<String> logKeys, DateTime today) {
 /// 같은 입력이면 항상 같은 결과를 낸다 (저장된 진행이 문제 번호로 기록되므로).
 DailyPack prepareDailyPack(DailyPack raw, {required int dayNumber}) {
   final trimmed = _trim(raw, starterSize(dayNumber));
-  return _withRecall(trimmed, count: dayNumber <= 1 ? 1 : 2);
+  return _withRecall(_withExpressionSentences(trimmed), count: dayNumber <= 1 ? 1 : 2);
+}
+
+/// 따라 말하기에 오늘 표현이 쓰인 문장이 없으면 표현마다 첫 예문을 하나씩 붙인다.
+/// (표현을 입으로 익혀야 실제로 쓸 수 있다. 서버 팩이 이미 표현 문장을 넣었으면 그대로 둔다)
+DailyPack _withExpressionSentences(DailyPack p) {
+  final ids = {for (final s in p.sentences) s.id};
+  final extra = <Sentence>[
+    for (final e in p.expressions)
+      if (e.examples.isNotEmpty &&
+          !p.sentences.any((s) => s.en.toLowerCase().contains(e.highlight.toLowerCase())) &&
+          !ids.contains('x-${e.id}'))
+        Sentence(id: 'x-${e.id}', en: e.examples.first.en, ko: e.examples.first.ko, focus: e.highlight),
+  ];
+  if (extra.isEmpty) return p;
+  return _copy(p, sentences: [...p.sentences, ...extra]);
 }
 
 DailyPack _trim(DailyPack p, ({int expressions, int words, int sentences, int quiz})? size) {
@@ -37,10 +52,16 @@ DailyPack _trim(DailyPack p, ({int expressions, int words, int sentences, int qu
   final rest = p.sentences.where((s) => !focused.contains(s)).take(size.sentences - focused.length).toSet();
   final sentences = p.sentences.where((s) => focused.contains(s) || rest.contains(s)).toList();
   // 빠진 표현·단어를 묻는 새 문제는 뺀다 (복습 문제는 예전에 배운 것이라 남긴다)
-  final quiz = p.quiz
-      .where((q) => q.isReview || q.itemId == null || !dropped.contains(q.itemId))
-      .take(size.quiz)
-      .toList();
+  final allowed = p.quiz.where((q) => q.isReview || q.itemId == null || !dropped.contains(q.itemId)).toList();
+  // 남긴 표현마다 그 표현을 묻는 문제를 하나씩 먼저 고르고, 나머지는 원래 순서대로 채운다
+  final picked = <QuizItem>{
+    for (final e in expressions) ?allowed.where((q) => q.itemId == e.id).firstOrNull,
+  }.take(size.quiz).toSet();
+  for (final q in allowed) {
+    if (picked.length >= size.quiz) break;
+    picked.add(q);
+  }
+  final quiz = allowed.where(picked.contains).toList();
   return _copy(p, expressions: expressions, words: words, sentences: sentences, quiz: quiz);
 }
 

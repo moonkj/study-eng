@@ -256,11 +256,16 @@ class ReminderBlocked extends Notifier<bool> {
 }
 
 /// '소리 내기 어려워요' 모드. 지하철 등에서 켜 두면 앱을 쓰는 동안 말하기 화면에 계속 유지된다.
+/// 켜 둔 상태는 설정에 저장해 앱을 다시 켜도 유지한다.
 class QuietMode extends Notifier<bool> {
   @override
-  bool build() => false;
+  bool build() => ref.read(studyProvider).settings.quiet;
 
-  void set(bool value) => state = value;
+  void set(bool value) {
+    state = value;
+    final c = ref.read(studyProvider.notifier);
+    c.updateSettings(ref.read(studyProvider).settings.copyWith(quiet: value));
+  }
 }
 
 final quietModeProvider = NotifierProvider<QuietMode, bool>(QuietMode.new);
@@ -351,6 +356,7 @@ class StudyController extends Notifier<StudyState> {
     packId: id,
     cardsBefore: t.cardsBefore,
     regenCount: t.regenCount,
+    selfGraded: t.selfGraded,
   );
 
   /// 서버 JSON 을 팩으로 읽고 검사한다. 읽을 수 없거나 문제가 있으면 null.
@@ -505,6 +511,7 @@ class StudyController extends Notifier<StudyState> {
     int? levelDelta,
     Map<String, ReviewCard?>? cardsBefore,
     int? regenCount,
+    Set<int>? selfGraded,
   }) {
     final t = state.today;
     return TodayProgress(
@@ -518,6 +525,7 @@ class StudyController extends Notifier<StudyState> {
       packId: t.packId,
       cardsBefore: cardsBefore ?? t.cardsBefore,
       regenCount: regenCount ?? t.regenCount,
+      selfGraded: selfGraded ?? t.selfGraded,
     );
   }
 
@@ -603,13 +611,21 @@ class StudyController extends Notifier<StudyState> {
     if (!state.today.spoken.containsKey(s.id)) recordSpeaking(s, kSilentAttempt);
   }
 
+  /// 다시 말하면 더 높은 점수를 남긴다 (낮게 나온 재시도가 앞의 좋은 점수를 지우지 않게)
   void recordSpeaking(Sentence s, String heard) {
     // 끝낸 말하기를 다시 하는 것은 연습: 기록(완료 화면·평균)은 바꾸지 않는다
     if (state.done.contains(RoutineStep.speaking)) return;
+    final before = state.today.spoken[s.id];
+    if (before != null &&
+        before != kSilentAttempt &&
+        scoreSpeech(s.en, before).score >= scoreSpeech(s.en, heard).score) {
+      return;
+    }
     _set(state.copyWith(today: _progress(spoken: {...state.today.spoken, s.id: heard})));
   }
 
-  void answerQuiz(int index, int choice) {
+  /// [selfGraded]: 회상형 문제를 쓰지 않고 '떠올렸어요'로 스스로 채점함 (복습 일정은 바꾸고 점수에서는 뺀다)
+  void answerQuiz(int index, int choice, {bool selfGraded = false}) {
     if (state.quizAnswers.containsKey(index) || index >= state.pack.quiz.length) return;
     final item = state.pack.quiz[index];
     // 문제가 다루는 표현·단어의 복습 일정을 바꾼다
@@ -621,7 +637,11 @@ class StudyController extends Notifier<StudyState> {
     if (cardId != null && !before.containsKey(cardId)) before[cardId] = state.cards[cardId];
     _set(
       state.copyWith(
-        today: _progress(quizAnswers: {...state.quizAnswers, index: choice}, cardsBefore: before),
+        today: _progress(
+          quizAnswers: {...state.quizAnswers, index: choice},
+          cardsBefore: before,
+          selfGraded: selfGraded ? {...state.today.selfGraded, index} : null,
+        ),
         cards: card == null
             ? null
             : {...state.cards, cardId!: Srs.answer(card, correct: item.answerIndex == choice, today: _today)},
@@ -745,19 +765,29 @@ class StudyController extends Notifier<StudyState> {
 
   void _finishDay() {
     final s = state;
+    final quiz = s.pack.quiz;
+    bool correctAt(int i) => s.quizAnswers[i] == quiz[i].answerIndex;
+    // 고르는 문제만 정답률(난이도·레벨)에 쓰고, 직접 쓴 회상형 문제는 어휘 점수에 쓴다. 스스로 채점한 것은 빼고.
+    final choiceIdx = [
+      for (var i = 0; i < quiz.length; i++)
+        if (!quiz[i].isRecall) i,
+    ];
+    final recallIdx = [
+      for (var i = 0; i < quiz.length; i++)
+        if (quiz[i].isRecall && s.quizAnswers.containsKey(i) && !s.today.selfGraded.contains(i)) i,
+    ];
     final result = DailyResult(
-      quizCorrect: s.quizCorrect,
-      quizTotal: s.pack.quiz.length,
+      quizCorrect: choiceIdx.where(correctAt).length,
+      quizTotal: choiceIdx.length,
+      recallCorrect: recallIdx.where(correctAt).length,
+      recallTotal: recallIdx.length,
       wordsKnown: s.wordRatings.values.where((r) => r == SelfRating.know).length,
       wordsTotal: s.pack.words.length,
       speakingAverage: s.speakingAverage,
       expressionsAlreadyKnown: s.expressionKnown.values.where((k) => k).length,
       expressionsTotal: s.pack.expressions.length,
-      reviewTotal: s.pack.quiz.where((q) => q.isReview).length,
-      reviewCorrect: [
-        for (final e in s.quizAnswers.entries)
-          if (e.key < s.pack.quiz.length && s.pack.quiz[e.key].isReview && s.pack.quiz[e.key].answerIndex == e.value) e,
-      ].length,
+      reviewTotal: choiceIdx.where((i) => quiz[i].isReview).length,
+      reviewCorrect: choiceIdx.where((i) => quiz[i].isReview && correctAt(i)).length,
     );
     final repeat = s.isRepeatPack;
     final adj = DailyAdjuster.adjust(
@@ -782,8 +812,9 @@ class StudyController extends Notifier<StudyState> {
             levelScore: profile.overall.score,
             speakingAverage: result.speakingAverage,
             newAccuracy: result.newAccuracy,
-            quizCorrect: result.quizCorrect,
-            quizTotal: result.quizTotal,
+            // 완료 화면에는 쓰기 문제까지 모두 센 결과를 보여 준다
+            quizCorrect: s.quizCorrect,
+            quizTotal: quiz.length,
           ),
         },
         lastAdjustmentReasons: repeat ? const ['오늘은 이미 배운 기본 학습을 다시 해서 레벨과 난이도는 그대로 둬요.'] : adj.reasons,

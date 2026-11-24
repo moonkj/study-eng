@@ -79,6 +79,8 @@ void main() {
     await setSize(tester, const Size(1180, 820));
     await tester.pumpWidget(app(initial: '/words'));
     await tester.pumpAndSettle();
+    await tester.sendKeyEvent(LogicalKeyboardKey.space); // 뜻 보기
+    await tester.pumpAndSettle();
     await tester.sendKeyDownEvent(LogicalKeyboardKey.digit3);
     await tester.sendKeyRepeatEvent(LogicalKeyboardKey.digit3);
     await tester.sendKeyRepeatEvent(LogicalKeyboardKey.digit3);

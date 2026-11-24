@@ -23,17 +23,22 @@ String stepTitle(RoutineStep step, StudyState s) => switch (step) {
   RoutineStep.quiz => '복습 퀴즈',
 };
 
-/// 단계별 예상 시간(분)
-int stepMinutes(RoutineStep step) => switch (step) {
-  RoutineStep.expressions => 3,
-  RoutineStep.words => 4,
-  RoutineStep.speaking => 4,
-  RoutineStep.quiz => 3,
-};
+/// 단계별 예상 시간(분): 오늘 팩의 실제 분량으로 계산한다 (첫날은 분량이 적어 짧게 나온다)
+/// 표현 1개 약 50초 · 단어 1개 약 18초 · 문장 1개 약 20초 · 고르는 문제 약 12초 · 쓰기 문제 약 25초
+int stepMinutes(RoutineStep step, StudyState s) {
+  final p = s.pack;
+  final seconds = switch (step) {
+    RoutineStep.expressions => p.expressions.length * 50,
+    RoutineStep.words => p.words.length * 18,
+    RoutineStep.speaking => p.sentences.length * 20,
+    RoutineStep.quiz => p.quiz.fold(0, (sum, q) => sum + (q.isRecall ? 25 : 12)),
+  };
+  return (seconds / 60).ceil().clamp(1, 99);
+}
 
 /// 남은 단계 예상 시간(분)
 int remainingMinutes(StudyState s) =>
-    RoutineStep.values.where((e) => !s.done.contains(e)).fold(0, (sum, e) => sum + stepMinutes(e));
+    RoutineStep.values.where((e) => !s.done.contains(e)).fold(0, (sum, e) => sum + stepMinutes(e, s));
 
 String _doneTitle(RoutineStep step) => switch (step) {
   RoutineStep.expressions => '표현 학습 완료!',

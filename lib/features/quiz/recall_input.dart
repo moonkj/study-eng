@@ -14,6 +14,7 @@ class RecallQuestion extends StatefulWidget {
     required this.answered,
     required this.onSubmit,
     required this.onGiveUp,
+    required this.onSelfGrade,
     this.typed,
   });
 
@@ -25,12 +26,18 @@ class RecallQuestion extends StatefulWidget {
   final ValueChanged<String> onSubmit;
   final VoidCallback onGiveUp;
 
+  /// 쓰기 어려울 때(한 손·지하철): 머릿속으로 떠올린 뒤 정답을 보고 스스로 채점한다. 점수에는 넣지 않는다.
+  final ValueChanged<bool> onSelfGrade;
+
   @override
   State<RecallQuestion> createState() => _RecallQuestionState();
 }
 
 class _RecallQuestionState extends State<RecallQuestion> {
   late final _controller = TextEditingController(text: widget.typed ?? '');
+
+  /// '떠올렸어요'를 눌러 정답을 보는 중 (맞음/틀림을 고르기 전)
+  bool _checking = false;
 
   @override
   void dispose() {
@@ -60,7 +67,7 @@ class _RecallQuestionState extends State<RecallQuestion> {
         const SizedBox(height: 16),
         TextField(
           controller: _controller,
-          enabled: !widget.answered,
+          enabled: !widget.answered && !_checking,
           autofocus: !widget.answered,
           autocorrect: false,
           enableSuggestions: false,
@@ -86,10 +93,51 @@ class _RecallQuestionState extends State<RecallQuestion> {
             ),
           ),
         ),
-        if (!widget.answered) ...[
+        if (!widget.answered && _checking) ...[
+          const SizedBox(height: 14),
+          PaperCard(
+            color: context.colors.sand,
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '정답',
+                  style: sans(12, weight: FontWeight.w600, color: context.colors.ink2),
+                ),
+                const SizedBox(height: 4),
+                englishSemantics(
+                  widget.item.choices.first,
+                  Text(widget.item.choices.first, style: serif(22, weight: 600)),
+                ),
+                const SizedBox(height: 6),
+                Text('떠올린 답과 같았나요? 스스로 채점한 문제는 점수에 넣지 않아요.', style: sans(13, color: context.colors.ink2)),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(onPressed: () => widget.onSelfGrade(false), child: const Text('틀렸어요')),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: FilledButton(onPressed: () => widget.onSelfGrade(true), child: const Text('맞았어요')),
+              ),
+            ],
+          ),
+        ] else if (!widget.answered) ...[
           const SizedBox(height: 14),
           FilledButton(onPressed: _controller.text.trim().isEmpty ? null : _submit, child: const Text('확인')),
           const SizedBox(height: 4),
+          TextButton(
+            onPressed: () {
+              FocusScope.of(context).unfocus();
+              setState(() => _checking = true);
+            },
+            child: const Text('쓰기 어려워요 · 떠올리고 정답 보기'),
+          ),
           TextButton(onPressed: widget.onGiveUp, child: const Text('떠오르지 않아요 · 정답 보기')),
         ],
       ],

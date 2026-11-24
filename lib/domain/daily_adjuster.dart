@@ -13,6 +13,8 @@ class DailyResult {
     required this.expressionsTotal,
     this.reviewCorrect = 0,
     this.reviewTotal = 0,
+    this.recallCorrect = 0,
+    this.recallTotal = 0,
   });
 
   final int quizCorrect;
@@ -28,6 +30,14 @@ class DailyResult {
   /// 퀴즈 중 예전에 배운 것을 묻는 복습 문항 ([quizCorrect]/[quizTotal]에 포함된 수)
   final int reviewCorrect;
   final int reviewTotal;
+
+  /// 첫 글자 단서를 보고 직접 쓴 문제 (정답률에는 넣지 않고 어휘 점수에만 쓴다)
+  final int recallCorrect;
+  final int recallTotal;
+
+  /// 어휘 점수용 비율: 직접 써 본 결과가 있으면 자가 평가와 반씩 섞는다 (자가 평가는 실제보다 높게 나오기 쉬워서)
+  double get vocabularyRatio =>
+      recallTotal == 0 ? wordsKnownRatio : wordsKnownRatio * 0.5 + (recallCorrect / recallTotal) * 0.5;
 
   int get newTotal => quizTotal - reviewTotal;
   int get newCorrect => quizCorrect - reviewCorrect;
@@ -117,7 +127,7 @@ abstract final class DailyAdjuster {
       Skill.grammar: ((levelAcc - 0.75) * 30).round(),
       // 듣기 문항이 생기기 전까지는 퀴즈(읽기)로 듣기 점수를 바꾸지 않는다
       Skill.listening: 0,
-      Skill.vocabulary: ((today.wordsKnownRatio - 0.6) * 30).round(),
+      Skill.vocabulary: ((today.vocabularyRatio - 0.6) * 30).round(),
       Skill.speaking: today.speakingAverage == null ? 0 : ((today.speakingAverage! - 75) * 0.6).round(),
     };
     final newSkills = {for (final e in profile.skills.entries) e.key: e.value + (skillDelta[e.key] ?? 0)};
