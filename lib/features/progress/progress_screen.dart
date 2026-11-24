@@ -6,6 +6,7 @@ import '../../core/layout/adaptive.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/widgets.dart';
+
 import 'package:go_router/go_router.dart';
 
 import '../../data/models.dart' show kErrorTypeKo;
@@ -13,6 +14,8 @@ import '../../data/pack_source.dart' show weakErrorTypesOf;
 import '../../domain/level.dart';
 import '../../domain/mastery.dart';
 import '../../domain/study_log.dart';
+import '../../data/toeic.dart';
+import '../toeic/toeic_target.dart';
 
 class ProgressScreen extends ConsumerWidget {
   const ProgressScreen({super.key});
@@ -95,6 +98,8 @@ class ProgressScreen extends ConsumerWidget {
               ),
             ),
           ],
+          const SizedBox(height: 12),
+          _ToeicCard(state: s, ready: ref.watch(toeicBankProvider) != null),
           const SizedBox(height: 12),
           _MyExpressionsCard(state: s),
           const SizedBox(height: 12),
@@ -400,6 +405,50 @@ class _MyExpressionsCard extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// 토스 목표와 모의고사 기록
+class _ToeicCard extends StatelessWidget {
+  const _ToeicCard({required this.state, required this.ready});
+  final StudyState state;
+  final bool ready;
+
+  @override
+  Widget build(BuildContext context) {
+    final target = state.toeicTarget;
+    final recent = state.mocks.reversed.take(5).toList();
+    return PaperCard(
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('토스 모의고사', style: sans(14, weight: FontWeight.w600)),
+          const SizedBox(height: 2),
+          Text('목표 ${targetLabel(target)}', style: sans(12, color: context.colors.ink2)),
+          if (state.targetReached) ...[const SizedBox(height: 10), const TargetReachedCard()],
+          const SizedBox(height: 6),
+          if (recent.isEmpty)
+            Text('아직 본 모의고사가 없어요.', style: sans(13, color: context.colors.ink2))
+          else
+            for (final m in recent)
+              MockHistoryRow(
+                date: '${parseDateKey(m.date).month}월 ${parseDateKey(m.date).day}일',
+                level: m.level,
+                average: m.average.round(),
+                met: meetsTarget(
+                  m.level,
+                  ToeicTarget.values.firstWhere((t) => t.label == m.target, orElse: () => target),
+                ),
+              ),
+          if (ready)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton(onPressed: () => context.push('/toeic-mock'), child: const Text('모의고사 보기')),
+            ),
+        ],
       ),
     );
   }

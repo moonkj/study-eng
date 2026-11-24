@@ -20,6 +20,8 @@ import '../features/review/review_screen.dart';
 import '../features/review/review_session_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/speaking/speaking_screen.dart';
+import '../features/toeic/toeic_daily_screen.dart';
+import '../features/toeic/toeic_mock_screen.dart';
 import '../features/welcome/welcome_screen.dart';
 import '../features/words/words_screen.dart';
 
@@ -63,7 +65,10 @@ GoRouter buildRouter({String initialLocation = '/', bool Function()? isOnboarded
         ),
         _focused('/expressions', const ExpressionScreen()),
         _focused('/words', const WordsScreen()),
+        // 예전 따라 말하기 (루틴 단계는 이제 /toeic-today)
         _focused('/speaking', const SpeakingScreen()),
+        _focused('/toeic-today', const ToeicDailyScreen()),
+        _focused('/toeic-mock', const ToeicMockScreen()),
         _focused('/quiz', const QuizScreen()),
         _focused('/commute', const CommuteScreen()),
         _focused('/complete', const CompleteScreen()),

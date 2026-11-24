@@ -7,6 +7,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../domain/level.dart';
 import '../domain/srs.dart';
 import '../domain/study_log.dart';
+import '../domain/toeic_feedback.dart';
+import 'toeic.dart' show ToeicTarget;
 import 'pack_source.dart';
 
 /// 복습 카드 저장 형식 (마지막 평가일까지 저장해야 '같은 날 재정답 무시'가 앱을 다시 켜도 유지된다)
@@ -40,6 +42,7 @@ class TodayProgress {
     this.regenCount = 0,
     this.selfGraded = const {},
     this.carriedFrom,
+    this.toeic = const {},
   });
 
   final String date;
@@ -71,6 +74,9 @@ class TodayProgress {
   /// 지난 학습일에 끝내지 못한 루틴을 이어서 하는 중이면 그 날짜 (그날의 팩과 진행을 그대로 쓴다)
   final String? carriedFrom;
 
+  /// 오늘 루틴에서 한 토스 문항 결과 (문항 id → 결과)
+  final Map<String, ToeicTaskRecord> toeic;
+
   Map<String, Object?> toJson() => {
     'date': date,
     'done': done.toList(),
@@ -84,6 +90,7 @@ class TodayProgress {
     'regenCount': regenCount,
     'selfGraded': selfGraded.toList(),
     'carriedFrom': ?carriedFrom,
+    if (toeic.isNotEmpty) 'toeic': toeic.map((k, v) => MapEntry(k, v.toJson())),
   };
 
   /// 필드가 빠졌거나(예전 버전) 일부가 깨져도 날짜만 맞으면 나머지는 기본값으로 읽는다.
@@ -114,6 +121,41 @@ class TodayProgress {
     regenCount: (j['regenCount'] as num?)?.toInt() ?? 0,
     selfGraded: {...((j['selfGraded'] as List?) ?? const []).whereType<num>().map((n) => n.toInt())},
     carriedFrom: j['carriedFrom'] as String?,
+    toeic: {
+      for (final e in ((j['toeic'] as Map?) ?? const {}).entries)
+        if (e.key is String && ToeicTaskRecord.fromJson(e.value) != null)
+          e.key as String: ToeicTaskRecord.fromJson(e.value)!,
+    },
+  );
+
+  TodayProgress copyWith({
+    Set<String>? done,
+    Map<String, bool>? expressionKnown,
+    Map<String, SelfRating>? wordRatings,
+    Map<String, String>? spoken,
+    Map<int, int>? quizAnswers,
+    int? levelDelta,
+    String? packId,
+    Map<String, ReviewCard?>? cardsBefore,
+    int? regenCount,
+    Set<int>? selfGraded,
+    String? date,
+    String? Function()? carriedFrom,
+    Map<String, ToeicTaskRecord>? toeic,
+  }) => TodayProgress(
+    date: date ?? this.date,
+    done: done ?? this.done,
+    expressionKnown: expressionKnown ?? this.expressionKnown,
+    wordRatings: wordRatings ?? this.wordRatings,
+    spoken: spoken ?? this.spoken,
+    quizAnswers: quizAnswers ?? this.quizAnswers,
+    levelDelta: levelDelta ?? this.levelDelta,
+    packId: packId ?? this.packId,
+    cardsBefore: cardsBefore ?? this.cardsBefore,
+    regenCount: regenCount ?? this.regenCount,
+    selfGraded: selfGraded ?? this.selfGraded,
+    carriedFrom: carriedFrom == null ? this.carriedFrom : carriedFrom(),
+    toeic: toeic ?? this.toeic,
   );
 }
 
@@ -126,6 +168,8 @@ class AppSettings {
     this.reminderOffered = false,
     this.theme = 'system',
     this.quiet = false,
+    this.toeicTarget,
+    this.toeicSuggestDismissed,
   });
 
   /// 발음 음성: en-US(미국) / en-GB(영국)
@@ -146,6 +190,15 @@ class AppSettings {
   /// '소리 내기 어려워요' 모드를 켜 둔 상태 (앱을 다시 켜도 유지)
   final bool quiet;
 
+  /// 토익스피킹 목표 점수 (110/130/140/160/180). null = 아직 고르지 않음 (140 으로 진행)
+  final int? toeicTarget;
+
+  /// '목표 달성' 제안을 그만 보기로 한 모의고사 (날짜·등급)
+  final String? toeicSuggestDismissed;
+
+  /// 지금 목표 (고르지 않았으면 IM3)
+  ToeicTarget get target => ToeicTarget.fromScore(toeicTarget);
+
   AppSettings copyWith({
     String? voice,
     double? speed,
@@ -153,6 +206,8 @@ class AppSettings {
     bool? reminderOffered,
     String? theme,
     bool? quiet,
+    int? Function()? toeicTarget,
+    String? Function()? toeicSuggestDismissed,
   }) => AppSettings(
     voice: voice ?? this.voice,
     speed: speed ?? this.speed,
@@ -160,6 +215,8 @@ class AppSettings {
     reminderOffered: reminderOffered ?? this.reminderOffered,
     theme: theme ?? this.theme,
     quiet: quiet ?? this.quiet,
+    toeicTarget: toeicTarget == null ? this.toeicTarget : toeicTarget(),
+    toeicSuggestDismissed: toeicSuggestDismissed == null ? this.toeicSuggestDismissed : toeicSuggestDismissed(),
   );
 
   Map<String, Object?> toJson() => {
@@ -169,6 +226,8 @@ class AppSettings {
     'reminderOffered': reminderOffered,
     'theme': theme,
     'quiet': quiet,
+    'toeicTarget': ?toeicTarget,
+    'toeicSuggestDismissed': ?toeicSuggestDismissed,
   };
 
   factory AppSettings.fromJson(Map<String, Object?>? j) => j == null
@@ -180,6 +239,10 @@ class AppSettings {
           reminderOffered: j['reminderOffered'] as bool? ?? false,
           theme: j['theme'] as String? ?? 'system',
           quiet: j['quiet'] as bool? ?? false,
+          toeicTarget: ToeicTarget.values.any((t) => t.score == j['toeicTarget'])
+              ? (j['toeicTarget'] as num).toInt()
+              : null,
+          toeicSuggestDismissed: j['toeicSuggestDismissed'] as String?,
         );
 }
 
@@ -214,6 +277,7 @@ class SavedData {
     this.learned = const {},
     this.settings = const AppSettings(),
     this.series,
+    this.mocks = const [],
   });
 
   final LearnerProfile profile;
@@ -236,6 +300,9 @@ class SavedData {
   /// 주간 시리즈 대화 진행 상태
   final SeriesState? series;
 
+  /// 토스 모의고사 결과 (오래된 것부터, 최근 30개)
+  final List<MockResult> mocks;
+
   static const version = 1;
 
   Map<String, Object?> toJson() => {
@@ -251,6 +318,7 @@ class SavedData {
     'learned': learned.map((k, v) => MapEntry(k, v.toJson())),
     'settings': settings.toJson(),
     if (series != null) 'series': series!.toJson(),
+    if (mocks.isNotEmpty) 'mocks': [for (final m in mocks) m.toJson()],
   };
 
   /// 섹션별로 따로 읽는다. 기록·카드·팩 중 하나가 깨져도 나머지(특히 레벨과 연속 기록)는 살린다.
@@ -324,6 +392,7 @@ class SavedData {
         const AppSettings(),
       ),
       series: section(() => SeriesState.fromJson(j['series']), null),
+      mocks: section(() => [for (final m in (j['mocks'] as List?) ?? const []) ?MockResult.fromJson(m)], const []),
     );
   }
 }

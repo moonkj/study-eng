@@ -11,7 +11,9 @@ import '../../core/theme/app_theme.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/widgets.dart';
 import '../../domain/study_log.dart';
+import '../../data/toeic.dart';
 import '../commute/commute_home.dart';
+import '../toeic/toeic_target.dart';
 
 const _weekdays = ['월', '화', '수', '목', '금', '토', '일'];
 
@@ -30,6 +32,8 @@ class HomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final s = ref.watch(studyProvider);
+    final toeic = ref.watch(toeicDailyProvider);
+    final bank = ref.watch(toeicBankProvider);
     final now = ref.watch(clockProvider)();
     // 학습일 새로 고침은 app.dart 의 라우터 리스너가 탭 화면에 있을 때만 한다
     // (홈은 학습 화면 뒤에서도 다시 그려지므로 여기서 하면 루틴 도중 진행이 지워진다)
@@ -125,14 +129,26 @@ class HomeScreen extends ConsumerWidget {
                   ? '4/4 완료'
                   : (s.log[dateKey(s.now)]?.mini ?? false)
                   ? '3분 루틴으로 오늘 기록 완료 · 남은 단계도 할 수 있어요'
-                  : '남은 시간 약 ${remainingMinutes(s)}분 · ${s.done.length}/4',
+                  : '남은 시간 약 ${remainingMinutes(s, toeic: toeic)}분 · ${s.done.length}/4',
               style: sans(13, color: context.colors.ink2),
             ),
           ],
         ),
         const SizedBox(height: 10),
-        for (final step in RoutineStep.values) ...[_RoutineRow(step: step, state: s), const SizedBox(height: 8)],
+        for (final step in RoutineStep.values) ...[
+          _RoutineRow(step: step, state: s, toeic: toeic),
+          const SizedBox(height: 8),
+        ],
         const CommuteEntry(),
+        if (bank != null) ...[
+          const SizedBox(height: 8),
+          MockEntryCard(
+            // 주말에는 모의고사를 권한다 (언제든 볼 수 있다)
+            weekend: s.now.weekday >= DateTime.saturday,
+            last: s.mocks.isEmpty ? null : s.mocks.last.level,
+            onTap: () => context.push('/toeic-mock'),
+          ),
+        ],
       ],
     );
 
@@ -144,6 +160,10 @@ class HomeScreen extends ConsumerWidget {
               onRetry: () => ref.read(studyProvider.notifier).loadTodayPack(),
             ),
           )
+        : null;
+
+    final reached = s.targetReached
+        ? const Padding(padding: EdgeInsets.only(bottom: 12), child: TargetReachedCard())
         : null;
 
     final carriedFrom = s.today.carriedFrom;
@@ -178,6 +198,7 @@ class HomeScreen extends ConsumerWidget {
                       children: [
                         ?notice,
                         ?carryNotice,
+                        ?reached,
                         if (s.allDone) ...[_DoneCard(state: s), const SizedBox(height: 16)],
                         heroCard,
                         const SizedBox(height: 24),
@@ -217,6 +238,7 @@ class HomeScreen extends ConsumerWidget {
           ] else ...[
             ?notice,
             ?carryNotice,
+            ?reached,
             if (s.allDone) ...[_DoneCard(state: s), const SizedBox(height: 16)],
             heroCard,
             const SizedBox(height: 22),
@@ -535,14 +557,22 @@ class _StreakChip extends StatelessWidget {
 }
 
 class _RoutineRow extends StatelessWidget {
-  const _RoutineRow({required this.step, required this.state});
+  const _RoutineRow({required this.step, required this.state, this.toeic});
   final RoutineStep step;
   final StudyState state;
+  final ToeicDailySet? toeic;
+
+  static const _blockKo = {ToeicBlock.respond: '질문 답하기', ToeicBlock.info: '표 보고 답하기', ToeicBlock.opinion: '의견 말하기'};
 
   (String, String) get _texts => switch (step) {
     RoutineStep.expressions => (stepTitle(step, state), '${stepMinutes(step, state)}분'),
     RoutineStep.words => (stepTitle(step, state), '${stepMinutes(step, state)}분'),
-    RoutineStep.speaking => (stepTitle(step, state), '${state.pack.sentences.length}문장 · ${stepMinutes(step, state)}분'),
+    RoutineStep.speaking => (
+      stepTitle(step, state, toeic: toeic),
+      toeic != null
+          ? '문장 읽기 · 사진 묘사 · ${_blockKo[toeic!.block]} · ${stepMinutes(step, state, toeic: toeic)}분'
+          : '${state.pack.sentences.length}문장 · ${stepMinutes(step, state)}분',
+    ),
     RoutineStep.quiz => (
       stepTitle(step, state),
       state.pack.reviewCount == 0
@@ -553,7 +583,8 @@ class _RoutineRow extends StatelessWidget {
 
   double get _progress => switch (step) {
     RoutineStep.words => state.wordRatings.length / state.pack.words.length,
-    RoutineStep.speaking => state.spokenCount / state.pack.sentences.length,
+    RoutineStep.speaking =>
+      toeic != null ? state.today.toeic.length / 3 : state.spokenCount / state.pack.sentences.length,
     RoutineStep.quiz => state.quizAnswers.length / state.pack.quiz.length,
     RoutineStep.expressions => state.expressionKnown.length / state.pack.expressions.length,
   };

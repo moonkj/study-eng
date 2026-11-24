@@ -6,39 +6,57 @@ import '../core/theme/app_theme.dart';
 import '../core/theme/tokens.dart';
 import '../domain/study_log.dart';
 import '../core/audio/tts.dart';
+import '../data/toeic.dart';
+import '../features/toeic/toeic_task.dart';
 import 'study_controller.dart';
 
 const routinePaths = {
   RoutineStep.expressions: '/expressions',
   RoutineStep.words: '/words',
-  RoutineStep.speaking: '/speaking',
+  // 토스 말하기 (문항 모음이 없으면 그 화면이 예전 따라 말하기를 보여 준다)
+  RoutineStep.speaking: '/toeic-today',
   RoutineStep.quiz: '/quiz',
 };
 
+/// 오늘의 토스 세트 (문항 모음이 없거나 불러오는 중이면 null → 예전 따라 말하기)
+/// 이어서 하는 날은 그날의 세트를 그대로 쓴다.
+final toeicDailyProvider = Provider<ToeicDailySet?>((ref) {
+  final bank = ref.watch(toeicBankProvider);
+  if (bank == null) return null;
+  final s = ref.watch(studyProvider);
+  final carried = s.today.carriedFrom;
+  return dailySetFor(bank, carried == null ? s.now : parseDateKey(carried), s.toeicTarget);
+});
+
+/// 오늘의 토스 문항들 (목표 단계 모범 답안)
+List<ToeicTask> toeicTasksFor(ToeicDailySet set, StudyState s) => dailyTasks(set, s.toeicTarget.tier);
+
 /// 루틴 단계 이름
-String stepTitle(RoutineStep step, StudyState s) => switch (step) {
+String stepTitle(RoutineStep step, StudyState s, {ToeicDailySet? toeic}) => switch (step) {
   RoutineStep.expressions => '오늘의 표현 ${s.pack.expressions.length}개',
   RoutineStep.words => '오늘의 단어 ${s.pack.words.length}개',
-  RoutineStep.speaking => '예문 따라 말하기',
+  RoutineStep.speaking => toeic != null ? '토스 말하기' : '예문 따라 말하기',
   RoutineStep.quiz => '복습 퀴즈',
 };
 
 /// 단계별 예상 시간(분): 오늘 팩의 실제 분량으로 계산한다 (첫날은 분량이 적어 짧게 나온다)
 /// 표현 1개 약 50초 · 단어 1개 약 18초 · 문장 1개 약 20초 · 고르는 문제 약 12초 · 쓰기 문제 약 25초
-int stepMinutes(RoutineStep step, StudyState s) {
+/// 토스 말하기는 시험 시간(준비·답하기) + 안내·결과 보기
+int stepMinutes(RoutineStep step, StudyState s, {ToeicDailySet? toeic}) {
   final p = s.pack;
   final seconds = switch (step) {
     RoutineStep.expressions => p.expressions.length * 50,
     RoutineStep.words => p.words.length * 18,
-    RoutineStep.speaking => p.sentences.length * 20,
+    RoutineStep.speaking =>
+      toeic != null ? toeicTasksFor(toeic, s).fold(0, (sum, t) => sum + t.totalSeconds + 60) : p.sentences.length * 20,
     RoutineStep.quiz => p.quiz.fold(0, (sum, q) => sum + (q.isRecall ? 25 : 12)),
   };
   return (seconds / 60).ceil().clamp(1, 99);
 }
 
 /// 남은 단계 예상 시간(분)
-int remainingMinutes(StudyState s) =>
-    RoutineStep.values.where((e) => !s.done.contains(e)).fold(0, (sum, e) => sum + stepMinutes(e, s));
+int remainingMinutes(StudyState s, {ToeicDailySet? toeic}) =>
+    RoutineStep.values.where((e) => !s.done.contains(e)).fold(0, (sum, e) => sum + stepMinutes(e, s, toeic: toeic));
 
 String _doneTitle(RoutineStep step) => switch (step) {
   RoutineStep.expressions => '표현 학습 완료!',
@@ -79,6 +97,7 @@ Future<void> _finish(BuildContext context, WidgetRef ref, RoutineStep step) asyn
   // 새벽 4시를 넘겨 학습일이 바뀐 상태(새로 고침을 미뤄 둔 상태)면 홈으로 가는 순간 어제 진행이 정리된다
   final stale = s.today.date != dateKey(studyDay(ref.read(clockProvider)()));
   final remaining = RoutineStep.values.where((e) => !s.done.contains(e)).length;
+  final toeic = ref.read(toeicDailyProvider);
   final choice = await showModalBottomSheet<String>(
     context: context,
     showDragHandle: true,
@@ -94,7 +113,7 @@ Future<void> _finish(BuildContext context, WidgetRef ref, RoutineStep step) asyn
             Text(
               stale
                   ? '날짜가 바뀌었어요. 마저 하면 어제 기록으로 남고, 지금 그만두면 어제 진행은 기록되지 않아요.'
-                  : '남은 단계 $remaining개 · 약 ${remainingMinutes(s)}분 · 다음은 ${stepTitle(next, s)}',
+                  : '남은 단계 $remaining개 · 약 ${remainingMinutes(s, toeic: toeic)}분 · 다음은 ${stepTitle(next, s, toeic: toeic)}',
               style: sans(14, color: context.colors.ink2),
             ),
             const SizedBox(height: 20),

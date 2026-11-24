@@ -6,6 +6,7 @@ import '../data/models.dart';
 import '../data/pack_source.dart';
 import '../data/sample_content.dart';
 import '../data/store.dart';
+import '../data/toeic.dart';
 import '../data/topic_map.dart';
 import '../domain/daily_adjuster.dart';
 import '../domain/level.dart';
@@ -14,6 +15,7 @@ import '../domain/pack_prep.dart';
 import '../domain/speech_score.dart';
 import '../domain/srs.dart';
 import '../domain/study_log.dart';
+import '../domain/toeic_feedback.dart';
 
 /// 소리 내지 않고 속으로 따라 한 문장 표시 (점수 평균에서 뺀다)
 const kSilentAttempt = '<silent>';
@@ -44,6 +46,7 @@ class StudyState {
     this.packLoading = false,
     this.packError,
     this.series,
+    this.mocks = const [],
   });
 
   final DateTime now;
@@ -68,12 +71,35 @@ class StudyState {
   /// 주간 시리즈 대화 진행 상태
   final SeriesState? series;
 
+  /// 토스 모의고사 결과 (오래된 것부터)
+  final List<MockResult> mocks;
+
+  /// 지금 토익스피킹 목표
+  ToeicTarget get toeicTarget => settings.target;
+
+  /// 가장 최근 모의고사(지금 목표로 본 것)가 목표에 닿았고, 아직 다음 목표 제안을 닫지 않았는지
+  bool get targetReached {
+    if (mocks.isEmpty || toeicTarget.next == null) return false;
+    final m = mocks.last;
+    // 지금 목표로 본 모의고사만 (목표를 올린 뒤에는 새 목표로 다시 봐야 한다)
+    return m.target == toeicTarget.label &&
+        meetsTarget(m.level, toeicTarget) &&
+        settings.toeicSuggestDismissed != mockKey(m);
+  }
+
+  /// 오늘 루틴의 토스 문항 평균 점수 (한 것이 없으면 null)
+  double? get toeicAverage {
+    if (today.toeic.isEmpty) return null;
+    return today.toeic.values.map((r) => r.score).reduce((a, b) => a + b) / today.toeic.length;
+  }
+
   /// 오늘 아직 아무것도 시작하지 않았는지 (팩을 바꿔도 되는지)
   bool get untouched =>
       today.done.isEmpty &&
       today.expressionKnown.isEmpty &&
       today.wordRatings.isEmpty &&
       today.spoken.isEmpty &&
+      today.toeic.isEmpty &&
       today.quizAnswers.isEmpty;
 
   Set<RoutineStep> get done => {for (final n in today.done) RoutineStep.values.byName(n)};
@@ -182,6 +208,7 @@ class StudyState {
     List<String>? lastAdjustmentReasons,
     AppSettings? settings,
     SeriesState? series,
+    List<MockResult>? mocks,
   }) => StudyState(
     now: now,
     pack: pack ?? this.pack,
@@ -198,6 +225,7 @@ class StudyState {
     lastAdjustmentReasons: lastAdjustmentReasons ?? this.lastAdjustmentReasons,
     settings: settings ?? this.settings,
     series: series ?? this.series,
+    mocks: mocks ?? this.mocks,
   );
 
   /// 서버 팩이 아닌 기본 팩이고, 그 내용을 오늘 이전에 이미 배웠는지 (오프라인으로 같은 팩을 다시 하는 날)
@@ -238,6 +266,7 @@ class StudyState {
     packs: packs,
     learned: learned,
     series: series,
+    mocks: mocks,
   );
 }
 
@@ -380,26 +409,19 @@ class StudyController extends Notifier<StudyState> {
       packs: packs,
       packLoading: loading,
       series: saved?.series,
+      mocks: saved?.mocks ?? const [],
     );
   }
 
   static bool _isUntouched(TodayProgress t) =>
-      t.done.isEmpty && t.expressionKnown.isEmpty && t.wordRatings.isEmpty && t.spoken.isEmpty && t.quizAnswers.isEmpty;
+      t.done.isEmpty &&
+      t.expressionKnown.isEmpty &&
+      t.wordRatings.isEmpty &&
+      t.spoken.isEmpty &&
+      t.toeic.isEmpty &&
+      t.quizAnswers.isEmpty;
 
-  static TodayProgress _withPackId(TodayProgress t, String id) => TodayProgress(
-    date: t.date,
-    done: t.done,
-    expressionKnown: t.expressionKnown,
-    wordRatings: t.wordRatings,
-    spoken: t.spoken,
-    quizAnswers: t.quizAnswers,
-    levelDelta: t.levelDelta,
-    packId: id,
-    cardsBefore: t.cardsBefore,
-    regenCount: t.regenCount,
-    selfGraded: t.selfGraded,
-    carriedFrom: t.carriedFrom,
-  );
+  static TodayProgress _withPackId(TodayProgress t, String id) => t.copyWith(packId: id);
 
   static TodayProgress _carry(TodayProgress t, String date) => TodayProgress(
     date: date,
@@ -412,6 +434,7 @@ class StudyController extends Notifier<StudyState> {
     cardsBefore: t.cardsBefore,
     selfGraded: t.selfGraded,
     carriedFrom: t.date,
+    toeic: t.toeic,
   );
 
   /// 서버 JSON 을 팩으로 읽고 검사한다. 읽을 수 없거나 문제가 있으면 null.
@@ -440,6 +463,7 @@ class StudyController extends Notifier<StudyState> {
     // 주제 지도에서 아직 안 다룬 상황을 제안한다 (서버는 참고만 한다)
     topicHint: topicHintFor(date, recentTopicsOf(s.log, date)).nameKo,
     series: s.series != null && s.series!.continuesOn(date) ? s.series : null,
+    toeicTarget: s.settings.toeicTarget == null ? null : s.settings.target.label,
   );
 
   /// 요청이 겹치면 가장 최근 요청의 결과만 반영한다.
@@ -566,6 +590,7 @@ class StudyController extends Notifier<StudyState> {
     Map<String, ReviewCard?>? cardsBefore,
     int? regenCount,
     Set<int>? selfGraded,
+    Map<String, ToeicTaskRecord>? toeic,
   }) {
     final t = state.today;
     return TodayProgress(
@@ -581,6 +606,7 @@ class StudyController extends Notifier<StudyState> {
       regenCount: regenCount ?? t.regenCount,
       selfGraded: selfGraded ?? t.selfGraded,
       carriedFrom: t.carriedFrom,
+      toeic: toeic ?? t.toeic,
     );
   }
 
@@ -678,6 +704,46 @@ class StudyController extends Notifier<StudyState> {
       return;
     }
     _set(state.copyWith(today: _progress(spoken: {...state.today.spoken, s.id: heard})));
+  }
+
+  /// 오늘 루틴의 토스 문항 결과를 남긴다. 다시 하면 더 높은 점수를 남긴다.
+  /// 말하기 단계를 끝낸 뒤 다시 하는 것은 연습이라 기록을 바꾸지 않는다.
+  void recordToeicTask(String id, ToeicTaskRecord r) {
+    if (state.done.contains(RoutineStep.speaking)) return;
+    final before = state.today.toeic[id];
+    if (before != null && before.score >= r.score) return;
+    _set(state.copyWith(today: _progress(toeic: {...state.today.toeic, id: r})));
+  }
+
+  /// 모의고사 결과를 남긴다 (최근 30개)
+  void recordMock(MockResult m) {
+    final all = [...state.mocks, m];
+    _set(state.copyWith(mocks: all.length > 30 ? all.sublist(all.length - 30) : all));
+  }
+
+  /// 토익스피킹 목표를 바꾼다. 표현·단어 난이도도 목표에 맞는 단계로 옮기고, 이후로는 평소처럼 자동 조정한다.
+  void setToeicTarget(ToeicTarget target) {
+    final s = state;
+    if (s.settings.toeicTarget == target.score && s.contentStep == target.contentStep) return;
+    _prefetchRequest++; // 옛 난이도로 받던 내일 팩은 저장하지 않는다
+    final todayKey = dateKey(s.now);
+    _set(
+      s.copyWith(
+        settings: s.settings.copyWith(toeicTarget: () => target.score),
+        contentStep: target.contentStep,
+        // 옛 난이도로 미리 받아 둔 내일 팩은 버린다 (오늘 팩·이어서 하는 팩은 그대로)
+        packs: {
+          for (final e in s.packs.entries)
+            if (e.key.compareTo(todayKey) <= 0) e.key: e.value,
+        },
+      ),
+    );
+  }
+
+  /// '목표 달성' 제안 닫기 (그 모의고사로는 다시 묻지 않는다)
+  void dismissTargetSuggestion() {
+    if (state.mocks.isEmpty) return;
+    _set(state.copyWith(settings: state.settings.copyWith(toeicSuggestDismissed: () => mockKey(state.mocks.last))));
   }
 
   /// [selfGraded]: 회상형 문제를 쓰지 않고 '떠올렸어요'로 스스로 채점함 (복습 일정은 바꾸고 점수에서는 뺀다)
@@ -866,7 +932,8 @@ class StudyController extends Notifier<StudyState> {
       recallTotal: recallIdx.length,
       wordsKnown: s.wordRatings.values.where((r) => r == SelfRating.know).length,
       wordsTotal: s.pack.words.length,
-      speakingAverage: s.speakingAverage,
+      // 토스 말하기 결과가 있으면 그것으로, 없으면(예전 따라 말하기) 따라 말하기 점수로
+      speakingAverage: s.toeicAverage ?? s.speakingAverage,
       expressionsAlreadyKnown: s.expressionKnown.values.where((k) => k).length,
       expressionsTotal: s.pack.expressions.length,
       reviewTotal: choiceIdx.where((i) => quiz[i].isReview).length,

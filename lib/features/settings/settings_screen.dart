@@ -8,6 +8,7 @@ import '../../core/layout/adaptive.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/widgets.dart';
+import '../toeic/toeic_target.dart' show pickToeicTarget;
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -32,6 +33,13 @@ class SettingsScreen extends ConsumerWidget {
                 onTap: () => context.push('/level-result'),
               ),
               _Item(icon: Icons.quiz_outlined, title: '레벨 다시 진단하기', onTap: () => context.push('/level-test')),
+              _Item(
+                icon: Icons.flag_outlined,
+                title: '토스 목표',
+                value:
+                    '${st.toeicTarget.label} · ${st.toeicTarget.score}점${settings.toeicTarget == null ? ' (기본)' : ''}',
+                onTap: () => pickToeicTarget(context, ref),
+              ),
             ],
           ),
           const SizedBox(height: 12),
