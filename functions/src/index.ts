@@ -3,7 +3,7 @@ import { defineSecret } from "firebase-functions/params";
 import { logger } from "firebase-functions";
 import { onRequest } from "firebase-functions/v2/https";
 
-import { handleCorrect, handleDailyPack } from "./handler.js";
+import { handleCorrect, handleDailyPack, handleGrade } from "./handler.js";
 
 /** Claude API 키와 앱 전용 토큰은 Secret Manager 에만 둔다 (firebase functions:secrets:set ...). */
 const anthropicKey = defineSecret("ANTHROPIC_API_KEY");
@@ -55,6 +55,32 @@ export const correct = onRequest(
       body: req.body,
       appToken: appToken.value(),
       client: correctClient,
+      log: (msg, data) => logger.info(msg, data),
+    });
+    res.status(result.status).json(result.body);
+  },
+);
+
+/** TOEIC Speaking 채점: 한 번만 짧게 묻는다 (시도당 30초) */
+let gradeClient: Anthropic | undefined;
+
+export const grade = onRequest(
+  {
+    region: "asia-northeast3",
+    secrets: [anthropicKey, appToken],
+    timeoutSeconds: 45,
+    memory: "256MiB",
+    maxInstances: 2,
+    cors: true,
+  },
+  async (req, res) => {
+    gradeClient ??= new Anthropic({ apiKey: anthropicKey.value(), timeout: 30_000, maxRetries: 0 });
+    const result = await handleGrade({
+      method: req.method,
+      authorization: req.get("authorization"),
+      body: req.body,
+      appToken: appToken.value(),
+      client: gradeClient,
       log: (msg, data) => logger.info(msg, data),
     });
     res.status(result.status).json(result.body);

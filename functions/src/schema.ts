@@ -160,3 +160,56 @@ export const GeneratedCorrection = z.object({
   used_expression: z.boolean().describe("문장이 오늘 표현(highlight)을 알맞게 썼으면 true"),
 });
 export type GeneratedCorrection = z.infer<typeof GeneratedCorrection>;
+
+/** TOEIC Speaking 문제 유형 */
+export const TOEIC_TASKS = ["read_aloud", "picture", "respond", "info", "opinion"] as const;
+export const ToeicTask = z.enum(TOEIC_TASKS);
+export type ToeicTask = z.infer<typeof ToeicTask>;
+
+/** TOEIC Speaking 레벨 (낮은 순) */
+export const TOEIC_LEVELS = ["NL", "NM", "NH", "IL", "IM1", "IM2", "IM3", "IH", "AL"] as const;
+export const ToeicLevel = z.enum(TOEIC_LEVELS);
+
+/** 학습자가 고르는 목표 레벨 (점수 110/130/140/160/180) */
+export const TOEIC_TARGETS = ["IM1", "IM2", "IM3", "IH", "AL"] as const;
+export const ToeicTarget = z.enum(TOEIC_TARGETS);
+export type ToeicTarget = z.infer<typeof ToeicTarget>;
+
+/** 앱 → 서버: TOEIC Speaking 한 문항 채점 요청 */
+export const GradeRequest = z.object({
+  task: ToeicTask,
+  /** 목표 레벨 (없으면 IM3) */
+  target: ToeicTarget.default("IM3"),
+  /** 화면에 보여 준 내용: 지문 / 사진 설명 맥락 / 상황+질문 / 표+질문 / 의견 질문 */
+  prompt: z.string().trim().min(1).max(3000),
+  /** 모범 답안 또는 (read_aloud) 지문 자체 */
+  reference: z.string().max(3000).optional(),
+  /** 학습자 답변 음성 인식 결과 (비거나 일부만 있을 수 있음) */
+  transcript: z.string().max(2000),
+  /** 실제로 말한 시간(초) */
+  seconds: z.number().min(0).max(600),
+  /** 답변 제한 시간(초) */
+  limitSeconds: z.number().positive().max(600),
+});
+export type GradeRequest = z.infer<typeof GradeRequest>;
+
+/** Claude 가 만드는 채점 결과 (구조화 출력 스키마). 점수 범위·개수는 서버가 다시 맞춘다 */
+export const GeneratedGrade = z.object({
+  score: z.number().int().describe("ETS 문항 점수: read_aloud·picture·respond·info 는 0~3, opinion 은 0~5"),
+  level: ToeicLevel.describe("이 답변이 보여 주는 대략적인 TOEIC Speaking 레벨"),
+  target_met: z.boolean().describe("이 답변이 이 문항에서 목표 레벨에 기대되는 수준을 충족하면 true"),
+  summary_ko: z.string().describe("한국어 1~2문장 총평, 격려하되 솔직하게"),
+  good_ko: z.array(z.string()).describe("잘한 점 최대 2개 (한국어, 짧게)"),
+  fixes: z
+    .array(
+      z.object({
+        from: z.string().describe("transcript 에 있는 틀린·어색한 영어 부분 그대로"),
+        to: z.string().describe("고친 영어"),
+        why_ko: z.string().describe("고친 이유 한 문장 (한국어)"),
+      }),
+    )
+    .describe("구체적인 영어 교정 최대 3개. 음성 인식 오류로 보이는 것은 넣지 않는다"),
+  improved: z.string().describe("학습자 답변을 목표 레벨에 맞게 다시 쓴 영어 답변, 학습자의 생각은 유지"),
+  next_tip_ko: z.string().describe("다음에 바로 해 볼 수 있는 팁 하나 (한국어)"),
+});
+export type GeneratedGrade = z.infer<typeof GeneratedGrade>;

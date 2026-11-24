@@ -3,8 +3,9 @@ import { timingSafeEqual } from "node:crypto";
 import Anthropic from "@anthropic-ai/sdk";
 
 import { generateCorrection } from "./correct.js";
+import { generateGrade } from "./grade.js";
 import { generatePack, PackGenerationError } from "./pack.js";
-import { CorrectRequest, PackRequest } from "./schema.js";
+import { CorrectRequest, GradeRequest, PackRequest } from "./schema.js";
 
 export interface HandlerResult {
   status: number;
@@ -106,5 +107,29 @@ export async function handleCorrect(opts: HandlerOpts): Promise<HandlerResult> {
     return { status: 200, body: correction };
   } catch (e) {
     return errorResult(e, log, "correction");
+  }
+}
+
+/**
+ * POST /grade — TOEIC Speaking 한 문항 채점
+ * - Authorization: Bearer <APP_TOKEN>
+ * - body: GradeRequest → { score, maxScore, level, targetMet, summaryKo, goodKo, fixes, improved, nextTipKo }
+ */
+export async function handleGrade(opts: HandlerOpts): Promise<HandlerResult> {
+  const log = opts.log ?? (() => {});
+  const denied = checkAccess(opts);
+  if (denied) return denied;
+
+  const parsed = GradeRequest.safeParse(opts.body);
+  if (!parsed.success) {
+    return { status: 400, body: { error: "invalid request", issues: parsed.error.issues.slice(0, 5) } };
+  }
+
+  try {
+    const { grade, usage } = await generateGrade(opts.client, parsed.data);
+    log("grade generated", { task: parsed.data.task, score: grade.score, usage });
+    return { status: 200, body: grade };
+  } catch (e) {
+    return errorResult(e, log, "grade");
   }
 }
