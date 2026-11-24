@@ -13,6 +13,9 @@ const req: PackRequest = {
   speakingSentences: 2,
   avoid: { expressions: [], words: [] },
   review: [{ id: "w-actually", kind: "word", text: "actually", meaning: "사실은" }],
+  recentTopics: ["출근길 · 지하철"],
+  weakErrorTypes: ["word_order"],
+  series: { title: "Coffee Break", episode: 3, cast: ["Mina", "Jake"], lastSummary: "미나가 새 카페를 찾았다." },
 };
 
 const pack: GeneratedPack = {
@@ -47,14 +50,15 @@ const pack: GeneratedPack = {
   ],
   sentences: [
     { en: "Can I get a refill?", ko: "리필해 주실 수 있어요?", focus: "refill" },
-    { en: "Free refills here.", ko: "여기 리필 무료예요.", focus: "refill" },
+    { en: "Could I get a refill, please?", ko: "리필 좀 해 주시겠어요?", focus: "Could I get" },
   ],
   quiz: [
     {
       prompt: "아이스 라떼 주시겠어요?",
       choices: ["Could I get an iced latte?", "Can I getting an iced latte?", "Could get I an iced latte?"],
       answer_index: 0,
-      explanation: "Could I get ~? 은 정중한 주문 표현이에요.",
+      explanation: "Could I get ~? 은 조동사 뒤에 주어, 그다음 동사원형이에요. Could I get (O) / Could get I (X)",
+      error_type: "word_order",
       review_of: "",
       tests: "Could I get ~?",
     },
@@ -62,11 +66,22 @@ const pack: GeneratedPack = {
       prompt: "사실 나 조금 피곤해.",
       choices: ["Actual, I'm tired.", "Actually, I'm a little tired.", "In actually I tired."],
       answer_index: 1,
-      explanation: "actually 는 문장 앞에서 '사실은'.",
+      explanation: "'사실은'은 부사 actually 예요. Actually, I'm tired. (O) / Actual, I'm tired. (X)",
+      error_type: "word_choice",
       review_of: "w-actually",
       tests: "",
     },
   ],
+  dialogue: {
+    title: "Coffee Break",
+    summary: "미나가 새 카페에서 주문하고 제이크에게 리필을 권한다.",
+    lines: [
+      { speaker: "Mina", en: "Could I get an iced latte?", ko: "아이스 라떼 주시겠어요?" },
+      { speaker: "Jake", en: "Make it two. I need caffeine.", ko: "두 잔이요. 카페인이 필요해." },
+      { speaker: "Mina", en: "They do free refills here.", ko: "여기 리필 무료래." },
+      { speaker: "Jake", en: "Could I get a refill, then?", ko: "그럼 리필 좀 받을 수 있을까?" },
+    ],
+  },
 };
 
 writeFileSync(process.argv[2] ?? "server_pack.json", JSON.stringify(toAppPack(pack, req), null, 2));

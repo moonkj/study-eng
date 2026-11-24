@@ -1,5 +1,10 @@
 import { z } from "zod";
 
+/** 퀴즈 오답 유형 (앱의 kErrorTypes 와 같게) */
+export const ERROR_TYPES = ["word_choice", "grammar_form", "preposition", "word_order", "collocation", "meaning"] as const;
+export const ErrorType = z.enum(ERROR_TYPES);
+export type ErrorType = z.infer<typeof ErrorType>;
+
 /** 앱 → 서버: 오늘의 팩을 만들 때 필요한 학습자 정보 */
 export const PackRequest = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -28,6 +33,21 @@ export const PackRequest = z.object({
       }),
     )
     .max(6),
+  /** 최근 14일 주제 (겹치지 않게). 아래 필드는 모두 선택: 예전 앱 요청도 그대로 받는다 */
+  recentTopics: z.array(z.string().max(40)).max(14).optional(),
+  /** 주제 지도에서 고른 오늘 상황 (한국어) */
+  topicHint: z.string().max(80).optional(),
+  /** 자주 틀리는 오답 유형 (최대 2개): 퀴즈 2~3문항이 이 유형을 노린다 */
+  weakErrorTypes: z.array(ErrorType).max(2).optional(),
+  /** 주간 시리즈 대화: 같은 등장인물·제목으로 이어 간다 */
+  series: z
+    .object({
+      title: z.string().min(1).max(60),
+      episode: z.number().int().min(1).max(999),
+      cast: z.array(z.string().min(1).max(20)).min(1).max(4),
+      lastSummary: z.string().max(300).optional(),
+    })
+    .optional(),
 });
 export type PackRequest = z.infer<typeof PackRequest>;
 
@@ -75,9 +95,11 @@ export const GeneratedPack = z.object({
   sentences: z
     .array(
       z.object({
-        en: z.string().describe("오늘 단어 하나를 포함한 실생활 짧은 문장 (12단어 이하, 단어 예문과 다른 새 문장)"),
+        en: z.string().describe("오늘 단어 하나(또는 오늘 표현 하나)를 포함한 실생활 짧은 문장 (12단어 이하, 예문과 다른 새 문장)"),
         ko: z.string(),
-        focus: z.string().describe("문장에 쓰인 오늘 단어 (words[].word 중 하나와 정확히 같게)"),
+        focus: z
+          .string()
+          .describe("문장에 쓰인 오늘 단어(words[].word 중 하나) 또는 오늘 표현의 highlight, 원문과 정확히 같게"),
       }),
     )
     .describe("요청한 따라 말하기 문장 수만큼"),
@@ -87,11 +109,54 @@ export const GeneratedPack = z.object({
         prompt: z.string().describe("한국어 문장"),
         choices: z.array(z.string()).describe("영어 보기 3개. 정답 1개 + 한국인이 자주 하는 실수로 만든, 확실히 틀린 오답 2개"),
         answer_index: z.number().int().describe("정답 보기 index (0부터)"),
-        explanation: z.string().describe("왜 정답인지, 오답은 왜 틀렸는지 1~2문장 한국어"),
+        explanation: z
+          .string()
+          .describe("규칙 + 대비 쌍, 1~2문장 한국어 (예: 'arrive 뒤엔 at/in 이 필요해요. arrive at the station (O) / arrive the station (X)')"),
+        error_type: ErrorType.describe("오답 2개가 노리는 실수 유형"),
         review_of: z.string().describe("복습 문제면 review 항목의 id, 오늘 내용이면 빈 문자열"),
         tests: z.string().describe("오늘 내용 문제면 이 문제가 다루는 오늘 표현의 pattern 또는 단어를 그대로, 복습 문제면 빈 문자열"),
       }),
     )
     .describe("오늘 내용 6문항 + 복습 항목마다 1문항"),
+  dialogue: z
+    .object({
+      title: z.string().describe("시리즈 제목 (주어진 시리즈가 있으면 그대로, 없으면 새로 짓기, 영어 2~5단어)"),
+      summary: z.string().describe("이번 회 줄거리 한 문장 (한국어, 다음 회에 이어 쓰기 위함)"),
+      lines: z
+        .array(
+          z.object({
+            speaker: z.string().describe("등장인물 이름 (cast 중 하나)"),
+            en: z.string().describe("짧은 구어체 대사"),
+            ko: z.string().describe("자연스러운 한국어 번역"),
+          }),
+        )
+        .describe("4~6줄, 오늘 표현을 대사에 넣기"),
+    })
+    .describe("오늘 표현으로 만든 짧은 시리즈 대화"),
 });
 export type GeneratedPack = z.infer<typeof GeneratedPack>;
+
+/** 앱 → 서버: '내 상황으로 말하기' 교정 요청 */
+export const CorrectRequest = z.object({
+  expression: z.object({
+    pattern: z.string().min(1).max(80),
+    highlight: z.string().min(1).max(60),
+    meaning: z.string().max(120),
+  }),
+  /** 학습자가 고른 상황 (한국어, 선택) */
+  situationKo: z.string().max(200).optional(),
+  /** 학습자가 쓴 영어 문장 (공백만 있으면 거절) */
+  sentence: z.string().trim().min(1).max(300),
+  level: z.string().max(8),
+});
+export type CorrectRequest = z.infer<typeof CorrectRequest>;
+
+/** Claude 가 만드는 교정 결과 (구조화 출력 스키마). null 대신 "none" 을 쓰고 앱 형식으로 바꿀 때 null 로 둔다 */
+export const GeneratedCorrection = z.object({
+  ok: z.boolean().describe("문법·자연스러움에 문제가 없으면 true (사소한 구두점은 무시)"),
+  corrected: z.string().describe("자연스럽게 고친 문장. 문제가 없으면 원문 그대로"),
+  notes: z.string().describe("한국어 1~2문장, 친절한 존댓말. 고친 이유 또는 칭찬"),
+  error_type: z.enum([...ERROR_TYPES, "none"]).describe("가장 큰 실수 유형, 문제가 없으면 none"),
+  used_expression: z.boolean().describe("문장이 오늘 표현(highlight)을 알맞게 썼으면 true"),
+});
+export type GeneratedCorrection = z.infer<typeof GeneratedCorrection>;
