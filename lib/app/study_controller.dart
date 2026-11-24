@@ -856,8 +856,9 @@ class StudyController extends Notifier<StudyState> {
     final raw = s.packs[key]?['expressions'];
     if (raw is List && raw.isNotEmpty && raw.first is Map) {
       final e = raw.first as Map;
-      if (e['pattern'] is String && e['meaning'] is String)
+      if (e['pattern'] is String && e['meaning'] is String) {
         return (text: e['pattern'] as String, meaning: e['meaning'] as String);
+      }
     }
   }
   final learned =
