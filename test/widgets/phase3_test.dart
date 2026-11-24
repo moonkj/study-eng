@@ -8,6 +8,7 @@ import 'package:todaye/core/notifications/reminder.dart';
 import 'package:todaye/data/correct_source.dart';
 import 'package:todaye/data/pack_source.dart';
 import 'package:todaye/data/store.dart';
+import 'package:todaye/data/topic_map.dart';
 import 'package:todaye/domain/study_log.dart';
 import 'package:todaye/features/my_sentence/my_sentence_screen.dart';
 
@@ -90,6 +91,8 @@ void main() {
     final req = source.requests.single;
     expect(req['recentTopics'], ['점심 약속', '출근길']);
     expect(req['weakErrorTypes'], ['preposition']); // 2번 이상 틀린 유형만
+    expect(req['topicHint'], isA<String>());
+    expect(['점심 약속', '출근길'], isNot(contains(req['topicHint'])));
     expect(req['series'], {
       'title': 'Coffee Break',
       'episode': 3,
@@ -111,6 +114,15 @@ void main() {
     expect(pack.quiz.map((q) => q.errorType), ['word_order', 'word_choice']);
     expect(pack.dialogue!.cast, ['Mina', 'Jake']);
     expect(pack.sentences.any((s) => s.focus == 'Could I get'), isTrue); // 표현 문장
+  });
+
+  test('주제 힌트: 같은 날짜면 같은 상황, 최근 주제는 건너뛰고, 일주일이면 7개 축을 모두 돈다', () {
+    final d = DateTime(2026, 11, 22);
+    expect(topicHintFor(d, const []).id, topicHintFor(d, const []).id);
+    final first = topicHintFor(d, const []);
+    expect(topicHintFor(d, [first.nameKo]).id, isNot(first.id));
+    final axes = {for (var i = 0; i < 7; i++) topicHintFor(DateTime(2026, 11, 22 + i), const []).axisId};
+    expect(axes.length, 7);
   });
 
   test('첨삭 주소는 학습 팩 주소에서 만든다', () {

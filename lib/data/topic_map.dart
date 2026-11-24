@@ -380,3 +380,20 @@ TopicSituation? topicSituationById(String id) {
   }
   return null;
 }
+
+/// 오늘 서버에 제안할 상황: 날짜마다 축을 바꿔 가며(7일에 한 바퀴) 고르고,
+/// 최근에 다룬 주제와 이름이 겹치는 상황은 건너뛴다. 같은 날짜면 항상 같은 결과.
+TopicSituation topicHintFor(DateTime date, List<String> recentTopics) {
+  final day = DateTime.utc(date.year, date.month, date.day).difference(DateTime.utc(2026)).inDays;
+  bool recent(TopicSituation s) => recentTopics.any((t) {
+    final a = t.replaceAll(RegExp(r'\s'), '');
+    final b = s.nameKo.replaceAll(RegExp(r'\s'), '');
+    return a.contains(b) || b.contains(a);
+  });
+  final axis = topicMap[day % topicMap.length];
+  final ordered = [
+    for (var i = 0; i < axis.situations.length; i++)
+      axis.situations[(day ~/ topicMap.length + i) % axis.situations.length],
+  ];
+  return ordered.firstWhere((s) => !recent(s), orElse: () => ordered.first);
+}

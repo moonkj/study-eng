@@ -6,6 +6,7 @@ import '../data/models.dart';
 import '../data/pack_source.dart';
 import '../data/sample_content.dart';
 import '../data/store.dart';
+import '../data/topic_map.dart';
 import '../domain/daily_adjuster.dart';
 import '../domain/level.dart';
 import '../domain/pack_check.dart';
@@ -391,6 +392,8 @@ class StudyController extends Notifier<StudyState> {
     cards: s.cards,
     recentTopics: recentTopicsOf(s.log, date),
     weakErrorTypes: weakErrorTypesOf(s.log, date),
+    // 주제 지도에서 아직 안 다룬 상황을 제안한다 (서버는 참고만 한다)
+    topicHint: topicHintFor(date, recentTopicsOf(s.log, date)).nameKo,
     series: s.series != null && s.series!.continuesOn(date) ? s.series : null,
   );
 
