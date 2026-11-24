@@ -300,6 +300,13 @@ class _CompleteScreenState extends ConsumerState<CompleteScreen> {
                     onPressed: () => context.pushReplacement('/review-session'),
                     child: Text('복습 카드 ${s.dueCount}장도 넘기기 · ${s.reviewMinutes}분'),
                   ),
+                // 배운 표현을 내 것으로: 내 상황으로 한 문장 만들기, 오늘 표현이 나오는 시리즈 대화
+                OutlinedButton(onPressed: () => context.push('/my-sentence'), child: const Text('오늘 표현으로 내 문장 만들기')),
+                if (s.pack.dialogue != null)
+                  OutlinedButton(
+                    onPressed: () => context.push('/dialogue'),
+                    child: Text('${s.pack.dialogue!.title} · ${s.pack.dialogue!.episode}화 듣기'),
+                  ),
                 if (quizCorrect < quizTotal)
                   TextButton(onPressed: () => context.go('/review'), child: const Text('틀린 문제 다시 보기')),
               ],

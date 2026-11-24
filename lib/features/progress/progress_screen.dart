@@ -8,6 +8,8 @@ import '../../core/theme/tokens.dart';
 import '../../core/widgets/widgets.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../data/models.dart' show kErrorTypeKo;
+import '../../data/pack_source.dart' show weakErrorTypesOf;
 import '../../domain/level.dart';
 import '../../domain/mastery.dart';
 import '../../domain/study_log.dart';
@@ -83,6 +85,16 @@ class ProgressScreen extends ConsumerWidget {
               _Stat(label: '최고 연속', value: '${s.longestStreak}일'),
             ],
           ),
+          if (weakErrorTypesOf(s.log, s.now).isNotEmpty) ...[
+            const SizedBox(height: 12),
+            PaperCard(
+              padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
+              child: Text(
+                '요즘 자주 틀리는 유형: ${weakErrorTypesOf(s.log, s.now).map((t) => kErrorTypeKo[t] ?? t).join(' · ')}\n다음 학습에서 이 유형을 조금 더 연습해요.',
+                style: sans(13, height: 1.55),
+              ),
+            ),
+          ],
           const SizedBox(height: 12),
           _MyExpressionsCard(state: s),
           const SizedBox(height: 12),

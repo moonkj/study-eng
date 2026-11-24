@@ -173,7 +173,13 @@ class DialogueLine {
 
 /// 주간 시리즈의 한 회차. 고정 인물이 나와 오늘 표현을 대화 속에서 쓴다.
 class SeriesDialogue {
-  const SeriesDialogue({required this.title, required this.episode, required this.lines});
+  const SeriesDialogue({
+    required this.title,
+    required this.episode,
+    required this.lines,
+    this.cast = const [],
+    this.summary,
+  });
 
   /// 시리즈 이름 (예: "민지의 런던 출장")
   final String title;
@@ -181,6 +187,12 @@ class SeriesDialogue {
   /// 몇 화인지 (1부터)
   final int episode;
   final List<DialogueLine> lines;
+
+  /// 나오는 인물 (다음 회차에도 같은 인물이 나오게 서버에 다시 보낸다)
+  final List<String> cast;
+
+  /// 이번 회 한 줄 요약 (다음 회를 이어 쓰게 서버에 보낸다)
+  final String? summary;
 }
 
 /// 레벨 진단 문항

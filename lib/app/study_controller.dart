@@ -42,6 +42,7 @@ class StudyState {
     this.packs = const {},
     this.packLoading = false,
     this.packError,
+    this.series,
   });
 
   final DateTime now;
@@ -62,6 +63,9 @@ class StudyState {
 
   /// 맞춤 팩을 받지 못한 이유 (기본 팩으로 진행 중)
   final String? packError;
+
+  /// 주간 시리즈 대화 진행 상태
+  final SeriesState? series;
 
   /// 오늘 아직 아무것도 시작하지 않았는지 (팩을 바꿔도 되는지)
   bool get untouched =>
@@ -176,6 +180,7 @@ class StudyState {
     TodayProgress? today,
     List<String>? lastAdjustmentReasons,
     AppSettings? settings,
+    SeriesState? series,
   }) => StudyState(
     now: now,
     pack: pack ?? this.pack,
@@ -191,6 +196,7 @@ class StudyState {
     today: today ?? this.today,
     lastAdjustmentReasons: lastAdjustmentReasons ?? this.lastAdjustmentReasons,
     settings: settings ?? this.settings,
+    series: series ?? this.series,
   );
 
   /// 서버 팩이 아닌 기본 팩이고, 그 내용을 오늘 이전에 이미 배웠는지 (오프라인으로 같은 팩을 다시 하는 날)
@@ -230,6 +236,7 @@ class StudyState {
     settings: settings,
     packs: packs,
     learned: learned,
+    series: series,
   );
 }
 
@@ -340,6 +347,7 @@ class StudyController extends Notifier<StudyState> {
       learned: loading || !onboarded ? learned : registerLearned(learned, pack),
       packs: packs,
       packLoading: loading,
+      series: saved?.series,
     );
   }
 
@@ -373,6 +381,18 @@ class StudyController extends Notifier<StudyState> {
   /// 받은 팩을 오늘 보여 줄 형태로 (처음 며칠은 분량을 줄이고 회상형 문제를 붙인다)
   static DailyPack _prepare(DailyPack raw, Map<String, DayRecord> log, DateTime now) =>
       prepareDailyPack(raw, dayNumber: dayNumberOf(log.keys, now));
+
+  /// 서버에 보낼 팩 요청 (레벨·배운 것·복습 + 최근 주제·자주 틀리는 유형·주간 시리즈)
+  Map<String, Object?> _requestFor(StudyState s, DateTime date) => buildPackRequest(
+    date: date,
+    profile: s.profile,
+    contentStep: s.contentStep,
+    learned: s.learned,
+    cards: s.cards,
+    recentTopics: recentTopicsOf(s.log, date),
+    weakErrorTypes: weakErrorTypesOf(s.log, date),
+    series: s.series != null && s.series!.continuesOn(date) ? s.series : null,
+  );
 
   /// 요청이 겹치면 가장 최근 요청의 결과만 반영한다.
   int _packRequest = 0;
@@ -412,15 +432,7 @@ class StudyController extends Notifier<StudyState> {
       ),
     );
     try {
-      final json = await source.fetch(
-        buildPackRequest(
-          date: s0.now,
-          profile: s0.profile,
-          contentStep: s0.contentStep,
-          learned: s0.learned,
-          cards: s0.cards,
-        ),
-      );
+      final json = await source.fetch(_requestFor(s0, s0.now));
       if (!ref.mounted || request != _packRequest) return; // 더 새 요청이 있다
       final parsed = _parsePack(json, state.learned, state.now);
       if (parsed == null) throw const PackFetchException('받은 학습 내용에 문제가 있어요.');
@@ -437,6 +449,7 @@ class StudyController extends Notifier<StudyState> {
           learned: registerLearned(state.learned, pack),
           packs: {...state.packs, dateKey(state.now): json},
           packLoading: false,
+          series: SeriesState.fromDialogue(pack.dialogue, state.now),
         ),
       );
     } catch (e) {
@@ -460,15 +473,7 @@ class StudyController extends Notifier<StudyState> {
     final s = state;
     final tomorrow = DateTime(s.now.year, s.now.month, s.now.day + 1);
     try {
-      final json = await source.fetch(
-        buildPackRequest(
-          date: tomorrow,
-          profile: s.profile,
-          contentStep: s.contentStep,
-          learned: s.learned,
-          cards: s.cards,
-        ),
-      );
+      final json = await source.fetch(_requestFor(s, tomorrow));
       // 재진단 등으로 더 새 요청이 있었으면 옛 레벨 팩은 저장하지 않는다
       if (!ref.mounted || request != _prefetchRequest || _parsePack(json, state.learned, tomorrow) == null) return;
       _set(state.copyWith(packs: {...state.packs, dateKey(tomorrow): json}));
@@ -669,7 +674,7 @@ class StudyController extends Notifier<StudyState> {
       state.copyWith(
         log: {
           ...state.log,
-          key: DayRecord(accuracy: 0, levelScore: state.profile.overall.score, mini: true),
+          key: DayRecord(accuracy: 0, levelScore: state.profile.overall.score, mini: true, topic: state.pack.topic),
         },
       ),
     );
@@ -810,6 +815,12 @@ class StudyController extends Notifier<StudyState> {
       reviewTotal: choiceIdx.where((i) => quiz[i].isReview).length,
       reviewCorrect: choiceIdx.where((i) => quiz[i].isReview && correctAt(i)).length,
     );
+    // 틀린 고르는 문제의 오답 유형을 센다 (자주 틀리는 유형을 다음 팩에서 더 연습하게)
+    final errors = <String, int>{};
+    for (final i in choiceIdx) {
+      final t = quiz[i].errorType;
+      if (t != null && s.quizAnswers.containsKey(i) && !correctAt(i)) errors[t] = (errors[t] ?? 0) + 1;
+    }
     final repeat = s.isRepeatPack;
     final adj = DailyAdjuster.adjust(
       profile: s.profile,
@@ -836,6 +847,8 @@ class StudyController extends Notifier<StudyState> {
             // 완료 화면에는 쓰기 문제까지 모두 센 결과를 보여 준다
             quizCorrect: s.quizCorrect,
             quizTotal: quiz.length,
+            topic: s.pack.topic,
+            errors: errors,
           ),
         },
         lastAdjustmentReasons: repeat ? const ['오늘은 이미 배운 기본 학습을 다시 해서 레벨과 난이도는 그대로 둬요.'] : adj.reasons,

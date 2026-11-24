@@ -75,7 +75,22 @@ void main() {
       today: result(correct: 10),
       yesterdayAccuracy: 0.95,
     );
-    expect(adj.nextContentStep, 9); // 레벨 B1.2(7) + 2 = 9 상한
+    // 어려운 콘텐츠(9)를 다 맞혀 레벨이 오르면 상한도 새 레벨 + 2 로 함께 오른다
+    expect(adj.nextContentStep, adj.profile.overall.step + 2);
+  });
+
+  test('Elo: 내 레벨보다 쉬운 것을 다 맞히면 조금, 어려운 것을 맞히면 많이 오르고, 쉬운 것을 틀리면 내려간다', () {
+    int d(int content, int correct) => eloLevelDelta(
+      learnerScore: 764,
+      contentScore: content,
+      newCorrect: correct,
+      newTotal: 10,
+      reviewCorrect: 0,
+      reviewTotal: 0,
+    );
+    expect(d(450, 10), inInclusiveRange(0, 3));
+    expect(d(950, 10), greaterThan(20));
+    expect(d(450, 5), lessThan(-15));
   });
 
   test('약한 말하기 영역은 다음 날 문장 수를 늘린다', () {

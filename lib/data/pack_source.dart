@@ -70,6 +70,10 @@ Map<String, Object?> buildPackRequest({
   required int contentStep,
   required Map<String, LearnedItem> learned,
   required Map<String, ReviewCard> cards,
+  List<String> recentTopics = const [],
+  List<String> weakErrorTypes = const [],
+  SeriesState? series,
+  String? topicHint,
 }) {
   final today = dateOnly(date);
   bool recent(LearnedItem i, int days) => daysBetween(parseDateKey(i.firstSeen), today) <= days;
@@ -103,7 +107,80 @@ Map<String, Object?> buildPackRequest({
           'meaning': learned[c.itemId]!.meaning,
         },
     ],
+    if (recentTopics.isNotEmpty) 'recentTopics': recentTopics.take(14).toList(),
+    if (weakErrorTypes.isNotEmpty) 'weakErrorTypes': weakErrorTypes.take(2).toList(),
+    'topicHint': ?topicHint,
+    if (series != null) 'series': series.requestFor(today),
   };
+}
+
+/// 주간 시리즈 진행 상태 (같은 인물이 7회 동안 이어지는 대화). 서버 팩을 받을 때마다 갱신한다.
+class SeriesState {
+  const SeriesState({required this.title, required this.episode, required this.cast, this.summary, required this.date});
+
+  /// 한 시리즈의 회차 수 (일주일)
+  static const length = 7;
+
+  final String title;
+  final int episode;
+  final List<String> cast;
+  final String? summary;
+
+  /// 이 회차를 받은 날 (yyyy-MM-dd)
+  final String date;
+
+  /// 다음 요청에 보낼 시리즈 정보: 오늘 이미 받은 회차를 다시 만드는 경우가 아니면 다음 회.
+  Map<String, Object?> requestFor(DateTime today) {
+    final again = date == dateKey(today);
+    return {
+      'title': title,
+      'episode': again ? episode : episode + 1,
+      'cast': cast,
+      if (summary != null && summary!.isNotEmpty && !again) 'lastSummary': summary,
+    };
+  }
+
+  /// 다음 날 이어서 쓸 수 있는지 (7회를 마치면 새 시리즈)
+  bool continuesOn(DateTime today) => date == dateKey(today) || episode < length;
+
+  Map<String, Object?> toJson() => {'title': title, 'episode': episode, 'cast': cast, 'summary': summary, 'date': date};
+
+  static SeriesState? fromJson(Object? j) {
+    if (j is! Map || j['title'] is! String || j['episode'] is! num || j['date'] is! String) return null;
+    return SeriesState(
+      title: j['title'] as String,
+      episode: (j['episode'] as num).toInt(),
+      cast: [...((j['cast'] as List?) ?? const []).whereType<String>()],
+      summary: j['summary'] as String?,
+      date: j['date'] as String,
+    );
+  }
+
+  static SeriesState? fromDialogue(SeriesDialogue? d, DateTime today) => d == null || d.cast.isEmpty
+      ? null
+      : SeriesState(title: d.title, episode: d.episode, cast: d.cast, summary: d.summary, date: dateKey(today));
+}
+
+/// 최근 [days]일 기록에서 자주 틀린 오답 유형 (2번 이상, 많은 순 최대 2개)
+List<String> weakErrorTypesOf(Map<String, DayRecord> log, DateTime today, {int days = 14}) {
+  final counts = <String, int>{};
+  for (final e in log.entries) {
+    final d = daysBetween(parseDateKey(e.key), today);
+    if (d < 0 || d > days) continue;
+    e.value.errors.forEach((k, v) => counts[k] = (counts[k] ?? 0) + v);
+  }
+  final top = counts.entries.where((e) => e.value >= 2).toList()
+    ..sort((a, b) => b.value != a.value ? b.value.compareTo(a.value) : a.key.compareTo(b.key));
+  return [for (final e in top.take(2)) e.key];
+}
+
+/// 최근 [days]일 동안 공부한 주제 (서버가 같은 주제를 다시 내지 않게)
+List<String> recentTopicsOf(Map<String, DayRecord> log, DateTime today, {int days = 14}) {
+  final keys = log.keys.where((k) {
+    final d = daysBetween(parseDateKey(k), today);
+    return d >= 0 && d <= days && (log[k]!.topic?.isNotEmpty ?? false);
+  }).toList()..sort((a, b) => b.compareTo(a));
+  return [for (final k in keys) log[k]!.topic!];
 }
 
 /// 서버 응답(JSON) → DailyPack
@@ -178,6 +255,8 @@ DailyPack packFromJson(Map<String, Object?> j, {required Map<String, LearnedItem
       final Map d when d['lines'] is List && (d['lines'] as List).isNotEmpty => SeriesDialogue(
         title: d['title'] as String? ?? '',
         episode: (d['episode'] as num?)?.toInt() ?? 1,
+        cast: [...((d['cast'] as List?) ?? const []).whereType<String>()],
+        summary: d['summary'] as String?,
         lines: [
           for (final l in (d['lines'] as List).cast<Map>())
             DialogueLine(speaker: l['speaker'] as String, en: l['en'] as String, ko: l['ko'] as String),

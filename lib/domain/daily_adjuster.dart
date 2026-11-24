@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'level.dart';
 import 'study_log.dart';
 
@@ -92,6 +94,26 @@ class DailyAdjustment {
   final List<String> reasons;
 }
 
+/// Elo 식 레벨 변화.
+/// 문제마다 난이도 D 와 내 점수 L 로 기대 정답 확률 E = 1 / (1 + 10^((D - L) / 200)) 를 구하고,
+/// 문제당 K × (맞힘 1/틀림 0 − E) 를 더한다. 오늘 배운 것을 바로 묻는 문제는 기억하기 쉬워 난이도를 150 낮게,
+/// 며칠 전 배운 것을 묻는 복습 문제는 50 낮게 본다. 200점 = 세부 단계 2칸.
+int eloLevelDelta({
+  required int learnerScore,
+  required int contentScore,
+  required int newCorrect,
+  required int newTotal,
+  required int reviewCorrect,
+  required int reviewTotal,
+  double k = 6,
+}) {
+  double expected(int d) => 1 / (1 + math.pow(10, (d - learnerScore) / 200));
+  final eNew = expected(contentScore - 150);
+  final eReview = expected(contentScore - 50);
+  final delta = k * (newCorrect - newTotal * eNew) + k * (reviewCorrect - reviewTotal * eReview);
+  return delta.round();
+}
+
 /// 퀴즈 정답률이 목표 구간(70~85%)에 머물도록 난이도를 자동 조절한다.
 abstract final class DailyAdjuster {
   static const targetLow = 0.70;
@@ -119,8 +141,16 @@ abstract final class DailyAdjuster {
     final levelAcc = today.levelAccuracy;
     final reasons = <String>[];
 
-    // 1) 레벨 점수: 정답률만 반영한다 (출석만으로 레벨이 오르지 않게)
-    final levelDelta = ((levelAcc - 0.75) * 40).round();
+    // 1) 레벨 점수: Elo 식 — 문제 난이도(오늘 콘텐츠 단계) 대비 기대 정답률보다 잘했는지로 정한다.
+    //    출석만으로 오르지 않고, 내 레벨보다 쉬운 콘텐츠를 다 맞혀도 조금만 오른다.
+    final levelDelta = eloLevelDelta(
+      learnerScore: profile.overall.score,
+      contentScore: Level.fromStep(currentContentStep).score + Level.pointsPerStep ~/ 2,
+      newCorrect: today.newCorrect,
+      newTotal: today.newTotal,
+      reviewCorrect: today.reviewCorrect,
+      reviewTotal: today.reviewTotal,
+    );
 
     // 2) 영역별 점수
     final skillDelta = <Skill, int>{

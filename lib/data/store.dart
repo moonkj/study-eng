@@ -207,6 +207,7 @@ class SavedData {
     this.packs = const {},
     this.learned = const {},
     this.settings = const AppSettings(),
+    this.series,
   });
 
   final LearnerProfile profile;
@@ -226,6 +227,9 @@ class SavedData {
   final Map<String, LearnedItem> learned;
   final AppSettings settings;
 
+  /// 주간 시리즈 대화 진행 상태
+  final SeriesState? series;
+
   static const version = 1;
 
   Map<String, Object?> toJson() => {
@@ -240,6 +244,7 @@ class SavedData {
     'packs': packs,
     'learned': learned.map((k, v) => MapEntry(k, v.toJson())),
     'settings': settings.toJson(),
+    if (series != null) 'series': series!.toJson(),
   };
 
   /// 섹션별로 따로 읽는다. 기록·카드·팩 중 하나가 깨져도 나머지(특히 레벨과 연속 기록)는 살린다.
@@ -312,6 +317,7 @@ class SavedData {
         () => AppSettings.fromJson((j['settings'] as Map?)?.cast<String, Object?>()),
         const AppSettings(),
       ),
+      series: section(() => SeriesState.fromJson(j['series']), null),
     );
   }
 }

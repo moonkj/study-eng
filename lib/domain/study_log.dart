@@ -29,6 +29,7 @@ class DayRecord {
     this.quizTotal,
     this.mini = false,
     this.errors = const {},
+    this.topic,
   });
 
   /// 퀴즈 정답률 0~1
@@ -51,6 +52,9 @@ class DayRecord {
   /// 그날 틀린 문제의 오답 유형별 횟수 (오답 유형 엔진: 자주 틀리는 유형을 다음 팩에 더 낸다)
   final Map<String, int> errors;
 
+  /// 그날 팩의 주제 (최근 주제를 피해 새 주제를 고르는 데 쓴다)
+  final String? topic;
+
   Map<String, Object?> toJson() => {
     'accuracy': accuracy,
     'levelScore': levelScore,
@@ -60,6 +64,7 @@ class DayRecord {
     if (quizTotal != null) 'qt': quizTotal,
     if (mini) 'm': true,
     if (errors.isNotEmpty) 'err': errors,
+    if (topic != null) 'topic': topic,
   };
 
   factory DayRecord.fromJson(Map<String, Object?> j) => DayRecord(
@@ -74,6 +79,7 @@ class DayRecord {
       for (final e in ((j['err'] as Map?) ?? const {}).entries)
         if (e.key is String && e.value is num) e.key as String: (e.value as num).toInt(),
     },
+    topic: j['topic'] as String?,
   );
 }
 
