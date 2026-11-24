@@ -11,6 +11,7 @@ import 'package:todaye/domain/study_log.dart';
 import 'package:todaye/features/speaking/speech_input.dart';
 
 import '../domain/reminder_test.dart' show FakeReminder;
+import '../support/fixed_fallback.dart';
 
 class _PerfectSpeech implements SpeechInput {
   @override
@@ -61,6 +62,7 @@ Widget app({String initial = '/', AppStore? store, Speaker? speaker, Reminder? r
     storeProvider.overrideWithValue(store ?? MemoryStore(seeded())),
     clockProvider.overrideWithValue(() => DateTime(2026, 11, 22, 8, 0)),
     speechInputProvider.overrideWithValue(_PerfectSpeech()),
+    fallbackPackProvider.overrideWithValue(fixedSamplePackFor),
   ],
   child: TodayeApp(initialLocation: initial),
 );

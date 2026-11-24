@@ -1,11 +1,47 @@
 import '../domain/level.dart';
 import 'models.dart';
+import 'packs/a2_packs.dart';
+import 'packs/b1_packs.dart';
+import 'packs/offline_pack.dart';
+
+export 'packs/offline_pack.dart' show OfflinePack;
 
 /// Claude 콘텐츠 생성 파이프라인이 붙기 전까지 쓰는 샘플 데이터 (B1 기준).
 DailyPack samplePack(DateTime date) => DailyPack(
   date: date,
   topic: '출근길 · 일상',
   contentStep: 7,
+  dialogue: const SeriesDialogue(
+    title: b1SeriesTitle,
+    episode: 1,
+    lines: [
+      DialogueLine(
+        speaker: '준호',
+        en: "Morning, Emma. Sorry, I'm running late.",
+        ko: '좋은 아침이에요, Emma. 죄송해요, 조금 늦을 것 같아요.',
+      ),
+      DialogueLine(
+        speaker: 'Emma',
+        en: "No worries. The meeting doesn't start until ten.",
+        ko: '괜찮아요. 회의는 10시나 돼야 시작해요.',
+      ),
+      DialogueLine(
+        speaker: '준호',
+        en: "Thanks. I've been meaning to tell you, I moved, so my commute is longer now.",
+        ko: '고마워요. 계속 말하려고 했는데, 이사해서 이제 출근길이 더 길어졌어요.',
+      ),
+      DialogueLine(
+        speaker: 'Emma',
+        en: "That explains it. Want me to grab you a coffee?",
+        ko: '그래서 그랬구나. 커피 하나 사다 줄까요?',
+      ),
+      DialogueLine(
+        speaker: '준호',
+        en: "That'd be great. I'm in the mood for something strong.",
+        ko: '그럼 좋죠. 오늘은 진한 게 당기네요.',
+      ),
+    ],
+  ),
   expressions: const [
     Expression(
       id: 'exp-been-meaning-to',
@@ -190,6 +226,7 @@ DailyPack samplePack(DateTime date) => DailyPack(
   quiz: const [
     QuizItem(
       id: 'q1',
+      errorType: 'grammar_form',
       itemId: 'exp-been-meaning-to',
       prompt: '그 영화 계속 보려고 했는데.',
       choices: [
@@ -202,6 +239,7 @@ DailyPack samplePack(DateTime date) => DailyPack(
     ),
     QuizItem(
       id: 'q2',
+      errorType: 'preposition',
       itemId: 'exp-in-the-mood-for',
       prompt: '오늘은 매운 게 당겨.',
       choices: [
@@ -214,6 +252,7 @@ DailyPack samplePack(DateTime date) => DailyPack(
     ),
     QuizItem(
       id: 'q3',
+      errorType: 'grammar_form',
       itemId: 'exp-running-late',
       prompt: '미안, 10분 정도 늦을 것 같아.',
       choices: [
@@ -226,6 +265,7 @@ DailyPack samplePack(DateTime date) => DailyPack(
     ),
     QuizItem(
       id: 'q4',
+      errorType: 'word_order',
       itemId: 'w-probably',
       prompt: '아마 오늘 야근할 것 같아.',
       choices: [
@@ -238,6 +278,7 @@ DailyPack samplePack(DateTime date) => DailyPack(
     ),
     QuizItem(
       id: 'q5',
+      errorType: 'preposition',
       itemId: 'w-prefer',
       prompt: '나는 버스보다 지하철이 더 좋아.',
       choices: [
@@ -250,6 +291,7 @@ DailyPack samplePack(DateTime date) => DailyPack(
     ),
     QuizItem(
       id: 'q6',
+      errorType: 'word_order',
       itemId: 'w-definitely',
       prompt: '내일은 꼭 일찍 일어날 거야.',
       choices: [
@@ -262,6 +304,7 @@ DailyPack samplePack(DateTime date) => DailyPack(
     ),
     QuizItem(
       id: 'q7',
+      errorType: 'grammar_form',
       itemId: 'w-crowded',
       prompt: '버스가 너무 붐볐어.',
       choices: ['The bus was so crowd.', 'The bus was so crowded.', 'The bus crowded so much.'],
@@ -270,6 +313,7 @@ DailyPack samplePack(DateTime date) => DailyPack(
     ),
     QuizItem(
       id: 'q8',
+      errorType: 'word_order',
       itemId: 'w-figure-out',
       prompt: '이 앱 쓰는 법을 아직 모르겠어.',
       choices: [
@@ -282,6 +326,7 @@ DailyPack samplePack(DateTime date) => DailyPack(
     ),
     QuizItem(
       id: 'q9',
+      errorType: 'preposition',
       itemId: 'w-on-time',
       prompt: '오늘 회사에 제시간에 도착했어.',
       choices: ['I arrived work on time today.', 'I got to work on time today.', 'I reached to work on time today.'],
@@ -290,6 +335,7 @@ DailyPack samplePack(DateTime date) => DailyPack(
     ),
     QuizItem(
       id: 'q10',
+      errorType: 'word_order',
       itemId: 'w-usually',
       prompt: '나는 보통 저녁 7시쯤 퇴근해.',
       choices: [
@@ -303,15 +349,47 @@ DailyPack samplePack(DateTime date) => DailyPack(
   ],
 );
 
-/// 콘텐츠 난이도 단계에 맞는 기본 팩: A2 이하(단계 0~5)는 A2 팩, B1 이상은 B1 팩.
-DailyPack samplePackFor(DateTime date, int contentStep) =>
-    contentStep <= Level.fromStep(5).step ? samplePackA2(date) : samplePack(date);
+/// 기본 팩 시리즈 대화 이름 (레벨마다 같은 인물이 이어서 나온다)
+const a2SeriesTitle = '민지와 Sam의 서울 일상';
+const b1SeriesTitle = '준호의 팀 생활';
+
+/// 콘텐츠 난이도 단계에 맞는 기본 팩 목록 (돌아가는 순서): A2 이하(단계 0~5)는 A2 팩, B1 이상은 B1 팩.
+/// 첫 팩은 원래 있던 기본 팩이다.
+List<OfflinePack> offlinePacksFor(int contentStep) => contentStep <= Level.fromStep(5).step
+    ? const [OfflinePack(topicId: 'food-cafe', build: samplePackA2), ...a2OfflinePacks]
+    : const [OfflinePack(topicId: 'travel-commute', build: samplePack), ...b1OfflinePacks];
+
+/// 단계에 맞는 기본 팩을 만드는 함수들 (돌아가는 순서)
+List<DailyPack Function(DateTime)> samplePacksFor(int contentStep) => [
+  for (final p in offlinePacksFor(contentStep)) p.build,
+];
+
+/// 기준일(2026-11-23)에는 원래 기본 팩(samplePackA2 / samplePack)이 나오도록 맞춘 날짜.
+final _rotationAnchor = DateTime.utc(2026, 11, 23);
+
+/// 콘텐츠 난이도 단계에 맞는 기본 팩. 날짜마다 레벨의 팩을 차례로 돌린다 (같은 날짜면 항상 같은 팩).
+DailyPack samplePackFor(DateTime date, int contentStep) {
+  final packs = offlinePacksFor(contentStep);
+  final days = DateTime.utc(date.year, date.month, date.day).difference(_rotationAnchor).inDays;
+  return packs[days % packs.length].build(date);
+}
 
 /// 초급(A2) 기본 팩. 카페·주말 약속처럼 바로 쓰는 짧은 문장 위주.
 DailyPack samplePackA2(DateTime date) => DailyPack(
   date: date,
   topic: '카페 · 주말 약속',
   contentStep: 4,
+  dialogue: const SeriesDialogue(
+    title: a2SeriesTitle,
+    episode: 1,
+    lines: [
+      DialogueLine(speaker: '민지', en: 'Can I get two iced lattes, please?', ko: '아이스 라테 두 잔 주시겠어요?'),
+      DialogueLine(speaker: 'Sam', en: 'Thanks, Minji! Are you free this weekend?', ko: '고마워, 민지! 이번 주말에 시간 있어?'),
+      DialogueLine(speaker: '민지', en: "I'm free on Saturday. Why?", ko: '토요일에 시간 있어. 왜?'),
+      DialogueLine(speaker: 'Sam', en: 'How about a picnic by the Han River?', ko: '한강에서 피크닉 어때?'),
+      DialogueLine(speaker: '민지', en: 'Sounds great! I can bring some dessert.', ko: '좋아! 내가 디저트 좀 가져갈게.'),
+    ],
+  ),
   expressions: const [
     Expression(
       id: 'a2-exp-can-i-get',
@@ -486,6 +564,7 @@ DailyPack samplePackA2(DateTime date) => DailyPack(
   quiz: const [
     QuizItem(
       id: 'a2-q1',
+      errorType: 'grammar_form',
       itemId: 'a2-exp-can-i-get',
       prompt: '아이스 아메리카노 한 잔 주시겠어요?',
       choices: [
@@ -498,6 +577,7 @@ DailyPack samplePackA2(DateTime date) => DailyPack(
     ),
     QuizItem(
       id: 'a2-q2',
+      errorType: 'grammar_form',
       itemId: 'a2-exp-how-about',
       prompt: '영화 보는 거 어때?',
       choices: ['How about watch a movie?', 'How about watching a movie?', 'How is watching a movie?'],
@@ -506,6 +586,7 @@ DailyPack samplePackA2(DateTime date) => DailyPack(
     ),
     QuizItem(
       id: 'a2-q3',
+      errorType: 'preposition',
       itemId: 'a2-exp-im-free',
       prompt: '나 금요일 저녁에 시간 있어.',
       choices: ["I have time free Friday evening.", "I'm free on Friday evening.", "I'm free in Friday evening."],
@@ -514,6 +595,7 @@ DailyPack samplePackA2(DateTime date) => DailyPack(
     ),
     QuizItem(
       id: 'a2-q4',
+      errorType: 'grammar_form',
       itemId: 'a2-w-order',
       prompt: '아직 주문 안 했어요.',
       choices: ["I didn't order yet.", "I haven't ordered yet.", "I don't ordered yet."],
@@ -522,6 +604,7 @@ DailyPack samplePackA2(DateTime date) => DailyPack(
     ),
     QuizItem(
       id: 'a2-q5',
+      errorType: 'grammar_form',
       itemId: 'a2-w-weekend',
       prompt: '주말에 뭐 했어?',
       choices: ['What did you do on the weekend?', 'What you did on weekend?', 'What did you did on the weekend?'],
@@ -530,6 +613,7 @@ DailyPack samplePackA2(DateTime date) => DailyPack(
     ),
     QuizItem(
       id: 'a2-q6',
+      errorType: 'word_order',
       itemId: 'a2-w-together',
       prompt: '우리 같이 저녁 먹자.',
       choices: ["Let's eat dinner together.", "Let's together eat dinner.", "Let's eating dinner together."],
@@ -538,6 +622,7 @@ DailyPack samplePackA2(DateTime date) => DailyPack(
     ),
     QuizItem(
       id: 'a2-q7',
+      errorType: 'grammar_form',
       itemId: 'a2-w-busy',
       prompt: '이번 주는 정말 바빠.',
       choices: ["I'm really busy this week.", 'I really busy this week.', "I'm really busy in this week."],
@@ -546,6 +631,7 @@ DailyPack samplePackA2(DateTime date) => DailyPack(
     ),
     QuizItem(
       id: 'a2-q8',
+      errorType: 'preposition',
       itemId: 'a2-w-invite',
       prompt: '민수가 나를 생일 파티에 초대했어.',
       choices: [
@@ -558,6 +644,7 @@ DailyPack samplePackA2(DateTime date) => DailyPack(
     ),
     QuizItem(
       id: 'a2-q9',
+      errorType: 'word_choice',
       itemId: 'a2-w-favorite',
       prompt: '제일 좋아하는 음식이 뭐야?',
       choices: ["What's your most favorite food?", "What's your favorite food?", 'What food you like most?'],
@@ -566,6 +653,7 @@ DailyPack samplePackA2(DateTime date) => DailyPack(
     ),
     QuizItem(
       id: 'a2-q10',
+      errorType: 'grammar_form',
       itemId: 'a2-w-maybe',
       prompt: '아마 내일 비가 올 거야.',
       choices: ['Maybe it will rain tomorrow.', 'Maybe will rain tomorrow.', 'It maybe rain tomorrow.'],

@@ -10,6 +10,7 @@ import 'package:todaye/domain/srs.dart';
 import 'package:todaye/domain/study_log.dart';
 
 import 'pack_source_test.dart' show serverFixture, profile;
+import '../support/fixed_fallback.dart';
 
 /// 응답 시점을 테스트가 정하는 서버
 class ControlledSource implements PackSource {
@@ -383,6 +384,7 @@ void main() {
       overrides: [
         storeProvider.overrideWithValue(MemoryStore(onboarded())),
         clockProvider.overrideWithValue(() => day),
+        fallbackPackProvider.overrideWithValue(fixedSamplePackFor),
       ],
     );
     final ctl1 = c1.read(studyProvider.notifier);
@@ -393,7 +395,11 @@ void main() {
 
     final next = DateTime(2026, 11, 24, 9);
     final c2 = ProviderContainer(
-      overrides: [storeProvider.overrideWithValue(MemoryStore(saved)), clockProvider.overrideWithValue(() => next)],
+      overrides: [
+        storeProvider.overrideWithValue(MemoryStore(saved)),
+        clockProvider.overrideWithValue(() => next),
+        fallbackPackProvider.overrideWithValue(fixedSamplePackFor),
+      ],
     );
     final s = c2.read(studyProvider);
     expect(s.isRepeatPack, isTrue);

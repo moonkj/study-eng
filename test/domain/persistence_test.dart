@@ -6,8 +6,15 @@ import 'package:todaye/data/store.dart';
 import 'package:todaye/domain/srs.dart';
 import 'package:todaye/domain/study_log.dart';
 
-ProviderContainer containerAt(DateTime now, AppStore store) =>
-    ProviderContainer(overrides: [storeProvider.overrideWithValue(store), clockProvider.overrideWithValue(() => now)]);
+import '../support/fixed_fallback.dart';
+
+ProviderContainer containerAt(DateTime now, AppStore store) => ProviderContainer(
+  overrides: [
+    storeProvider.overrideWithValue(store),
+    clockProvider.overrideWithValue(() => now),
+    fallbackPackProvider.overrideWithValue(fixedSamplePackFor),
+  ],
+);
 
 void main() {
   group('연속 학습일', () {
