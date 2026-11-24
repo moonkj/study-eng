@@ -35,6 +35,10 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
+  assets:
+    - assets/toeic/content.json
+    - assets/toeic/photos/
+
   # 지하철에서도 동작하도록 폰트를 앱에 포함한다 (라이선스: assets/fonts/OFL-*.txt)
   fonts:
     - family: IBMPlexSansKR
