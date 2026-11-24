@@ -113,4 +113,5 @@ DailyPack _copy(
   words: words ?? p.words,
   sentences: sentences ?? p.sentences,
   quiz: quiz ?? p.quiz,
+  dialogue: p.dialogue,
 );

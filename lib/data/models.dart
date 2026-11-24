@@ -89,6 +89,7 @@ class QuizItem {
     this.itemId,
     this.clue,
     this.accept = const [],
+    this.errorType,
   });
 
   final String id;
@@ -115,7 +116,23 @@ class QuizItem {
   final List<String> accept;
 
   bool get isRecall => clue != null;
+
+  /// 틀렸을 때 어떤 종류의 실수인지 (오답 유형 엔진용). [kErrorTypes] 중 하나, 모르면 null.
+  final String? errorType;
 }
+
+/// 오답 유형: 단어 선택 · 문법 형태 · 전치사 · 어순 · 연어(함께 쓰는 말) · 의미 혼동
+const kErrorTypes = ['word_choice', 'grammar_form', 'preposition', 'word_order', 'collocation', 'meaning'];
+
+/// 오답 유형 한국어 이름
+const kErrorTypeKo = {
+  'word_choice': '단어 선택',
+  'grammar_form': '문법 형태',
+  'preposition': '전치사',
+  'word_order': '어순',
+  'collocation': '함께 쓰는 말',
+  'meaning': '뜻 혼동',
+};
 
 class DailyPack {
   const DailyPack({
@@ -127,6 +144,7 @@ class DailyPack {
     required this.sentences,
     required this.quiz,
     this.fromClaude = false,
+    this.dialogue,
   });
 
   final DateTime date;
@@ -141,6 +159,28 @@ class DailyPack {
   final List<QuizItem> quiz;
 
   int get reviewCount => quiz.where((q) => q.isReview).length;
+
+  /// 주간 시리즈 대화 (같은 인물들이 오늘 표현을 쓰는 4~6줄 대화). 없을 수 있다.
+  final SeriesDialogue? dialogue;
+}
+
+class DialogueLine {
+  const DialogueLine({required this.speaker, required this.en, required this.ko});
+  final String speaker;
+  final String en;
+  final String ko;
+}
+
+/// 주간 시리즈의 한 회차. 고정 인물이 나와 오늘 표현을 대화 속에서 쓴다.
+class SeriesDialogue {
+  const SeriesDialogue({required this.title, required this.episode, required this.lines});
+
+  /// 시리즈 이름 (예: "민지의 런던 출장")
+  final String title;
+
+  /// 몇 화인지 (1부터)
+  final int episode;
+  final List<DialogueLine> lines;
 }
 
 /// 레벨 진단 문항

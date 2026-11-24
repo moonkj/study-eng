@@ -168,11 +168,23 @@ DailyPack packFromJson(Map<String, Object?> j, {required Map<String, LearnedItem
           answerIndex: (q['answerIndex'] as num).toInt(),
           explanation: q['explanation'] as String,
           itemId: q['itemId'] as String?,
+          errorType: kErrorTypes.contains(q['errorType']) ? q['errorType'] as String : null,
           reviewLabel: q['reviewOf'] == null || learned[q['reviewOf']] == null
               ? null
               : reviewLabelFor(learned[q['reviewOf']]!, today),
         ),
     ],
+    dialogue: switch (j['dialogue']) {
+      final Map d when d['lines'] is List && (d['lines'] as List).isNotEmpty => SeriesDialogue(
+        title: d['title'] as String? ?? '',
+        episode: (d['episode'] as num?)?.toInt() ?? 1,
+        lines: [
+          for (final l in (d['lines'] as List).cast<Map>())
+            DialogueLine(speaker: l['speaker'] as String, en: l['en'] as String, ko: l['ko'] as String),
+        ],
+      ),
+      _ => null,
+    },
   );
 }
 
