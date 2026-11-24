@@ -10,7 +10,14 @@ abstract class Speaker {
   void configure({required String voice, required double speed});
 }
 
+/// 마이크(음성 인식·녹음)나 다른 재생이 iOS 오디오 설정을 바꿨음을 알린다. 다음 읽어 주기 때 일반 재생 설정으로 되돌린다.
+void markAudioSessionChanged() => DeviceSpeaker._sessionReady = false;
+
 class DeviceSpeaker implements Speaker {
+  /// iOS 오디오 설정을 일반 재생으로 맞춰 둔 상태인지. 누를 때마다 설정을 다시 적용하면
+  /// 소리가 작게 시작했다 커져서, 단어처럼 짧은 소리는 작게 들린다.
+  static bool _sessionReady = false;
+
   final _tts = FlutterTts();
   String _voice = 'en-US';
   double _speed = 1.0;
@@ -35,12 +42,13 @@ class DeviceSpeaker implements Speaker {
       // iOS: 기본 오디오 설정은 무음 모드(벨 스위치)에서 소리가 나지 않는다. 사용자가 직접 누른 듣기이므로 playback 으로 바꿔
       // 무음 모드에서도 들리게 한다. playAndRecord(마이크용) 설정에서는 통화용 음량 처리로 소리가 작아지므로
       // 말하기 연습 중 마이크가 바꾼 설정·모드도 매번 일반 재생으로 되돌린다.
-      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
+      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS && !_sessionReady) {
         await _tts.setSharedInstance(true);
         await _tts.setIosAudioCategory(IosTextToSpeechAudioCategory.playback, [
           IosTextToSpeechAudioCategoryOptions.allowBluetoothA2DP,
           IosTextToSpeechAudioCategoryOptions.duckOthers,
         ], IosTextToSpeechAudioMode.defaultMode);
+        _sessionReady = true;
       }
       if (!_ready) {
         await _tts.setLanguage(_voice);

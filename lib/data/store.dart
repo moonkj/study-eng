@@ -39,6 +39,7 @@ class TodayProgress {
     this.cardsBefore = const {},
     this.regenCount = 0,
     this.selfGraded = const {},
+    this.carriedFrom,
   });
 
   final String date;
@@ -67,6 +68,9 @@ class TodayProgress {
   /// 회상형 문제 중 직접 쓰지 않고 '떠올렸어요'로 스스로 채점한 문제 번호 (레벨·어휘 점수에서 뺀다)
   final Set<int> selfGraded;
 
+  /// 지난 학습일에 끝내지 못한 루틴을 이어서 하는 중이면 그 날짜 (그날의 팩과 진행을 그대로 쓴다)
+  final String? carriedFrom;
+
   Map<String, Object?> toJson() => {
     'date': date,
     'done': done.toList(),
@@ -79,6 +83,7 @@ class TodayProgress {
     'cardsBefore': cardsBefore.map((k, c) => MapEntry(k, c == null ? null : cardToJson(c))),
     'regenCount': regenCount,
     'selfGraded': selfGraded.toList(),
+    'carriedFrom': ?carriedFrom,
   };
 
   /// 필드가 빠졌거나(예전 버전) 일부가 깨져도 날짜만 맞으면 나머지는 기본값으로 읽는다.
@@ -108,6 +113,7 @@ class TodayProgress {
     cardsBefore: _cardsBefore(j['cardsBefore']),
     regenCount: (j['regenCount'] as num?)?.toInt() ?? 0,
     selfGraded: {...((j['selfGraded'] as List?) ?? const []).whereType<num>().map((n) => n.toInt())},
+    carriedFrom: j['carriedFrom'] as String?,
   );
 }
 

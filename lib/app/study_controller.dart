@@ -203,7 +203,7 @@ class StudyState {
   /// 서버 팩이 아닌 기본 팩이고, 그 내용을 오늘 이전에 이미 배웠는지 (오프라인으로 같은 팩을 다시 하는 날)
   bool get isRepeatPack {
     if (pack.fromClaude) return false;
-    final key = dateKey(now);
+    final key = today.carriedFrom ?? dateKey(now);
     return pack.expressions.any((e) {
       final item = learned[e.id];
       return item != null && item.firstSeen != key;
@@ -296,19 +296,50 @@ class StudyController extends Notifier<StudyState> {
     final profile = saved?.profile ?? defaultProfile();
     final onboarded = saved?.onboarded ?? false;
     final learned = saved?.learned ?? const <String, LearnedItem>{};
-    // 지난 날짜의 팩은 버린다
-    final packs = {
-      for (final e in (saved?.packs ?? const <String, Map<String, Object?>>{}).entries)
-        if (e.key.compareTo(todayKey) >= 0) e.key: e.value,
-    };
-
+    final savedPacks = saved?.packs ?? const <String, Map<String, Object?>>{};
     final source = ref.read(packSourceProvider);
-    final log = saved?.log ?? const <String, DayRecord>{};
+    var log = saved?.log ?? const <String, DayRecord>{};
     final contentStep = saved?.contentStep ?? profile.overall.step;
-    final cachedPack = packs[todayKey] == null ? null : _parsePack(packs[todayKey]!, learned, now);
-    if (packs[todayKey] != null && cachedPack == null) packs.remove(todayKey); // 깨진 캐시는 버린다
+
+    // 지난 학습일 루틴을 끝내지 못하고 날이 바뀌었으면:
+    // - 표현까지 했으면 그날을 3분 루틴 날로 기록한다 (연속 기록이 이어지게, 레벨·정답률 판단에는 쓰지 않는다)
+    // - 남은 단계는 오늘 이어서 한다 (그날의 팩과 진행을 그대로 가져온다, 한 번만)
+    final prev = saved?.today;
+    if (onboarded &&
+        prev != null &&
+        prev.date.compareTo(todayKey) < 0 &&
+        prev.carriedFrom == null &&
+        !_isUntouched(prev) &&
+        !(log[prev.date] != null && !log[prev.date]!.mini)) {
+      final prevDate = parseDateKey(prev.date);
+      final json = savedPacks[prev.date];
+      final raw = json != null
+          ? _parsePack(json, learned, prevDate)
+          : ref.read(fallbackPackProvider)(prevDate, contentStep);
+      final carried = raw == null ? null : _prepare(raw, log, prevDate);
+      if (log[prev.date] == null && prev.done.contains(RoutineStep.expressions.name)) {
+        log = {
+          ...log,
+          prev.date: DayRecord(accuracy: 0, levelScore: profile.overall.score, mini: true, topic: carried?.topic),
+        };
+      }
+      if (carried != null && packIdOf(carried) == prev.packId) {
+        today = _carry(prev, todayKey);
+      }
+    }
+    final carriedFrom = today.carriedFrom;
+    final packKey = carriedFrom ?? todayKey;
+    final packDate = carriedFrom == null ? now : parseDateKey(carriedFrom);
+
+    // 지난 날짜의 팩은 버린다 (이어서 하는 날의 팩은 둔다)
+    final packs = {
+      for (final e in savedPacks.entries)
+        if (e.key.compareTo(todayKey) >= 0 || e.key == carriedFrom) e.key: e.value,
+    };
+    final cachedPack = packs[packKey] == null ? null : _parsePack(packs[packKey]!, learned, now);
+    if (packs[packKey] != null && cachedPack == null) packs.remove(packKey); // 깨진 캐시는 버린다
     var loading = false;
-    final pack = _prepare(cachedPack ?? ref.read(fallbackPackProvider)(now, contentStep), log, now);
+    final pack = _prepare(cachedPack ?? ref.read(fallbackPackProvider)(packDate, contentStep), log, packDate);
 
     // 오늘 진행이 다른 팩에 대한 것이면(캐시가 버려졌거나 바뀜) 번호 기준 진행이 어긋나므로 비운다
     final id = packIdOf(pack);
@@ -367,6 +398,20 @@ class StudyController extends Notifier<StudyState> {
     cardsBefore: t.cardsBefore,
     regenCount: t.regenCount,
     selfGraded: t.selfGraded,
+    carriedFrom: t.carriedFrom,
+  );
+
+  static TodayProgress _carry(TodayProgress t, String date) => TodayProgress(
+    date: date,
+    done: t.done,
+    expressionKnown: t.expressionKnown,
+    wordRatings: t.wordRatings,
+    spoken: t.spoken,
+    quizAnswers: t.quizAnswers,
+    packId: t.packId,
+    cardsBefore: t.cardsBefore,
+    selfGraded: t.selfGraded,
+    carriedFrom: t.date,
   );
 
   /// 서버 JSON 을 팩으로 읽고 검사한다. 읽을 수 없거나 문제가 있으면 null.
@@ -535,6 +580,7 @@ class StudyController extends Notifier<StudyState> {
       cardsBefore: cardsBefore ?? t.cardsBefore,
       regenCount: regenCount ?? t.regenCount,
       selfGraded: selfGraded ?? t.selfGraded,
+      carriedFrom: t.carriedFrom,
     );
   }
 
@@ -683,6 +729,13 @@ class StudyController extends Notifier<StudyState> {
       ),
     );
     syncReminder();
+  }
+
+  /// 이어서 하던 지난 루틴을 그만두고 오늘 팩으로 새로 시작한다 (이미 평가한 표현·단어의 복습 일정은 그대로 둔다)
+  void dropCarried() {
+    if (state.today.carriedFrom == null) return;
+    _set(state.copyWith(today: TodayProgress(date: state.today.date)));
+    ref.invalidateSelf();
   }
 
   /// 오늘 3분 루틴으로만 기록한 상태

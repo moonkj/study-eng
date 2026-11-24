@@ -146,6 +146,17 @@ class HomeScreen extends ConsumerWidget {
           )
         : null;
 
+    final carriedFrom = s.today.carriedFrom;
+    final carryNotice = carriedFrom != null && !s.allDone
+        ? Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: _CarryNotice(
+              days: daysBetween(parseDateKey(carriedFrom), s.now),
+              onNew: ref.read(studyProvider.notifier).dropCarried,
+            ),
+          )
+        : null;
+
     // iPad 가로: 왼쪽(오늘의 표현 + 루틴) / 오른쪽(레벨 · 복습 요약)
     if (wide) {
       return SafeArea(
@@ -166,6 +177,7 @@ class HomeScreen extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         ?notice,
+                        ?carryNotice,
                         if (s.allDone) ...[_DoneCard(state: s), const SizedBox(height: 16)],
                         heroCard,
                         const SizedBox(height: 24),
@@ -204,6 +216,7 @@ class HomeScreen extends ConsumerWidget {
             _LevelStrip(state: s),
           ] else ...[
             ?notice,
+            ?carryNotice,
             if (s.allDone) ...[_DoneCard(state: s), const SizedBox(height: 16)],
             heroCard,
             const SizedBox(height: 22),
@@ -414,6 +427,34 @@ class _ReviewRow extends StatelessWidget {
 }
 
 /// 맞춤 팩을 못 받아 기본 팩으로 진행할 때
+/// 지난 학습일에 끝내지 못한 루틴을 이어서 하는 중임을 알리고, 원하면 오늘 팩으로 새로 시작하게 한다
+class _CarryNotice extends StatelessWidget {
+  const _CarryNotice({required this.days, required this.onNew});
+  final int days;
+  final VoidCallback onNew;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
+      decoration: BoxDecoration(color: context.colors.sand, borderRadius: BorderRadius.circular(16)),
+      child: Row(
+        children: [
+          Icon(Icons.redo_rounded, size: 18, color: context.colors.ink2),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              '${days <= 1 ? '어제' : '$days일 전에'} 하던 루틴을 이어서 해요. 한 만큼은 기록에 남았어요.',
+              style: sans(13, height: 1.45),
+            ),
+          ),
+          TextButton(onPressed: onNew, child: const Text('새로 시작')),
+        ],
+      ),
+    );
+  }
+}
+
 class _FallbackNotice extends StatelessWidget {
   const _FallbackNotice({required this.message, required this.onRetry});
   final String message;

@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
+import '../../core/audio/tts.dart' show markAudioSessionChanged;
+
 /// 음성 인식 결과
 class SpeechAttempt {
   const SpeechAttempt.heard(String this.text) : error = null;
@@ -56,6 +58,7 @@ class _PluginEngine implements SttEngine {
     required bool hint,
     required void Function(String, bool) onResult,
   }) async {
+    markAudioSessionChanged();
     await _stt.listen(
       onResult: (r) => onResult(r.recognizedWords, r.finalResult),
       listenOptions: SpeechListenOptions(
@@ -164,6 +167,7 @@ class DeviceSpeechInput implements SpeechInput {
     _words = '';
     final pending = _pending = Completer<SpeechAttempt>();
     try {
+      markAudioSessionChanged();
       await _stt.listen(
         expected: expected,
         hint: hint,

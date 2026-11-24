@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
 
+import 'tts.dart' show markAudioSessionChanged;
+
 /// 내 목소리 짧게 녹음해서 다시 듣기 (원어민 발음과 비교용)
 ///
 /// 음성 인식(STT)과 마이크를 같이 쓰면 iOS 에서 서로 충돌하므로, 채점과는 따로 짧게 녹음한다.
@@ -41,6 +43,7 @@ class DeviceVoiceRecorder implements VoiceRecorder {
   @override
   Future<bool> start() async {
     try {
+      markAudioSessionChanged();
       final rec = _recorder ??= AudioRecorder();
       if (!await rec.hasPermission()) return false;
       await _player?.stop();
@@ -81,6 +84,7 @@ class DeviceVoiceRecorder implements VoiceRecorder {
     final path = _path;
     if (path == null) return;
     try {
+      markAudioSessionChanged();
       final player = _player ??= AudioPlayer();
       await player.setAudioContext(_audioContext);
       final done = player.onPlayerStateChanged

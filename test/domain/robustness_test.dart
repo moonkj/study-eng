@@ -63,7 +63,9 @@ void main() {
     ctl.refreshIfNewDay(fromHome: true); // 홈으로 돌아오면 새로 고친다
     final s = c.read(studyProvider);
     expect(s.today.date, '2026-11-24');
-    expect(s.wordRatings, isEmpty);
+    // 끝내지 못한 어제 루틴은 오늘 이어서 한다 (어제 팩·진행 그대로)
+    expect(s.today.carriedFrom, '2026-11-23');
+    expect(s.wordRatings, isNotEmpty);
     expect(s.cards['w-actually'], isNotNull); // 복습 카드는 남는다
     c.dispose();
   });
@@ -389,6 +391,9 @@ void main() {
     );
     final ctl1 = c1.read(studyProvider.notifier);
     ctl1.rateWord('w-actually', SelfRating.know);
+    for (final step in RoutineStep.values) {
+      ctl1.complete(step); // 끝낸 날이라 다음 날 이어서 하지 않는다
+    }
     final saved = c1.read(studyProvider).toSaved();
     final stage = saved.cards['w-actually']!.stage;
     c1.dispose();
