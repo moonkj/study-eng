@@ -9,9 +9,13 @@ import '../../core/theme/tokens.dart';
 import '../../core/widgets/study_shortcuts.dart';
 import '../../core/widgets/widgets.dart';
 import '../../data/pack_source.dart';
+import '../../domain/speech_score.dart';
 import '../../domain/srs.dart';
+import '../speaking/speech_input.dart';
 
 /// 간격 반복 복습: 영어를 보고 뜻을 떠올린 뒤 스스로 평가한다. (Claude 호출 없음)
+/// 한 번 이상 복습을 통과한 표현은 반대로 한국어 뜻을 보고 영어로 떠올린다 (실제로 말할 수 있어야 하므로).
+/// 기본은 속으로 떠올리고 스스로 평가, '말해 보기'를 누르면 음성으로 채점한다.
 class ReviewSessionScreen extends ConsumerStatefulWidget {
   const ReviewSessionScreen({super.key});
 
@@ -27,6 +31,34 @@ class _ReviewSessionScreenState extends ConsumerState<ReviewSessionScreen> with 
   int _index = 0;
   bool _revealed = false;
   final _results = <SelfRating>[];
+
+  /// 한→영으로 묻는 카드 (세션을 열 때 정한다: 평가하면 단계가 바뀌므로)
+  late final Set<String> _koToEn = {
+    for (final l in _items)
+      if (l.kind == 'expression' && (ref.read(studyProvider).cards[l.id]?.stage ?? -1) >= 1) l.id,
+  };
+
+  /// 한→영 카드에서 말해 본 점수 (카드 번호별)
+  final _spoken = <int, SpeechScore>{};
+  bool _listening = false;
+
+  static String _speakable(String pattern) => pattern.replaceAll('~', '').replaceAll(RegExp(r'\s+'), ' ').trim();
+
+  Future<void> _speak() async {
+    if (_listening || _index >= _items.length) return;
+    final index = _index;
+    final target = _speakable(_items[index].text);
+    setState(() => _listening = true);
+    final attempt = await ref.read(speechInputProvider).listen(expected: target);
+    if (!mounted) return;
+    setState(() {
+      _listening = false;
+      if (attempt.ok && index == _index) {
+        _spoken[index] = scoreSpeech(target, attempt.text!);
+        _revealed = true; // 말했으면 정답과 비교해 볼 수 있게 바로 보여 준다
+      }
+    });
+  }
 
   void _rate(SelfRating r) {
     // 뜻을 확인하기 전에는 평가하지 않는다 (키보드로 바로 누르는 경우)
@@ -77,6 +109,10 @@ class _ReviewSessionScreenState extends ConsumerState<ReviewSessionScreen> with 
                     : finished
                     ? _Summary(results: _results)
                     : _Card(
+                        koToEn: _koToEn.contains(_items[_index].id),
+                        spoken: _spoken[_index],
+                        listening: _listening,
+                        onSpeak: _speak,
                         item: _items[_index],
                         today: ref.read(studyProvider).now,
                         revealed: _revealed,
@@ -89,7 +125,10 @@ class _ReviewSessionScreenState extends ConsumerState<ReviewSessionScreen> with 
                   padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
                   child: _revealed
                       ? _RatingButtons(onRate: _rate)
-                      : FilledButton(onPressed: () => setState(() => _revealed = true), child: const Text('뜻 확인하기')),
+                      : FilledButton(
+                          onPressed: () => setState(() => _revealed = true),
+                          child: Text(_koToEn.contains(_items[_index].id) ? '영어 확인하기' : '뜻 확인하기'),
+                        ),
                 )
               else
                 BottomActions(
@@ -137,8 +176,18 @@ class _Card extends StatelessWidget {
     required this.revealed,
     required this.onReveal,
     required this.onListen,
+    this.koToEn = false,
+    this.spoken,
+    this.listening = false,
+    this.onSpeak,
   });
   final LearnedItem item;
+
+  /// 한국어 뜻을 보고 영어로 떠올리는 카드
+  final bool koToEn;
+  final SpeechScore? spoken;
+  final bool listening;
+  final VoidCallback? onSpeak;
   final DateTime today;
   final bool revealed;
   final VoidCallback onReveal;
@@ -180,16 +229,48 @@ class _Card extends StatelessWidget {
                       ],
                     ),
                     const Spacer(),
-                    englishSemantics(
-                      item.text,
+                    if (koToEn) ...[
                       Text(
-                        item.text,
+                        item.meaning,
                         textAlign: TextAlign.center,
-                        style: serif(item.kind == 'word' ? 44 : 32, weight: 500, height: 1.2, letterSpacing: -0.5),
+                        style: sans(26, weight: FontWeight.w700, height: 1.35, letterSpacing: -0.4),
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    Text('뜻을 먼저 떠올려 보세요', style: sans(13, color: context.colors.ink2)),
+                      const SizedBox(height: 12),
+                      Text(
+                        '영어로 어떻게 말할까요? 속으로 말해 보거나 소리 내어 말해 보세요',
+                        textAlign: TextAlign.center,
+                        style: sans(13, color: context.colors.ink2),
+                      ),
+                      const SizedBox(height: 12),
+                      OutlinedButton.icon(
+                        onPressed: listening ? null : onSpeak,
+                        icon: Icon(listening ? Icons.hearing_rounded : Icons.mic_none_rounded, size: 18),
+                        label: Text(listening ? '듣고 있어요' : (spoken == null ? '말해 보기' : '다시 말해 보기')),
+                      ),
+                      if (spoken != null) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          '${spoken!.score}점 · 들린 문장 "${spoken!.heard}"',
+                          textAlign: TextAlign.center,
+                          style: sans(
+                            13,
+                            weight: FontWeight.w600,
+                            color: spoken!.score >= 80 ? context.colors.success : context.colors.ember,
+                          ),
+                        ),
+                      ],
+                    ] else ...[
+                      englishSemantics(
+                        item.text,
+                        Text(
+                          item.text,
+                          textAlign: TextAlign.center,
+                          style: serif(item.kind == 'word' ? 44 : 32, weight: 500, height: 1.2, letterSpacing: -0.5),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Text('뜻을 먼저 떠올려 보세요', style: sans(13, color: context.colors.ink2)),
+                    ],
                     const Spacer(),
                     const Divider(),
                     const SizedBox(height: 16),
@@ -207,7 +288,17 @@ class _Card extends StatelessWidget {
                           ],
                         ),
                       ),
-                      child: revealed
+                      child: revealed && koToEn
+                          ? englishSemantics(
+                              item.text,
+                              Text(
+                                item.text,
+                                key: const ValueKey('english'),
+                                textAlign: TextAlign.center,
+                                style: serif(28, weight: 500, height: 1.25),
+                              ),
+                            )
+                          : revealed
                           ? Text(
                               item.meaning,
                               key: const ValueKey('meaning'),
@@ -219,7 +310,7 @@ class _Card extends StatelessWidget {
                               key: const ValueKey('hidden'),
                               onPressed: onReveal,
                               icon: const Icon(Icons.visibility_outlined, size: 18),
-                              label: const Text('탭해서 뜻 보기'),
+                              label: Text(koToEn ? '탭해서 영어 보기' : '탭해서 뜻 보기'),
                             ),
                     ),
                   ],

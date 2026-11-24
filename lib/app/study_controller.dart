@@ -204,12 +204,13 @@ class StudyState {
   }
 
   /// 저장할 때 더 이상 쓰지 않는 데이터를 정리한다 (저장 공간이 끝없이 늘지 않게)
-  /// - 완전히 익힌 카드
+  /// - 완전히 익힌 단어 카드
   /// - 180일 넘게 지났고 복습할 카드도 없는 배운 항목 (중복 회피는 최근 90일만 쓴다)
   SavedData toSaved() {
     final keptCards = {
       for (final e in cards.entries)
-        if (!e.value.retired) e.key: e.value,
+        // 완전히 익힌 카드는 버리되, 표현은 '내 표현'에 완전히 익힘으로 남도록 둔다 (하루 3개라 작다)
+        if (!e.value.retired || learned[e.key]?.kind == 'expression') e.key: e.value,
     };
     final keptLearned = {
       for (final e in learned.entries)
@@ -305,7 +306,7 @@ class StudyController extends Notifier<StudyState> {
     final id = packIdOf(pack);
     var cards = saved?.cards ?? const <String, ReviewCard>{};
     // (오늘 루틴을 이미 끝냈으면 기록·레벨이 반영됐으므로 진행을 지우지 않는다: 다시 하면 두 번 반영되므로)
-    final finishedToday = saved?.log.containsKey(todayKey) ?? false;
+    final finishedToday = saved?.log[todayKey] != null && !saved!.log[todayKey]!.mini;
     if (today.packId != null && today.packId != id && finishedToday) {
       today = _withPackId(today, id);
     } else if (today.packId != null && today.packId != id) {
@@ -659,6 +660,25 @@ class StudyController extends Notifier<StudyState> {
     }
   }
 
+  /// 바쁜 날: 표현만 하고 오늘은 여기까지 (3분 루틴). 연속 기록은 이어지고 레벨·난이도는 그대로.
+  /// 나중에 같은 날 전체 루틴을 끝내면 정식 기록으로 바뀐다.
+  void finishMini() {
+    final key = dateKey(_today);
+    if (state.log.containsKey(key) || !state.done.contains(RoutineStep.expressions)) return;
+    _set(
+      state.copyWith(
+        log: {
+          ...state.log,
+          key: DayRecord(accuracy: 0, levelScore: state.profile.overall.score, mini: true),
+        },
+      ),
+    );
+    syncReminder();
+  }
+
+  /// 오늘 3분 루틴으로만 기록한 상태
+  bool get miniToday => state.log[dateKey(_today)]?.mini ?? false;
+
   void applyLevelTest(LearnerProfile profile) {
     final todayKey = dateKey(state.now);
     final untouched = state.untouched;
@@ -756,10 +776,11 @@ class StudyController extends Notifier<StudyState> {
       now: ref.read(clockProvider)(),
       studyToday: s.now,
       minutes: minutes,
-      doneToday: s.allDone,
+      doneToday: s.allDone || s.log.containsKey(dateKey(s.now)),
       streak: s.streakDays,
       restsLeft: s.streak.restsLeft,
       longest: s.longestStreak,
+      teaser: (k) => reminderTeaser(s, k),
     );
   }
 
@@ -821,6 +842,34 @@ class StudyController extends Notifier<StudyState> {
       ),
     );
   }
+}
+
+/// 알림에 넣을 표현: 오늘은 오늘 팩의 첫 표현, 내일은 미리 받은 팩의 첫 표현,
+/// 그 뒤로는 배운 표현을 돌아가며 (다시 떠올리는 복습 효과). 없으면 null.
+({String text, String meaning})? reminderTeaser(StudyState s, int dayOffset) {
+  if (dayOffset == 0 && !s.allDone && s.pack.expressions.isNotEmpty) {
+    final e = s.pack.expressions.first;
+    return (text: e.pattern, meaning: e.meaning);
+  }
+  if (dayOffset == 1) {
+    final key = dateKey(DateTime(s.now.year, s.now.month, s.now.day + 1));
+    final raw = s.packs[key]?['expressions'];
+    if (raw is List && raw.isNotEmpty && raw.first is Map) {
+      final e = raw.first as Map;
+      if (e['pattern'] is String && e['meaning'] is String)
+        return (text: e['pattern'] as String, meaning: e['meaning'] as String);
+    }
+  }
+  final learned =
+      [
+        for (final l in s.learned.values)
+          if (l.kind == 'expression') l,
+      ]..sort(
+        (a, b) => a.firstSeen.compareTo(b.firstSeen) != 0 ? a.firstSeen.compareTo(b.firstSeen) : a.id.compareTo(b.id),
+      );
+  if (learned.isEmpty) return null;
+  final l = learned[(dayOffset + s.now.day) % learned.length];
+  return (text: l.text, meaning: l.meaning);
 }
 
 /// 학습일이 바뀌었으면 새로 고치고, 새 상태(연속 학습일)로 알림 문구를 갱신한다.

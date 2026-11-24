@@ -10,6 +10,7 @@ import '../../core/layout/adaptive.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/widgets.dart';
+import '../../domain/study_log.dart';
 
 const _weekdays = ['월', '화', '수', '목', '금', '토', '일'];
 
@@ -119,7 +120,11 @@ class HomeScreen extends ConsumerWidget {
             Text('오늘의 루틴', style: sans(17, weight: FontWeight.w700)),
             const Spacer(),
             Text(
-              s.allDone ? '4/4 완료' : '남은 시간 약 ${remainingMinutes(s)}분 · ${s.done.length}/4',
+              s.allDone
+                  ? '4/4 완료'
+                  : (s.log[dateKey(s.now)]?.mini ?? false)
+                  ? '3분 루틴으로 오늘 기록 완료 · 남은 단계도 할 수 있어요'
+                  : '남은 시간 약 ${remainingMinutes(s)}분 · ${s.done.length}/4',
               style: sans(13, color: context.colors.ink2),
             ),
           ],

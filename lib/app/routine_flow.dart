@@ -79,7 +79,7 @@ Future<void> _finish(BuildContext context, WidgetRef ref, RoutineStep step) asyn
   // 새벽 4시를 넘겨 학습일이 바뀐 상태(새로 고침을 미뤄 둔 상태)면 홈으로 가는 순간 어제 진행이 정리된다
   final stale = s.today.date != dateKey(studyDay(ref.read(clockProvider)()));
   final remaining = RoutineStep.values.where((e) => !s.done.contains(e)).length;
-  final go = await showModalBottomSheet<bool>(
+  final choice = await showModalBottomSheet<String>(
     context: context,
     showDragHandle: true,
     builder: (ctx) => SafeArea(
@@ -99,16 +99,29 @@ Future<void> _finish(BuildContext context, WidgetRef ref, RoutineStep step) asyn
             ),
             const SizedBox(height: 20),
             // 키보드(Enter)로도 바로 이어갈 수 있게
-            FilledButton(autofocus: true, onPressed: () => Navigator.pop(ctx, true), child: const Text('이어서 하기')),
+            FilledButton(autofocus: true, onPressed: () => Navigator.pop(ctx, 'go'), child: const Text('이어서 하기')),
             const SizedBox(height: 4),
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(stale ? '오늘 걸로 새로 시작' : '나중에 할게요')),
+            TextButton(onPressed: () => Navigator.pop(ctx, 'later'), child: Text(stale ? '오늘 걸로 새로 시작' : '나중에 할게요')),
+            // 바쁜 날: 표현만 하고 끝내도 연속 기록은 이어진다 (축하 화면 없이)
+            if (step == RoutineStep.expressions && !stale && !s.log.containsKey(dateKey(s.now)))
+              TextButton(onPressed: () => Navigator.pop(ctx, 'mini'), child: const Text('바빠요 · 오늘은 3분 루틴으로 마치기')),
           ],
         ),
       ),
     ),
   );
   if (!context.mounted) return;
-  go == true ? context.pushReplacement(routinePaths[next]!) : popOrHome(context);
+  if (choice == 'mini') {
+    ref.read(studyProvider.notifier).finishMini();
+    popOrHome(context);
+    if (ref.read(studyProvider.notifier).miniToday) {
+      ScaffoldMessenger.maybeOf(
+        context,
+      )?.showSnackBar(const SnackBar(content: Text('오늘 기록이 이어졌어요. 시간이 나면 남은 단계도 이어서 할 수 있어요.')));
+    }
+    return;
+  }
+  choice == 'go' ? context.pushReplacement(routinePaths[next]!) : popOrHome(context);
 }
 
 /// 돌아갈 화면이 없으면(웹 새로고침·바로 열기 등) 홈으로

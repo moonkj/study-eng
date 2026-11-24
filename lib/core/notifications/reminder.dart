@@ -27,6 +27,7 @@ abstract class Reminder {
 /// 앞으로 [days]일 동안의 알림 계획.
 /// - 오늘 이미 끝냈거나 시각이 지났으면 오늘은 건너뛴다.
 /// - 그날까지 공부하지 않는다고 가정하고, 연속 기록·쉬는 날 상태에 맞는 문구를 고른다.
+/// - [teaser] 가 그날(오늘부터 n일 뒤)의 표현을 주면 본문에 넣는다.
 List<ReminderSlot> planReminders({
   required DateTime now,
   required DateTime studyToday,
@@ -36,6 +37,7 @@ List<ReminderSlot> planReminders({
   required int restsLeft,
   required int longest,
   int days = 14,
+  ({String text, String meaning})? Function(int dayOffset)? teaser,
 }) {
   // 새벽 4시 전 알림(예: 01:00)은 그 학습일이 끝나 가는 밤이 아니라 '다음 달력 날짜'의 새벽에 울린다
   final nextCalendarDay = minutes < 4 * 60 ? 1 : 0;
@@ -60,7 +62,9 @@ List<ReminderSlot> planReminders({
     } else {
       text = reminderText(0, longest: longest > streak ? longest : streak);
     }
-    slots.add(ReminderSlot(at, text.$1, text.$2));
+    // 그날 만날 표현을 알면 본문에 보여 준다 (알림만 봐도 한 번 떠올려 보게)
+    final t = teaser?.call(k);
+    slots.add(ReminderSlot(at, text.$1, t == null ? text.$2 : '"${t.text}" — ${t.meaning}. 오늘 이 표현으로 한 문장 말해 볼까요?'));
   }
   return slots;
 }

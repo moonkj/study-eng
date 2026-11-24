@@ -9,6 +9,7 @@ import '../../core/widgets/widgets.dart';
 import '../../domain/level.dart';
 import '../../domain/srs.dart';
 import '../../domain/study_log.dart';
+import '../../domain/mastery.dart';
 import '../settings/settings_screen.dart' show formatMinutes;
 
 class CompleteScreen extends ConsumerStatefulWidget {
@@ -47,6 +48,17 @@ class _CompleteScreenState extends ConsumerState<CompleteScreen> {
     final quizCorrect = record?.quizCorrect ?? s.quizCorrect;
     final quizTotal = record?.quizTotal ?? s.pack.quiz.length;
     final newWords = s.wordRatings.values.where((r) => r != SelfRating.know).length;
+    // 축하는 연속일보다 '기억'으로: 오래전에 배운 것을 오늘 맞혔으면 그걸 알려 준다
+    final remembered = oldestRemembered(
+      [
+        for (final e in s.quizAnswers.entries)
+          if (e.key < s.pack.quiz.length && s.pack.quiz[e.key].isReview && s.pack.quiz[e.key].answerIndex == e.value)
+            ?s.pack.quiz[e.key].itemId,
+      ],
+      s.learned,
+      s.now,
+    );
+    final graduated = graduatedToday(s.today.cardsBefore, s.cards).length;
     final levelUp = before.step < now.step;
     // 축하 문구 우선순위: 레벨 업 > 연속 마일스톤 > 최고 기록을 처음 넘은 날 > 복귀
     final streak = s.streakDays;
@@ -143,6 +155,29 @@ class _CompleteScreenState extends ConsumerState<CompleteScreen> {
                       style: sans(14, color: context.colors.ink2),
                     ),
                   ),
+                  if (remembered != null || graduated > 0) ...[
+                    const SizedBox(height: 14),
+                    PaperCard(
+                      color: context.colors.successTint,
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                      child: Row(
+                        children: [
+                          Icon(Icons.psychology_alt_outlined, color: context.colors.success),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              [
+                                if (remembered != null)
+                                  '${remembered.days}일 전에 배운 \'${remembered.item.text}\', 아직 기억하고 있어요',
+                                if (graduated > 0) '오늘 졸업 $graduated개 — 30일 간격까지 기억했어요',
+                              ].join('\n'),
+                              style: sans(14, weight: FontWeight.w600, height: 1.5),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 26),
                   Row(
                     children: [

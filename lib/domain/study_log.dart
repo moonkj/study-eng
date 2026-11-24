@@ -27,6 +27,8 @@ class DayRecord {
     this.newAccuracy,
     this.quizCorrect,
     this.quizTotal,
+    this.mini = false,
+    this.errors = const {},
   });
 
   /// 퀴즈 정답률 0~1
@@ -43,6 +45,12 @@ class DayRecord {
   final int? quizCorrect;
   final int? quizTotal;
 
+  /// 바쁜 날 3분 루틴(표현만)으로 연속 기록만 이은 날. 정답률·레벨 판단에는 쓰지 않는다.
+  final bool mini;
+
+  /// 그날 틀린 문제의 오답 유형별 횟수 (오답 유형 엔진: 자주 틀리는 유형을 다음 팩에 더 낸다)
+  final Map<String, int> errors;
+
   Map<String, Object?> toJson() => {
     'accuracy': accuracy,
     'levelScore': levelScore,
@@ -50,6 +58,8 @@ class DayRecord {
     if (newAccuracy != null) 'new': newAccuracy,
     if (quizCorrect != null) 'qc': quizCorrect,
     if (quizTotal != null) 'qt': quizTotal,
+    if (mini) 'm': true,
+    if (errors.isNotEmpty) 'err': errors,
   };
 
   factory DayRecord.fromJson(Map<String, Object?> j) => DayRecord(
@@ -59,6 +69,11 @@ class DayRecord {
     newAccuracy: (j['new'] as num?)?.toDouble(),
     quizCorrect: (j['qc'] as num?)?.toInt(),
     quizTotal: (j['qt'] as num?)?.toInt(),
+    mini: j['m'] == true,
+    errors: {
+      for (final e in ((j['err'] as Map?) ?? const {}).entries)
+        if (e.key is String && e.value is num) e.key as String: (e.value as num).toInt(),
+    },
   );
 }
 
@@ -161,9 +176,10 @@ int computeStreak(Iterable<String> studiedKeys, DateTime today) {
 }
 
 /// [today] 이전의 가장 최근 학습일 기록
+/// 오늘 전의 마지막 정식 루틴 기록 (3분 루틴 날은 건너뛴다)
 DayRecord? previousRecord(Map<String, DayRecord> log, DateTime today) {
   final key = dateKey(today);
-  final keys = log.keys.where((k) => k.compareTo(key) < 0).toList()..sort();
+  final keys = log.keys.where((k) => k.compareTo(key) < 0 && !log[k]!.mini).toList()..sort();
   return keys.isEmpty ? null : log[keys.last];
 }
 

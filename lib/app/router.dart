@@ -8,6 +8,7 @@ import '../core/theme/tokens.dart';
 import '../features/complete/complete_screen.dart';
 import '../features/expression/expression_screen.dart';
 import '../features/home/home_screen.dart';
+import '../features/my_expressions/my_expressions_screen.dart';
 import '../features/level_result/level_result_screen.dart';
 import '../features/level_test/level_test_screen.dart';
 import '../features/progress/progress_screen.dart';
@@ -65,6 +66,7 @@ GoRouter buildRouter({String initialLocation = '/', bool Function()? isOnboarded
         _focused('/review-session', const ReviewSessionScreen()),
         _focused('/level-test', const LevelTestScreen()),
         _focused('/level-result', const LevelResultScreen()),
+        _focused('/my-expressions', const MyExpressionsScreen()),
       ],
     );
 

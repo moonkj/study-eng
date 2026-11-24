@@ -6,7 +6,10 @@ import '../../core/layout/adaptive.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/widgets.dart';
+import 'package:go_router/go_router.dart';
+
 import '../../domain/level.dart';
+import '../../domain/mastery.dart';
 import '../../domain/study_log.dart';
 
 class ProgressScreen extends ConsumerWidget {
@@ -18,7 +21,7 @@ class ProgressScreen extends ConsumerWidget {
     final now = s.now; // 학습일 기준 (매달 1일 새벽에 제목과 달력이 어긋나지 않게)
     // 단어 카드 중 '알아요'(7일 간격) 이상까지 올라간 것을 외운 단어로 센다
     final knownWords = s.cards.values.where((c) => c.itemId.startsWith('w-') && c.stage >= 2).length;
-    final records = s.log.values.toList();
+    final records = s.log.values.where((r) => !r.mini).toList(); // 3분 루틴 날은 퀴즈가 없어 정답률에서 뺀다
     final accuracy = records.isEmpty ? null : records.map((r) => r.accuracy).reduce((a, b) => a + b) / records.length;
     final keys = s.log.keys.toList()..sort();
     final points = [
@@ -80,6 +83,8 @@ class ProgressScreen extends ConsumerWidget {
               _Stat(label: '최고 연속', value: '${s.longestStreak}일'),
             ],
           ),
+          const SizedBox(height: 12),
+          _MyExpressionsCard(state: s),
           const SizedBox(height: 12),
           PaperCard(
             padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
@@ -345,4 +350,45 @@ class _GrowthPainter extends CustomPainter {
       old.colors != colors ||
       old.points.length != points.length ||
       (points.isNotEmpty && (old.points.first != points.first || old.points.last != points.last));
+}
+
+/// '내 표현' 모음으로 가는 카드: 숙련 단계별 개수
+class _MyExpressionsCard extends StatelessWidget {
+  const _MyExpressionsCard({required this.state});
+  final StudyState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final items = [
+      for (final l in state.learned.values)
+        if (l.kind == 'expression') l,
+    ];
+    final counts = {for (final m in Mastery.values) m: items.where((l) => masteryOf(state.cards[l.id]) == m).length};
+    final done = counts[Mastery.graduated]! + counts[Mastery.mastered]!;
+    return PaperCard(
+      padding: EdgeInsets.zero,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        onTap: () => context.push('/my-expressions'),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(18, 16, 12, 16),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('내 표현 ${items.length}개', style: sans(14, weight: FontWeight.w600)),
+                    const SizedBox(height: 2),
+                    Text('익히는 중 ${counts[Mastery.learning]} · 졸업 $done', style: sans(12, color: context.colors.ink2)),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right_rounded, color: context.colors.ink2),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
