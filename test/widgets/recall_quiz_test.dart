@@ -64,4 +64,25 @@ void main() {
     expect(find.text('9/12'), findsOneWidget);
     expect(find.text('틀린 문제 다시 보기'), findsOneWidget);
   });
+
+  testWidgets('단어 평가 되돌리기는 카드를 가리지 않고 평가 버튼 위 줄에 3초 동안 나온다', (tester) async {
+    await setPhone(tester);
+    await tester.pumpWidget(app(initial: '/words'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('헷갈려요'));
+    await tester.pumpAndSettle();
+    expect(find.text('actually → 헷갈려요 (3일 뒤)'), findsOneWidget);
+    expect(find.byType(SnackBar), findsNothing);
+    final bar = tester.getRect(find.text('actually → 헷갈려요 (3일 뒤)'));
+    final button = tester.getRect(find.text('헷갈려요'));
+    expect(bar.bottom, lessThan(button.top)); // 버튼 위
+    await tester.tap(find.text('되돌리기'));
+    await tester.pumpAndSettle();
+    expect(find.text('actually'), findsWidgets); // 첫 단어로 돌아옴
+    expect(find.text('이 단어, 얼마나 알고 있었나요?'), findsOneWidget);
+    await tester.tap(find.text('알아요'));
+    await tester.pump(const Duration(seconds: 4));
+    await tester.pumpAndSettle();
+    expect(find.text('이 단어, 얼마나 알고 있었나요?'), findsOneWidget); // 3초 뒤 사라짐
+  });
 }

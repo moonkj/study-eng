@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 
@@ -32,6 +32,17 @@ class DeviceSpeaker implements Speaker {
   @override
   Future<void> speak(String text, {bool slow = false}) async {
     try {
+      // iOS: 기본 오디오 설정은 무음 모드(벨 스위치)에서 소리가 나지 않는다.
+      // 사용자가 직접 누른 듣기이므로 무음 모드에서도 스피커로 들리게 한다. 말하기 연습 중 마이크가 바꾼 설정도 매번 되돌린다.
+      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
+        await _tts.setSharedInstance(true);
+        await _tts.setIosAudioCategory(IosTextToSpeechAudioCategory.playAndRecord, [
+          IosTextToSpeechAudioCategoryOptions.defaultToSpeaker,
+          IosTextToSpeechAudioCategoryOptions.allowBluetooth,
+          IosTextToSpeechAudioCategoryOptions.allowBluetoothA2DP,
+          IosTextToSpeechAudioCategoryOptions.duckOthers,
+        ]);
+      }
       if (!_ready) {
         await _tts.setLanguage(_voice);
         await _tts.awaitSpeakCompletion(true);

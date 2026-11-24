@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -23,23 +25,20 @@ class _WordsScreenState extends ConsumerState<WordsScreen> with StudyScreenGuard
       ? 0
       : ref.read(studyProvider).wordRatings.length.clamp(0, ref.read(studyProvider).pack.words.length - 1);
   bool _revealed = false;
-  ScaffoldMessengerState? _messenger;
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _messenger = ScaffoldMessenger.maybeOf(context);
-  }
+  /// 방금 한 평가 되돌리기 안내 (3초 동안 평가 버튼 위 줄에 보인다. 카드를 가리지 않게 떠 있는 알림 대신)
+  ({int index, String id, String text})? _undo;
+  Timer? _undoTimer;
 
   @override
   void dispose() {
-    // 화면을 닫은 뒤 '되돌리기'가 남아 다른 화면에서 눌리지 않게
-    // dispose 중에는 다른 위젯 상태를 바꾸지 않도록 한 박자 뒤에 숨긴다
-    final messenger = _messenger;
-    Future.microtask(() {
-      if (messenger != null && messenger.mounted) messenger.hideCurrentSnackBar();
-    });
+    _undoTimer?.cancel();
     super.dispose();
+  }
+
+  void _clearUndo() {
+    _undoTimer?.cancel();
+    if (_undo != null) setState(() => _undo = null);
   }
 
   void _rate(SelfRating r) {
@@ -49,7 +48,7 @@ class _WordsScreenState extends ConsumerState<WordsScreen> with StudyScreenGuard
     ref.read(studyProvider.notifier).rateWord(id, r);
     HapticFeedback.selectionClick();
     if (_index >= words.length - 1) {
-      _messenger?.hideCurrentSnackBar();
+      _clearUndo();
       finishStep(context, ref, RoutineStep.words);
       return;
     }
@@ -61,25 +60,23 @@ class _WordsScreenState extends ConsumerState<WordsScreen> with StudyScreenGuard
     // 끝낸 단계를 다시 보는 중이면 평가가 반영되지 않으므로 되돌리기 안내도 띄우지 않는다
     if (s.done.contains(RoutineStep.words)) return;
     // 실수로 누른 평가는 3초 안에 되돌릴 수 있다
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          duration: const Duration(seconds: 3),
-          // 평가 버튼을 가리지 않도록 버튼 위에 띄운다
-          behavior: SnackBarBehavior.floating,
-          margin: const EdgeInsets.fromLTRB(20, 0, 20, 150),
-          content: Text('${words[rated].word} → ${_ratingLabel(r)}'),
-          action: SnackBarAction(
-            label: '되돌리기',
-            onPressed: () {
-              if (!mounted) return;
-              ref.read(studyProvider.notifier).undoWordRating(id);
-              if (mounted) setState(() => _index = rated);
-            },
-          ),
-        ),
-      );
+    _undoTimer?.cancel();
+    setState(() => _undo = (index: rated, id: id, text: '${words[rated].word} → ${_ratingLabel(r)}'));
+    _undoTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted) setState(() => _undo = null);
+    });
+  }
+
+  void _undoLast() {
+    final u = _undo;
+    if (u == null) return;
+    ref.read(studyProvider.notifier).undoWordRating(u.id);
+    _undoTimer?.cancel();
+    setState(() {
+      _index = u.index;
+      _revealed = false;
+      _undo = null;
+    });
   }
 
   static String _ratingLabel(SelfRating r) => switch (r) {
@@ -136,7 +133,35 @@ class _WordsScreenState extends ConsumerState<WordsScreen> with StudyScreenGuard
                 ),
               ),
               const SizedBox(height: 18),
-              Text('이 단어, 얼마나 알고 있었나요?', style: sans(13, color: context.colors.ink2)),
+              AnimatedSwitcher(
+                duration: motion(context, AppMotion.fast),
+                child: _undo == null
+                    ? Text('이 단어, 얼마나 알고 있었나요?', style: sans(13, color: context.colors.ink2))
+                    : Semantics(
+                        key: ValueKey(_undo),
+                        liveRegion: true,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  _undo!.text,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: sans(13, weight: FontWeight.w600, color: context.colors.ink),
+                                ),
+                              ),
+                              TextButton(
+                                onPressed: _undoLast,
+                                style: TextButton.styleFrom(foregroundColor: context.colors.penBlue),
+                                child: const Text('되돌리기'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+              ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
                 child: Row(
