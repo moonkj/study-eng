@@ -619,9 +619,10 @@ class StudyController extends Notifier<StudyState> {
 
   /// 다시 말하면 더 높은 점수를 남긴다 (낮게 나온 재시도가 앞의 좋은 점수를 지우지 않게)
   void recordSpeaking(Sentence s, String heard) {
-    // 끝낸 말하기를 다시 하는 것은 연습: 기록(완료 화면·평균)은 바꾸지 않는다
-    if (state.done.contains(RoutineStep.speaking)) return;
     final before = state.today.spoken[s.id];
+    // 끝낸 말하기를 다시 하는 것은 연습: 점수는 바꾸지 않는다.
+    // 다만 속으로만 따라 했던 문장을 저녁에 소리 내어 말한 것은 남긴다 (완료 기록은 이미 저장돼 바뀌지 않는다)
+    if (state.done.contains(RoutineStep.speaking) && before != kSilentAttempt) return;
     if (before != null &&
         before != kSilentAttempt &&
         scoreSpeech(s.en, before).score >= scoreSpeech(s.en, heard).score) {

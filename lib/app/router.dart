@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../core/theme/app_theme.dart';
 import '../core/layout/adaptive.dart';
 import '../core/theme/tokens.dart';
+import '../features/commute/commute_screen.dart';
 import '../features/complete/complete_screen.dart';
 import '../features/expression/expression_screen.dart';
 import '../features/home/home_screen.dart';
@@ -64,6 +65,7 @@ GoRouter buildRouter({String initialLocation = '/', bool Function()? isOnboarded
         _focused('/words', const WordsScreen()),
         _focused('/speaking', const SpeakingScreen()),
         _focused('/quiz', const QuizScreen()),
+        _focused('/commute', const CommuteScreen()),
         _focused('/complete', const CompleteScreen()),
         _focused('/review-session', const ReviewSessionScreen()),
         _focused('/level-test', const LevelTestScreen()),

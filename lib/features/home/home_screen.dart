@@ -11,6 +11,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/widgets.dart';
 import '../../domain/study_log.dart';
+import '../commute/commute_home.dart';
 
 const _weekdays = ['월', '화', '수', '목', '금', '토', '일'];
 
@@ -131,6 +132,7 @@ class HomeScreen extends ConsumerWidget {
         ),
         const SizedBox(height: 10),
         for (final step in RoutineStep.values) ...[_RoutineRow(step: step, state: s), const SizedBox(height: 8)],
+        const CommuteEntry(),
       ],
     );
 

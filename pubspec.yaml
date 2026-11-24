@@ -23,6 +23,9 @@ dependencies:
   flutter_local_notifications: ^23.0.3
   timezone: ^0.11.2
   flutter_timezone: ^5.1.1
+  record: ^7.2.0
+  audioplayers: ^6.8.1
+  path_provider: ^2.1.6
 
 dev_dependencies:
   flutter_test:
