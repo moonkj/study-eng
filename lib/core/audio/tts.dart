@@ -44,9 +44,10 @@ class DeviceSpeaker implements Speaker {
       // 말하기 연습 중 마이크가 바꾼 설정·모드도 매번 일반 재생으로 되돌린다.
       if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS && !_sessionReady) {
         await _tts.setSharedInstance(true);
+        // 읽기가 끝날 때 오디오를 끄지 않는다 (끄면 바로 이어 재생하는 내 녹음이 소리 없이 지나간다)
+        await _tts.autoStopSharedSession(false);
         await _tts.setIosAudioCategory(IosTextToSpeechAudioCategory.playback, [
           IosTextToSpeechAudioCategoryOptions.allowBluetoothA2DP,
-          IosTextToSpeechAudioCategoryOptions.duckOthers,
         ], IosTextToSpeechAudioMode.defaultMode);
         _sessionReady = true;
       }
