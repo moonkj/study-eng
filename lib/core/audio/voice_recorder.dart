@@ -29,15 +29,12 @@ class DeviceVoiceRecorder implements VoiceRecorder {
   AudioPlayer? _player;
   String? _path;
 
-  /// tts.dart 와 같은 오디오 설정 (playAndRecord + 스피커로): 재생 뒤에도 읽어 주기·음성 인식이 그대로 동작하게
+  /// tts.dart 와 같은 오디오 설정 (일반 재생): playAndRecord 는 통화용 음량 처리로 소리가 작아진다.
+  /// 녹음·음성 인식은 시작할 때 각자 마이크 설정으로 바꾼다.
   static final _audioContext = AudioContext(
     iOS: AudioContextIOS(
-      category: AVAudioSessionCategory.playAndRecord,
-      options: const {
-        AVAudioSessionOptions.defaultToSpeaker,
-        AVAudioSessionOptions.allowBluetooth,
-        AVAudioSessionOptions.allowBluetoothA2DP,
-      },
+      category: AVAudioSessionCategory.playback,
+      options: const {AVAudioSessionOptions.allowBluetoothA2DP},
     ),
   );
 

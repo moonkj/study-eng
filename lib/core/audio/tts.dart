@@ -32,20 +32,20 @@ class DeviceSpeaker implements Speaker {
   @override
   Future<void> speak(String text, {bool slow = false}) async {
     try {
-      // iOS: 기본 오디오 설정은 무음 모드(벨 스위치)에서 소리가 나지 않는다.
-      // 사용자가 직접 누른 듣기이므로 무음 모드에서도 스피커로 들리게 한다. 말하기 연습 중 마이크가 바꾼 설정도 매번 되돌린다.
+      // iOS: 기본 오디오 설정은 무음 모드(벨 스위치)에서 소리가 나지 않는다. 사용자가 직접 누른 듣기이므로 playback 으로 바꿔
+      // 무음 모드에서도 들리게 한다. playAndRecord(마이크용) 설정에서는 통화용 음량 처리로 소리가 작아지므로
+      // 말하기 연습 중 마이크가 바꾼 설정·모드도 매번 일반 재생으로 되돌린다.
       if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
         await _tts.setSharedInstance(true);
-        await _tts.setIosAudioCategory(IosTextToSpeechAudioCategory.playAndRecord, [
-          IosTextToSpeechAudioCategoryOptions.defaultToSpeaker,
-          IosTextToSpeechAudioCategoryOptions.allowBluetooth,
+        await _tts.setIosAudioCategory(IosTextToSpeechAudioCategory.playback, [
           IosTextToSpeechAudioCategoryOptions.allowBluetoothA2DP,
           IosTextToSpeechAudioCategoryOptions.duckOthers,
-        ]);
+        ], IosTextToSpeechAudioMode.defaultMode);
       }
       if (!_ready) {
         await _tts.setLanguage(_voice);
         await _tts.awaitSpeakCompletion(true);
+        await _tts.setVolume(1.0);
         _ready = true;
       }
       await _tts.stop();
