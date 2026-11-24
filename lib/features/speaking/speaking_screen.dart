@@ -12,14 +12,18 @@ import '../../data/models.dart';
 import '../../domain/korean_pron_tips.dart';
 import '../../domain/speech_score.dart';
 import '../../core/audio/tts.dart';
+import '../../core/audio/voice_recorder.dart';
 import 'speech_input.dart';
+import 'voice_compare.dart';
 
 class SpeakingScreen extends ConsumerStatefulWidget {
   /// [practice] 를 주면 그 문장들만 연습한다 (표현 화면의 '말해보기'). 진행률에는 기록하지 않는다.
-  const SpeakingScreen({super.key, this.practice, this.title = '예문 따라 말하기'});
+  /// [recordToday] 이면 연습 문장도 오늘 말하기 기록에 넣는다 (저녁 소리 내기: 속으로 따라 한 표시를 점수로 바꾼다).
+  const SpeakingScreen({super.key, this.practice, this.title = '예문 따라 말하기', this.recordToday = false});
 
   final List<Sentence>? practice;
   final String title;
+  final bool recordToday;
 
   @override
   ConsumerState<SpeakingScreen> createState() => _SpeakingScreenState();
@@ -64,6 +68,7 @@ class _SpeakingScreenState extends ConsumerState<SpeakingScreen> with StudyScree
     });
     if (_practice) {
       if (best == null || score.score > best.score) setState(() => _practiceResults[s.id] = score);
+      if (widget.recordToday) ref.read(studyProvider.notifier).recordSpeaking(s, heard);
     } else {
       ref.read(studyProvider.notifier).recordSpeaking(s, heard);
     }
@@ -104,6 +109,8 @@ class _SpeakingScreenState extends ConsumerState<SpeakingScreen> with StudyScree
       _error = null;
     });
     await ref.read(speakerProvider).stop();
+    // 비교용 녹음이 마이크를 잡고 있으면 먼저 놓는다
+    await ref.read(voiceRecorderProvider).reset();
     if (!mounted) return;
     final attempt = await input.listen(
       expected: s.en,
@@ -245,6 +252,8 @@ class _SpeakingScreenState extends ConsumerState<SpeakingScreen> with StudyScree
                       ),
                       const SizedBox(height: 12),
                       _TipCard(result: result),
+                      const SizedBox(height: 12),
+                      VoiceCompareCard(key: ValueKey('voice-${sentence.id}'), text: sentence.en, sayNative: sayRaw),
                     ] else
                       const _HintCard(listening: false),
                   ],

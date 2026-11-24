@@ -88,8 +88,10 @@ void main() {
     expect(find.text('좋은 아침이에요'), findsOneWidget);
     expect(find.text('계속 ~하려고 했어'), findsOneWidget);
     expect(find.text('오늘의 표현 3개'), findsOneWidget);
-    expect(find.text('B1.2'), findsOneWidget);
     expect(find.text('오늘 하면 13일'), findsOneWidget); // 어제까지 12일 연속, 오늘 아직
+    // 루틴 아래(출퇴근 모드 버튼 밑)의 레벨 카드까지 내린다
+    await tester.scrollUntilVisible(find.text('B1.2'), 200, scrollable: find.byType(Scrollable).first);
+    expect(find.text('B1.2'), findsOneWidget);
   });
 
   testWidgets('하루 루틴 전체를 끝내면 완료 화면과 내일 조정이 나온다', (tester) async {
@@ -234,8 +236,10 @@ void main() {
     await tester.tap(find.text('네, 간단한 대화는 돼요 (B1부터)'));
     await tester.pumpAndSettle();
     expect(find.text('오늘의 루틴'), findsOneWidget);
-    expect(find.text('B1.1'), findsOneWidget);
     expect(find.text('오늘부터 시작'), findsOneWidget);
+    // 루틴 아래(출퇴근 모드 버튼 밑)의 레벨 카드까지 내린다
+    await tester.scrollUntilVisible(find.text('B1.1'), 200, scrollable: find.byType(Scrollable).first);
+    expect(find.text('B1.1'), findsOneWidget);
   });
 
   testWidgets('레벨 진단 12문항을 마치면 결과 화면으로 간다', (tester) async {
