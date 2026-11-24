@@ -56,9 +56,9 @@
     },
     {
       "id": "s-2026-11-23-2",
-      "en": "Free refills here.",
-      "ko": "여기 리필 무료예요.",
-      "focus": "refill"
+      "en": "Could I get a refill, please?",
+      "ko": "리필 좀 해 주시겠어요?",
+      "focus": "Could I get"
     }
   ],
   "quiz": [
@@ -71,9 +71,10 @@
         "Could get I an iced latte?"
       ],
       "answerIndex": 0,
-      "explanation": "Could I get ~? 은 정중한 주문 표현이에요.",
+      "explanation": "Could I get ~? 은 조동사 뒤에 주어, 그다음 동사원형이에요. Could I get (O) / Could get I (X)",
       "reviewOf": null,
-      "itemId": "exp-could-i-get"
+      "itemId": "exp-could-i-get",
+      "errorType": "word_order"
     },
     {
       "id": "q-w-actually",
@@ -84,9 +85,41 @@
         "In actually I tired."
       ],
       "answerIndex": 1,
-      "explanation": "actually 는 문장 앞에서 '사실은'.",
+      "explanation": "'사실은'은 부사 actually 예요. Actually, I'm tired. (O) / Actual, I'm tired. (X)",
       "reviewOf": "w-actually",
-      "itemId": "w-actually"
+      "itemId": "w-actually",
+      "errorType": "word_choice"
     }
-  ]
+  ],
+  "dialogue": {
+    "title": "Coffee Break",
+    "episode": 3,
+    "cast": [
+      "Mina",
+      "Jake"
+    ],
+    "summary": "미나가 새 카페에서 주문하고 제이크에게 리필을 권한다.",
+    "lines": [
+      {
+        "speaker": "Mina",
+        "en": "Could I get an iced latte?",
+        "ko": "아이스 라떼 주시겠어요?"
+      },
+      {
+        "speaker": "Jake",
+        "en": "Make it two. I need caffeine.",
+        "ko": "두 잔이요. 카페인이 필요해."
+      },
+      {
+        "speaker": "Mina",
+        "en": "They do free refills here.",
+        "ko": "여기 리필 무료래."
+      },
+      {
+        "speaker": "Jake",
+        "en": "Could I get a refill, then?",
+        "ko": "그럼 리필 좀 받을 수 있을까?"
+      }
+    ]
+  }
 }

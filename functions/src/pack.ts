@@ -1,7 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 
-import { GeneratedPack, PackRequest } from "./schema.js";
+import { GeneratedPack, PackRequest, type ErrorType } from "./schema.js";
 
 export const MODEL = "claude-opus-5-5";
 
@@ -15,6 +15,7 @@ export const SYSTEM_PROMPT = `당신은 한국인 성인 학습자를 위한 실
 - 표현·단어·문장은 하나의 "상황"(예: 출근길 카페)으로 묶되, 같은 품사 단어는 4개 이하로 하고 동의어·반의어 쌍은 넣지 않습니다.
 - 단어 예문과 따라 말하기 문장에는 그 단어를 넣습니다. 자연스러우면 활용형(took, crowded, commutes)이나 분리된 구동사(figure it out)도 괜찮습니다.
 - 따라 말하기 문장과 퀴즈 문장은 표현·단어 예문을 그대로 쓰지 말고, 같은 상황의 새 문장으로 만듭니다.
+- 따라 말하기 문장 중 2~3개는 오늘 표현을 넣어 만들고, 그 문장의 focus 에는 그 표현의 highlight 를 그대로 씁니다. 나머지 문장의 focus 는 오늘 단어입니다.
 - 한국어 번역은 직역하지 말고 자연스러운 말투로 씁니다.
 
 발음 표기:
@@ -25,11 +26,18 @@ export const SYSTEM_PROMPT = `당신은 한국인 성인 학습자를 위한 실
 퀴즈 (한국어 문장을 보고 알맞은 영어 고르기, 3지선다):
 - 오답은 원어민이 들으면 확실히 틀린 문장이어야 합니다. 뜻만 다른 자연스러운 문장, 원어민도 쓰는 맞는 문장은 오답으로 쓰지 않습니다.
 - 오답은 한국인이 실제로 자주 하는 실수로 만듭니다: 한국어 직역(discuss about, reach to, arrive 뒤 전치사 누락), prefer A than B, 관사 누락, 3인칭 -s, 시제 일치, bored/boring 혼동, 어순, 콩글리시.
-- 해설에는 정답 이유와 함께 오답이 왜 틀렸는지(어떤 한국인 실수인지)를 씁니다.
+- 해설은 "규칙 + 대비 쌍"으로 씁니다: 규칙 한 문장 뒤에 맞는 형태와 틀린 형태를 나란히 보여 줍니다. (예: "arrive 뒤엔 at/in 이 필요해요. arrive at the station (O) / arrive the station (X)")
+- error_type 에는 오답 2개가 노리는 실수 유형을 하나 고릅니다: word_choice(단어 선택), grammar_form(시제·수 일치·-ed/-ing 등 형태), preposition(전치사), word_order(어순), collocation(함께 쓰는 말), meaning(뜻 혼동).
+- 오늘 표현 3개는 각각 퀴즈 1문항 이상에서 다루고, 그 문항의 tests 에 그 표현의 pattern 을 그대로 씁니다.
 - 복습 항목이 주어지면 항목마다 퀴즈 1문항을 만들고 review_of 에 그 id 를 넣습니다.
 
+시리즈 대화 (dialogue):
+- 같은 등장인물이 매일 이어 가는 짧은 시트콤 같은 대화입니다. 4~6줄, 한 줄은 짧게(12단어 이하) 씁니다.
+- 오늘 표현 3개 중 2개 이상을 highlight 그대로 대사에 넣습니다. 오늘 단어도 자연스러우면 섞습니다.
+- 시리즈 정보가 주어지면 그 제목과 등장인물(cast)만 쓰고, 지난 회 줄거리에서 자연스럽게 이어 갑니다. 없으면 새 제목과 등장인물 2명(영어 이름)을 정합니다.
+
 그 밖에:
-- 최근에 배운 표현·단어 목록에 있는 것은 다시 내지 않습니다.
+- 최근에 배운 표현·단어 목록에 있는 것은 다시 내지 않고, 최근 주제와 겹치지 않는 상황을 고릅니다.
 - 차별적이거나 민감한 내용은 넣지 않습니다.`;
 
 const SKILL_KO: Record<string, string> = {
@@ -37,6 +45,15 @@ const SKILL_KO: Record<string, string> = {
   grammar: "문장 구성",
   listening: "듣기",
   speaking: "말하기",
+};
+
+const ERROR_KO: Record<ErrorType, string> = {
+  word_choice: "단어 선택",
+  grammar_form: "문법 형태",
+  preposition: "전치사",
+  word_order: "어순",
+  collocation: "함께 쓰는 말",
+  meaning: "뜻 혼동",
 };
 
 export function buildUserPrompt(req: PackRequest): string {
@@ -55,6 +72,16 @@ export function buildUserPrompt(req: PackRequest): string {
           ? "문장 구성이 약하니 퀴즈 오답을 어순·시제 실수 위주로 만드세요."
           : "듣기가 약하니 연음이 자주 일어나는 자연스러운 문장을 섞으세요.";
 
+  const recentTopics = req.recentTopics?.length ? req.recentTopics.join(" | ") : "(없음)";
+  const topicLine = req.topicHint?.trim() ? `오늘 상황: ${req.topicHint.trim()} — 이 상황으로 주제를 정하세요.` : "오늘 상황: 자유 (최근 주제와 겹치지 않게)";
+  const weakLine = req.weakErrorTypes?.length
+    ? `자주 틀리는 오답 유형: ${req.weakErrorTypes.map((t) => `${t}(${ERROR_KO[t]})`).join(", ")} — 오늘 내용 퀴즈 2~3문항은 이 유형을 노린 오답으로 만들고 error_type 도 그 유형으로 적으세요.`
+    : "자주 틀리는 오답 유형: (아직 없음)";
+  const s = req.series;
+  const seriesLine = s
+    ? `시리즈 대화: 제목 "${s.title}", ${s.episode}회, 등장인물 ${s.cast.join(", ")}${s.lastSummary ? `\n지난 회 줄거리: ${s.lastSummary}` : ""}`
+    : "시리즈 대화: 새 시리즈 1회 (제목과 등장인물 2명을 새로 정하세요)";
+
   return `날짜: ${req.date}
 학습자 전체 레벨: ${req.level} / 영역별: ${skills}
 오늘 콘텐츠 난이도: ${req.contentLevel}
@@ -63,6 +90,10 @@ export function buildUserPrompt(req: PackRequest): string {
 
 최근에 배운 표현 (다시 내지 마세요): ${req.avoid.expressions.join(" | ") || "(없음)"}
 최근에 배운 단어 (다시 내지 마세요): ${req.avoid.words.join(", ") || "(없음)"}
+최근 주제 (겹치지 마세요): ${recentTopics}
+${topicLine}
+${weakLine}
+${seriesLine}
 
 오늘 복습할 항목:
 ${review}
@@ -183,6 +214,27 @@ export function containsWord(sentence: string, word: string, pos = ""): boolean 
   return re.test(sentence.replace(/[’]/g, "'"));
 }
 
+/**
+ * 문장에 표현의 highlight 가 들어 있는지. 대소문자·굽은 따옴표·공백 차이와 끝 구두점은 무시하고,
+ * highlight 에 ~ 가 있으면 그 앞뒤 조각이 순서대로 나오는지 본다.
+ */
+export function containsPhrase(sentence: string, highlight: string): boolean {
+  const norm = (t: string) => t.toLowerCase().replace(/[’‘]/g, "'").replace(/\s+/g, " ");
+  const text = norm(sentence);
+  const parts = norm(highlight)
+    .split("~")
+    .map((p) => p.trim().replace(/^[\s.,!?]+|[\s.,!?]+$/g, ""))
+    .filter(Boolean);
+  if (parts.length === 0) return false;
+  let from = 0;
+  for (const part of parts) {
+    const at = text.indexOf(part, from);
+    if (at < 0) return false;
+    from = at + part.length;
+  }
+  return true;
+}
+
 /** 스키마로는 표현할 수 없는 규칙을 검사한다. 문제가 없으면 빈 배열. */
 export function validatePack(pack: GeneratedPack, req: PackRequest): string[] {
   const problems: string[] = [];
@@ -205,7 +257,11 @@ export function validatePack(pack: GeneratedPack, req: PackRequest): string[] {
   }
   const wordExamples = new Set(pack.words.map((w) => lower(w.example.en.trim())));
   for (const s of pack.sentences) {
-    if (!words.has(lower(s.focus))) problems.push(`문장 "${s.en}" 의 focus "${s.focus}" 가 오늘 단어가 아닙니다`);
+    // focus 는 오늘 단어이거나 오늘 표현의 highlight
+    const exp = pack.expressions.find((e) => lower(e.highlight.trim()) === lower(s.focus.trim()));
+    if (exp) {
+      if (!containsPhrase(s.en, exp.highlight)) problems.push(`문장 "${s.en}" 에 표현 "${exp.highlight}" 가 들어있지 않습니다`);
+    } else if (!words.has(lower(s.focus))) problems.push(`문장 "${s.en}" 의 focus "${s.focus}" 가 오늘 단어나 표현 highlight 가 아닙니다`);
     else if (!containsWord(s.en, s.focus, pack.words.find((w) => lower(w.word) === lower(s.focus))?.pos_en)) problems.push(`문장 "${s.en}" 에 "${s.focus}" 가 들어있지 않습니다`);
     if (wordExamples.has(lower(s.en.trim()))) problems.push(`따라 말하기 문장 "${s.en}" 이 단어 예문과 똑같습니다. 새 문장으로 만들어 주세요`);
   }
@@ -245,9 +301,50 @@ export function validatePack(pack: GeneratedPack, req: PackRequest): string[] {
   if (new Set(reviewOfs).size !== reviewOfs.length) problems.push("같은 복습 항목의 퀴즈가 두 번 나왔습니다. 항목마다 1문항만 만들어 주세요");
   const reviewQuizzes = new Set(pack.quiz.map((q) => q.review_of).filter(Boolean));
   for (const id of reviewIds) if (!reviewQuizzes.has(id)) problems.push(`복습 항목 ${id} 의 퀴즈가 없습니다`);
-  const todayQuizzes = pack.quiz.filter((q) => !q.review_of).length;
+  const todayQuiz = pack.quiz.filter((q) => !q.review_of);
+  const todayQuizzes = todayQuiz.length;
   if (todayQuizzes < 5 || todayQuizzes > 8) problems.push(`오늘 내용 퀴즈는 6문항 정도여야 합니다 (현재 ${todayQuizzes})`);
 
+  // 표현마다 퀴즈 1문항 이상 (tests 로 연결된 itemId 기준: 앱이 틀린 표현의 복습을 당길 수 있게)
+  const ids = itemIdMap(pack);
+  const quizzed = new Set(todayQuiz.map((q) => findItemId(pack, q.tests, ids)));
+  for (const e of pack.expressions) {
+    if (!quizzed.has(`exp-${slug(e.pattern)}`))
+      problems.push(`표현 "${e.pattern}" 의 퀴즈가 없습니다. 이 표현을 다루는 문항을 만들고 tests 에 pattern 을 그대로 써 주세요`);
+  }
+
+  // 약한 오답 유형을 노린 문항이 2개 이상
+  const weak = new Set(req.weakErrorTypes ?? []);
+  if (weak.size) {
+    const n = todayQuiz.filter((q) => weak.has(q.error_type)).length;
+    if (n < 2) problems.push(`오답 유형 ${[...weak].join(", ")} 을(를) 노린 퀴즈가 ${n}문항입니다. 2~3문항으로 만들어 주세요`);
+  }
+
+  const recent = new Set((req.recentTopics ?? []).map((t) => t.replace(/\s+/g, "")));
+  if (recent.has(pack.topic.replace(/\s+/g, ""))) problems.push(`주제 "${pack.topic}" 는 최근에 다룬 주제입니다. 다른 상황으로 바꿔 주세요`);
+
+  problems.push(...validateDialogue(pack, req));
+
+  return problems;
+}
+
+/** 시리즈 대화: 4~6줄, 표현 highlight 2개 이상(표현이 2개 미만이면 전부), 시리즈가 있으면 등장인물 고정 */
+function validateDialogue(pack: GeneratedPack, req: PackRequest): string[] {
+  const problems: string[] = [];
+  const d = pack.dialogue;
+  if (d.lines.length < 4 || d.lines.length > 6) problems.push(`dialogue 는 4~6줄이어야 합니다 (현재 ${d.lines.length}줄)`);
+  const all = d.lines.map((l) => l.en).join("\n");
+  const used = pack.expressions.filter((e) => containsPhrase(all, e.highlight)).length;
+  const need = Math.min(2, pack.expressions.length);
+  if (used < need) problems.push(`dialogue 에 오늘 표현이 ${used}개만 들어 있습니다. highlight 그대로 ${need}개 이상 넣어 주세요`);
+  const cast = req.series?.cast;
+  if (cast) {
+    const names = new Set(cast.map((c) => c.trim().toLowerCase()));
+    const strangers = [...new Set(d.lines.map((l) => l.speaker.trim()).filter((sp) => !names.has(sp.toLowerCase())))];
+    if (strangers.length) problems.push(`dialogue 에 시리즈 등장인물(${cast.join(", ")})이 아닌 사람이 나옵니다: ${strangers.join(", ")}`);
+  } else if (new Set(d.lines.map((l) => l.speaker.trim().toLowerCase())).size < 2) {
+    problems.push("dialogue 에는 등장인물이 2명 이상 나와야 합니다");
+  }
   return problems;
 }
 
@@ -274,13 +371,18 @@ function findItemId(pack: GeneratedPack, tests: string, itemIds: Map<string, str
   return e ? `exp-${slug(e.pattern)}` : null;
 }
 
-/** 앱의 DailyPack JSON 형식으로 바꾼다. id 는 내용에서 만들어 날짜가 달라도 같은 단어는 같은 복습 카드가 된다. */
-export function toAppPack(pack: GeneratedPack, req: PackRequest) {
-  // tests 를 slug 로 맞춘다 (물음표·대소문자·공백 차이로 itemId 가 빠지지 않게)
-  const itemIds = new Map<string, string>([
+/** 오늘 항목 slug → 앱 id. tests 를 slug 로 맞춘다 (물음표·대소문자·공백 차이로 itemId 가 빠지지 않게) */
+function itemIdMap(pack: GeneratedPack): Map<string, string> {
+  return new Map<string, string>([
     ...pack.expressions.map((e) => [slug(e.pattern), `exp-${slug(e.pattern)}`] as [string, string]),
     ...pack.words.map((w) => [slug(w.word), `w-${slug(w.word)}`] as [string, string]),
   ]);
+}
+
+/** 앱의 DailyPack JSON 형식으로 바꾼다. id 는 내용에서 만들어 날짜가 달라도 같은 단어는 같은 복습 카드가 된다. */
+export function toAppPack(pack: GeneratedPack, req: PackRequest) {
+  const itemIds = itemIdMap(pack);
+  const d = pack.dialogue;
   return {
     date: req.date,
     topic: pack.topic,
@@ -318,7 +420,16 @@ export function toAppPack(pack: GeneratedPack, req: PackRequest) {
       reviewOf: q.review_of || null,
       // 이 문제를 틀리면 복습 일정이 당겨질 표현·단어
       itemId: q.review_of || findItemId(pack, q.tests, itemIds),
+      errorType: q.error_type,
     })),
+    // 시리즈가 있으면 제목·회차는 요청 그대로 (Claude 가 바꿔 쓰지 않게), 없으면 새 시리즈 1회
+    dialogue: {
+      title: req.series?.title ?? d.title,
+      episode: req.series?.episode ?? 1,
+      cast: req.series?.cast ?? [...new Set(d.lines.map((l) => l.speaker.trim()))],
+      summary: d.summary,
+      lines: d.lines.map((l) => ({ speaker: l.speaker.trim(), en: l.en, ko: l.ko })),
+    },
   };
 }
 

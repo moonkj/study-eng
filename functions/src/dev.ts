@@ -2,12 +2,13 @@
  * 로컬 개발 서버: 배포 없이 앱과 연결해 보기.
  *   ANTHROPIC_API_KEY=... APP_TOKEN=dev-token npm run dev
  *   flutter run --dart-define=CONTENT_API_URL=http://localhost:8787/dailyPack --dart-define=CONTENT_API_TOKEN=dev-token
+ * 경로: POST /dailyPack (학습 팩), POST /correct ('내 상황으로 말하기' 교정)
  */
 import { createServer } from "node:http";
 
 import Anthropic from "@anthropic-ai/sdk";
 
-import { handleDailyPack } from "./handler.js";
+import { handleCorrect, handleDailyPack } from "./handler.js";
 
 const port = Number(process.env.PORT ?? 8787);
 const appToken = process.env.APP_TOKEN ?? "";
@@ -27,7 +28,8 @@ createServer(async (req, res) => {
     res.writeHead(204).end();
     return;
   }
-  if (req.url !== "/dailyPack") {
+  const handle = req.url === "/dailyPack" ? handleDailyPack : req.url === "/correct" ? handleCorrect : null;
+  if (!handle) {
     res.writeHead(404).end();
     return;
   }
@@ -40,7 +42,7 @@ createServer(async (req, res) => {
     // 잘못된 JSON 은 handler 에서 400 으로 처리된다
   }
   try {
-    const result = await handleDailyPack({
+    const result = await handle({
       method: req.method ?? "GET",
       authorization: req.headers.authorization,
       body,
@@ -53,4 +55,4 @@ createServer(async (req, res) => {
     console.error(e);
     res.writeHead(500).end(JSON.stringify({ error: "internal error" }));
   }
-}).listen(port, () => console.log(`todaye dev server: http://localhost:${port}/dailyPack`));
+}).listen(port, () => console.log(`todaye dev server: http://localhost:${port}/dailyPack, /correct`));
