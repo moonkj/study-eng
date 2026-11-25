@@ -529,9 +529,12 @@ class _ToeicCard extends StatelessWidget {
                 ),
               ),
           if (ready)
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton(onPressed: () => context.push('/toeic-mock'), child: const Text('모의고사 보기')),
+            Wrap(
+              spacing: 8,
+              children: [
+                TextButton(onPressed: () => context.push('/toeic-mock'), child: const Text('모의고사 보기')),
+                TextButton(onPressed: () => context.push('/toeic'), child: const Text('유형별로 연습하기')),
+              ],
             ),
         ],
       ),

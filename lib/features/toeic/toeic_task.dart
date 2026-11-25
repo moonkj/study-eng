@@ -228,6 +228,41 @@ List<ToeicTask> dailyTasks(ToeicDailySet set, ToeicTier tier) => [
   },
 ];
 
+/// 토스 허브 '한 문항 연습': [type] 유형 문항 하나 (목표 단계).
+/// 날짜마다 다른 자리에서 시작하고, [avoid] 에 든 문항(오늘 루틴·모의고사·이번에 연습한 문항)은 건너뛴다.
+ToeicTask practiceTask(
+  ToeicBank bank,
+  ToeicTaskType type,
+  ToeicTarget target,
+  DateTime date, {
+  Set<String> avoid = const {},
+}) {
+  final tier = target.tier;
+  // 오늘의 세트(d번째 자리)와 다른 자리에서 시작한다
+  final n = dayIndexOf(date) + 1;
+  return switch (type) {
+    ToeicTaskType.readAloud => readAloudTask(
+      practicePick(bank.readAloud, (e) => e.level, (e) => e.id, tier, n, avoid: avoid),
+    ),
+    ToeicTaskType.picture => pictureTask(
+      practicePick(bank.pictures, (e) => e.level, (e) => e.id, tier, n, avoid: avoid),
+      tier,
+    ),
+    ToeicTaskType.respond => respondTask(
+      practicePick(bank.questions, (e) => e.level, (e) => e.id, tier, n, avoid: avoid),
+      tier,
+    ),
+    ToeicTaskType.info => infoTask(
+      practicePick(bank.infoTables, (e) => e.level, (e) => e.id, tier, n, avoid: avoid),
+      tier,
+    ),
+    ToeicTaskType.opinion => opinionTask(
+      practicePick(bank.opinions, (e) => e.level, (e) => e.id, tier, n, avoid: avoid),
+      tier,
+    ),
+  };
+}
+
 /// 모의고사 11문항 (묶음 7개)
 List<ToeicTask> mockTasks(ToeicMockSet set, ToeicTier tier) => [
   readAloudTask(set.readAloud[0], number: 1),

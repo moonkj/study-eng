@@ -426,3 +426,22 @@ ToeicMockSet mockSetFor(ToeicBank bank, DateTime date, ToeicTarget target) {
     opinion: pickFor(bank.opinions, (e) => e.level, tier, d),
   );
 }
+
+/// 토스 허브 '한 문항 연습'에 쓸 문항: 목표 단계 문항 중 [n] 번째 자리부터 돌며 [avoid] 에 없는 첫 문항.
+/// [avoid] 에는 오늘 루틴·모의고사 문항과 이번에 이미 연습한 문항을 넣는다 (최근에 한 문항이 바로 다시 나오지 않게).
+/// 모두 피할 문항이면 [n] 번째 자리 문항을 그대로 쓴다.
+T practicePick<T>(
+  List<T> items,
+  ToeicTier Function(T) levelOf,
+  String Function(T) idOf,
+  ToeicTier tier,
+  int n, {
+  Set<String> avoid = const {},
+}) {
+  final pool = poolFor(items, levelOf, tier);
+  for (var i = 0; i < pool.length; i++) {
+    final item = pool[(n + i) % pool.length];
+    if (!avoid.contains(idOf(item))) return item;
+  }
+  return pool[n % pool.length];
+}
