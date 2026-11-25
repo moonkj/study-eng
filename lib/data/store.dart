@@ -279,6 +279,7 @@ class SavedData {
     this.series,
     this.mocks = const [],
     this.toeicLog = const {},
+    this.updatedAt,
   });
 
   final LearnerProfile profile;
@@ -307,7 +308,42 @@ class SavedData {
   /// 토스 루틴 점수 (날짜 → 유형 → 점수, 최근 60일). 약점 유형을 찾는 데 쓴다.
   final Map<String, Map<String, int>> toeicLog;
 
+  /// 마지막으로 저장한 시각 (ms, 기기 간 동기화에서 어느 쪽이 최신인지 가린다). 예전 데이터는 null
+  final int? updatedAt;
+
   static const version = 1;
+
+  SavedData copyWith({
+    LearnerProfile? profile,
+    int? contentStep,
+    bool? onboarded,
+    Map<String, DayRecord>? log,
+    Map<String, ReviewCard>? cards,
+    TodayProgress? Function()? today,
+    List<String>? lastReasons,
+    Map<String, Map<String, Object?>>? packs,
+    Map<String, LearnedItem>? learned,
+    AppSettings? settings,
+    SeriesState? Function()? series,
+    List<MockResult>? mocks,
+    Map<String, Map<String, int>>? toeicLog,
+    int? updatedAt,
+  }) => SavedData(
+    profile: profile ?? this.profile,
+    contentStep: contentStep ?? this.contentStep,
+    onboarded: onboarded ?? this.onboarded,
+    log: log ?? this.log,
+    cards: cards ?? this.cards,
+    today: today == null ? this.today : today(),
+    lastReasons: lastReasons ?? this.lastReasons,
+    packs: packs ?? this.packs,
+    learned: learned ?? this.learned,
+    settings: settings ?? this.settings,
+    series: series == null ? this.series : series(),
+    mocks: mocks ?? this.mocks,
+    toeicLog: toeicLog ?? this.toeicLog,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
 
   Map<String, Object?> toJson() => {
     'v': version,
@@ -324,6 +360,7 @@ class SavedData {
     if (series != null) 'series': series!.toJson(),
     if (mocks.isNotEmpty) 'mocks': [for (final m in mocks) m.toJson()],
     if (toeicLog.isNotEmpty) 'toeicLog': toeicLog,
+    'updatedAt': ?updatedAt,
   };
 
   /// 섹션별로 따로 읽는다. 기록·카드·팩 중 하나가 깨져도 나머지(특히 레벨과 연속 기록)는 살린다.
@@ -409,6 +446,7 @@ class SavedData {
         },
         const {},
       ),
+      updatedAt: section(() => (j['updatedAt'] as num?)?.toInt(), null),
     );
   }
 }

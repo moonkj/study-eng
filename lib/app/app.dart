@@ -9,6 +9,8 @@ import '../core/theme/app_theme.dart';
 import '../core/theme/tokens.dart';
 import 'router.dart';
 import 'study_controller.dart';
+import '../data/store.dart';
+import '../data/sync.dart';
 
 class TodayeApp extends ConsumerStatefulWidget {
   const TodayeApp({super.key, this.initialLocation = '/'});
@@ -43,8 +45,21 @@ class _TodayeAppState extends ConsumerState<TodayeApp> {
   void initState() {
     super.initState();
     // 다음 날 앱으로 돌아오면 오늘 기준으로 새로 고친다
+    final store = ref.read(storeProvider);
+    if (store is SyncedStore) {
+      // 다른 기기의 기록을 합쳐 저장소가 바뀌면 화면 상태를 저장소에서 다시 읽는다
+      store.onRemoteChange = () {
+        if (mounted) ref.invalidate(studyProvider);
+      };
+    }
     _lifecycle = AppLifecycleListener(
+      // 백그라운드로 가기 전에 바로 올려 둔다 (다른 기기에서 이어서 할 수 있게)
+      onHide: () {
+        if (store is SyncedStore) unawaited(store.flush());
+      },
       onResume: () {
+        // 다른 기기에서 한 것을 받아 온다
+        if (store is SyncedStore) unawaited(store.pull().catchError((_) => false));
         _checkDay();
         // 잠든 동안 타이머가 밀렸을 수 있으므로 다시 잡고, 휴대폰 설정에서 알림 권한을 바꿨을 수 있으니 다시 확인한다
         _scheduleMidnight();
