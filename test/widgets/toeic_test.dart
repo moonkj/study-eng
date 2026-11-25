@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
@@ -45,11 +46,46 @@ class ScriptedSpeech implements SpeechInput {
   }
 }
 
+/// 테스트가 [say] 로 말을 이어 붙이는 가짜 음성 인식 (말한 시간을 길게 만들 때)
+class ManualSpeech implements SpeechInput {
+  void Function(String partial)? _onPartial;
+  Completer<SpeechAttempt>? _pending;
+  String _text = '';
+
+  /// 따라 말하기처럼 문장 하나를 들을 때는 그 문장을 그대로 말한다
+  bool echo = false;
+
+  void say(String text) {
+    _text = text;
+    _onPartial?.call(text);
+  }
+
+  @override
+  Future<SpeechAttempt> listen({
+    required String expected,
+    bool hint = false,
+    void Function(String partial)? onPartial,
+  }) {
+    _onPartial = onPartial;
+    if (echo) _text = expected;
+    return (_pending = Completer<SpeechAttempt>()).future;
+  }
+
+  @override
+  Future<void> stop() async {
+    final p = _pending;
+    if (p == null || p.isCompleted) return;
+    p.complete(_text.isEmpty ? const SpeechAttempt.failed('없음') : SpeechAttempt.heard(_text));
+  }
+}
+
 class FakeGrade implements GradeSource {
-  FakeGrade({this.points});
+  FakeGrade({this.points, this.targetMet = true, this.improved = ''});
 
   /// 유형별 원점수를 따로 줄 때 (없으면 모두 8/10)
   final GradeResult Function(ToeicTaskType task)? points;
+  final bool targetMet;
+  final String improved;
   final calls = <(ToeicTaskType, String)>[];
 
   @override
@@ -64,13 +100,14 @@ class FakeGrade implements GradeSource {
   }) async {
     calls.add((task, target));
     if (points != null) return points!(task);
-    return const GradeResult(
+    return GradeResult(
       score: 8,
       maxScore: 10,
       level: 'IH',
       summaryKo: '전달이 분명해요',
-      fixes: [GradeFix(from: 'a woman drink', to: 'a woman is drinking', whyKo: '진행형')],
-      targetMet: true,
+      fixes: const [GradeFix(from: 'a woman drink', to: 'a woman is drinking', whyKo: '진행형')],
+      improved: improved,
+      targetMet: targetMet,
     );
   }
 }
@@ -148,10 +185,23 @@ void main() {
     await _seconds(tester, 45);
     await tester.pumpAndSettle();
 
+    // 요약 띠: 기기 점수(등급은 보이지 않는다) + 고칠 것 1개
+    expect(find.text('100점'), findsOneWidget);
+    expect(find.text('알아들은 단어 비율로 센 대략의 점수예요'), findsOneWidget);
+    expect(find.text('시간이 끝날 때까지 이어서 말해 보세요'), findsOneWidget);
+    // 질문 카드는 접혀 있다
+    expect(find.text('"Welcome to City Library. We are open from nine to six."'), findsNothing);
+    await tester.tap(find.text('자세히 보기'));
+    await tester.pumpAndSettle();
+    expect(find.text('들린 대로'), findsOneWidget);
     expect(find.text('"Welcome to City Library. We are open from nine to six."'), findsOneWidget);
-    expect(find.textContaining('1초 / 45초 동안 말함 · 단어 11개 · 원문과 100% 일치'), findsOneWidget);
+    expect(find.textContaining('1초 / 45초 동안 말함 · 단어 11개 · 알아들은 단어 100%'), findsOneWidget);
+    expect(find.textContaining('원문과'), findsNothing);
+    await tester.scrollUntilVisible(find.text('· 쉼표에서 잠깐 쉬어요.'), 200, scrollable: find.byType(Scrollable).first);
     expect(find.text('· 쉼표에서 잠깐 쉬어요.'), findsOneWidget);
-    expect(find.text('다시 하기'), findsOneWidget);
+    // 말한 시간이 짧았으므로 다시 말하기가 주 버튼
+    expect(find.widgetWithText(FilledButton, '고친 걸로 다시 말하기'), findsOneWidget);
+    expect(find.widgetWithText(OutlinedButton, '다음'), findsOneWidget);
     await tester.tap(find.text('다음'));
     await tester.pumpAndSettle();
     final s = _c(tester).read(studyProvider);
@@ -191,8 +241,9 @@ void main() {
     await tester.tap(find.text('다 말했어요'));
     await tester.pumpAndSettle();
 
+    await tester.tap(find.text('자세히 보기'));
+    await tester.pumpAndSettle();
     expect(find.text('핵심 표현 1/2개 사용'), findsOneWidget);
-    expect(find.text('사진 단어 · sip 홀짝이다'), findsOneWidget);
     expect(find.text('모범 답안'), findsOneWidget);
     expect(find.text('This picture was taken in a cafe. A woman is drinking coffee.'), findsOneWidget);
     expect(find.textContaining('/ 30초 동안 말함'), findsOneWidget);
@@ -202,12 +253,16 @@ void main() {
     await tester.tap(play);
     expect(speaker.spoken.last.$1, 'This picture was taken in a cafe. A woman is drinking coffee.');
     expect(find.text('채점하는 중'), findsNothing);
+    await tester.scrollUntilVisible(find.text('사진 단어 · sip 홀짝이다'), 200, scrollable: find.byType(Scrollable).first);
+    expect(find.text('사진 단어 · sip 홀짝이다'), findsOneWidget);
 
-    // 다시 하기: 처음부터 다시
-    await tester.tap(find.text('다시 하기'));
+    // 고친 걸로 다시 말하기: 같은 문항을 처음부터, 고칠 것을 띄워 둔 채로
+    await tester.tap(find.text('고친 걸로 다시 말하기'));
     await tester.pump();
     await tester.pump();
     expect(find.text('Q3 · 준비 시간'), findsOneWidget);
+    expect(find.text('이번에 고칠 것'), findsOneWidget);
+    expect(find.text('시간이 끝날 때까지 이어서 말해 보세요'), findsOneWidget);
   });
 
   testWidgets('서버가 있으면 채점 결과를 보여 주고 목표 등급을 보낸다', (tester) async {
@@ -235,12 +290,20 @@ void main() {
     await _seconds(tester, 30);
     await tester.pumpAndSettle();
     expect(grade.calls.single, (ToeicTaskType.picture, 'IH'));
+    // 요약 띠: 점수 · 등급(목표 이상이면 체크) · 목표 대비 · 고칠 것 1개
     expect(find.text('8/10'), findsOneWidget);
-    expect(find.text('전달이 분명해요'), findsOneWidget);
-    expect(find.text('목표 수준'), findsOneWidget);
+    expect(find.text('IH'), findsWidgets);
+    expect(find.text('목표 IH 수준'), findsOneWidget);
     expect(find.textContaining('a woman is drinking', findRichText: true), findsOneWidget);
-    // IH 목표: IH 모범 답안
-    expect(find.text('This photo shows an open-plan office.'), findsOneWidget);
+    expect(find.text('진행형'), findsOneWidget);
+    // 채점 세부는 카드를 펼쳐야 보인다
+    expect(find.text('전달이 분명해요'), findsNothing);
+    await tester.tap(find.text('자세히 보기'));
+    await tester.pumpAndSettle();
+    expect(find.text('전달이 분명해요'), findsOneWidget);
+    expect(find.text('채점 8/10'), findsOneWidget);
+    // IH 목표: IH 모범 답안 (카드 + 따라 하기)
+    expect(find.text('This photo shows an open-plan office.'), findsWidgets);
     await tester.tap(find.text('다음'));
     await tester.pumpAndSettle();
     final r = _c(tester).read(studyProvider).today.toeic['pic-ih']!;
@@ -310,8 +373,8 @@ void main() {
       if (title.startsWith('Q5')) {
         // 실제 시험처럼 질문은 화면에도 나왔고, 결과에서 질문별로 다시 본다
         expect(find.text('How often do you watch movies?'), findsOneWidget);
-        await tester.scrollUntilVisible(find.text('Q7'), 200, scrollable: find.byType(Scrollable).first);
-        expect(find.text('Q7'), findsOneWidget);
+        await tester.scrollUntilVisible(find.text('Q7').first, 200, scrollable: find.byType(Scrollable).first);
+        expect(find.text('Q7'), findsWidgets);
       }
       await tester.scrollUntilVisible(find.text('다음'), 200, scrollable: find.byType(Scrollable).first);
       await tester.tap(find.text('다음'));
@@ -432,6 +495,197 @@ void main() {
     expect(s.toeicTarget, ToeicTarget.al);
     expect(s.contentStep, 11);
     expect(find.text('AL · 180점'), findsOneWidget);
+  });
+
+  testWidgets('결과(질문 묶음): 요약 띠 · 카드는 접혀 있고 하나만 펼침 · 목표 미달이면 고친 걸로 다시 말하기가 주 버튼', (tester) async {
+    await setPhone(tester);
+    final semantics = tester.ensureSemantics();
+    await tester.pumpWidget(
+      _app(
+        initial: '/toeic-today',
+        grade: FakeGrade(targetMet: false),
+        store: MemoryStore(
+          _seeded(
+            today: const TodayProgress(date: '2026-11-22', toeic: {'ra-1': _ra, 'pic-1': _ra}),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Q5-7 질문에 답하기'), findsOneWidget);
+    await tester.tap(find.text('시작'));
+    for (var t = 0; t < 3; t++) {
+      await tester.pump();
+      await tester.pump();
+      await tester.tap(find.text('준비 끝 · 바로 말하기'));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 2));
+      await tester.tap(find.text('다 말했어요'));
+      await tester.pump();
+      await tester.pump();
+    }
+    await tester.pumpAndSettle();
+
+    // ① 요약 띠: 묶음 점수 · 목표 대비(아이콘과 글로) · 고칠 것 1개
+    final strip = find.byKey(const ValueKey('toeic-summary'));
+    expect(find.descendant(of: strip, matching: find.text('8/10')), findsOneWidget);
+    expect(find.descendant(of: strip, matching: find.text('목표 IM3까지 조금 더')), findsOneWidget);
+    expect(find.descendant(of: strip, matching: find.byIcon(Icons.trending_up_rounded)), findsOneWidget);
+    expect(find.descendant(of: strip, matching: find.text('고칠 것 1개')), findsOneWidget);
+    expect(find.bySemanticsLabel('고칠 말: a woman drink. 이렇게: a woman is drinking'), findsOneWidget);
+    // CEFR 같은 다른 등급 표기는 없다
+    expect(find.textContaining(RegExp(r'\b(A1|A2|B1|B2|C1|C2)\b')), findsNothing);
+
+    // ② 카드 셋은 모두 접혀 있다
+    expect(find.text('들린 대로'), findsNothing);
+    expect(find.bySemanticsLabel('Q5 자세히 보기'), findsOneWidget);
+    expect(find.bySemanticsLabel('Q6 자세히 보기'), findsOneWidget);
+    await tester.tap(find.text('Q5').first);
+    await tester.pumpAndSettle();
+    expect(find.text('들린 대로'), findsOneWidget);
+    expect(find.bySemanticsLabel('Q5 자세히 접기'), findsOneWidget);
+    // 다른 카드를 펼치면 먼저 펼친 카드는 접힌다
+    final q6 = find.descendant(of: find.byKey(const ValueKey('turn-6')), matching: find.text('Q6'));
+    await tester.scrollUntilVisible(q6, 100, scrollable: find.byType(Scrollable).first);
+    await tester.ensureVisible(q6);
+    await tester.pumpAndSettle();
+    await tester.tap(q6);
+    await tester.pumpAndSettle();
+    Finder header(String label) =>
+        find.byWidgetPredicate((w) => w is Semantics && w.properties.label == label, skipOffstage: false);
+    expect(find.text('들린 대로', skipOffstage: false), findsOneWidget);
+    expect(header('Q6 자세히 접기'), findsOneWidget);
+    await tester.scrollUntilVisible(header('Q5 자세히 보기'), -100, scrollable: find.byType(Scrollable).first);
+    expect(header('Q5 자세히 보기'), findsOneWidget);
+    expect(find.text('들린 대로', skipOffstage: false), findsOneWidget);
+
+    // ④ 목표 미달: 고친 걸로 다시 말하기(주) / 다음(보조)
+    expect(find.widgetWithText(FilledButton, '고친 걸로 다시 말하기'), findsOneWidget);
+    expect(find.widgetWithText(OutlinedButton, '다음'), findsOneWidget);
+    await tester.tap(find.text('고친 걸로 다시 말하기'));
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('Q5 · 준비 시간'), findsOneWidget);
+    expect(find.text('이번에 고칠 것'), findsOneWidget);
+    expect(_c(tester).read(studyProvider).today.toeic.containsKey('q-1'), isFalse);
+    semantics.dispose();
+  });
+
+  testWidgets('결과: 목표 수준이고 시간을 채웠으면 다음이 주 버튼, 다듬은 답을 문장마다 듣고 따라 말한다', (tester) async {
+    await setPhone(tester);
+    final speech = ManualSpeech();
+    final speaker = FakeSpeaker();
+    await tester.pumpWidget(
+      _app(
+        initial: '/toeic-today',
+        speech: speech,
+        speaker: speaker,
+        grade: FakeGrade(improved: 'A woman is drinking coffee. She looks relaxed.'),
+        store: MemoryStore(
+          _seeded(
+            today: const TodayProgress(date: '2026-11-22', toeic: {'ra-1': _ra}),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('시작'));
+    await tester.pump();
+    await tester.pump();
+    await tester.tap(find.text('준비 끝 · 바로 말하기'));
+    await tester.pump();
+    await tester.pump();
+    speech.say('This picture was taken in a cafe');
+    await _seconds(tester, 25);
+    speech.say('This picture was taken in a cafe and a woman is drinking coffee');
+    await _seconds(tester, 5);
+    await tester.pumpAndSettle();
+
+    expect(find.text('목표 IM3 수준'), findsOneWidget);
+    expect(find.widgetWithText(FilledButton, '다음'), findsOneWidget);
+    expect(find.widgetWithText(TextButton, '다시 하기'), findsOneWidget);
+    expect(find.text('고친 걸로 다시 말하기'), findsNothing);
+
+    // ③ 다듬은 답 따라 하기: 문장 단위
+    final shadow = find.byKey(const ValueKey('toeic-shadowing'));
+    await tester.scrollUntilVisible(shadow, 200, scrollable: find.byType(Scrollable).first);
+    expect(find.descendant(of: shadow, matching: find.text('다듬은 답 따라 하기')), findsOneWidget);
+    expect(find.descendant(of: shadow, matching: find.text('A woman is drinking coffee.')), findsOneWidget);
+    expect(find.descendant(of: shadow, matching: find.text('She looks relaxed.')), findsOneWidget);
+    await tester.tap(find.bySemanticsLabel('문장 2 듣기'));
+    await tester.pump();
+    expect(speaker.spoken.last.$1, 'She looks relaxed.');
+    speech.echo = true;
+    await tester.tap(find.bySemanticsLabel('문장 2 따라 말하기'));
+    await tester.pump();
+    expect(find.text('듣고 있어요 · 다 말하면 한 번 더 눌러요'), findsOneWidget);
+    await tester.tap(find.bySemanticsLabel('문장 2 따라 말하기 끝내기'));
+    await tester.pumpAndSettle();
+    expect(find.text('알아들은 단어 100%'), findsOneWidget);
+
+    await tester.tap(find.text('다음'));
+    await tester.pumpAndSettle();
+    expect(_c(tester).read(studyProvider).today.toeic['pic-1']!.score, 80);
+  });
+
+  testWidgets('타이머 접근성: live region 은 단계 이름만, 10초·5초는 따로 알림, 전환·5초에 진동', (tester) async {
+    await setPhone(tester);
+    final announced = <String>[];
+    final haptics = <String>[];
+    final messenger = tester.binding.defaultBinaryMessenger;
+    messenger.setMockDecodedMessageHandler<dynamic>(SystemChannels.accessibility, (message) async {
+      final m = message as Map;
+      if (m['type'] == 'announce') announced.add((m['data'] as Map)['message'] as String);
+      return null;
+    });
+    messenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+      if (call.method == 'HapticFeedback.vibrate') haptics.add('${call.arguments}');
+      return null;
+    });
+    addTearDown(() {
+      messenger.setMockDecodedMessageHandler<dynamic>(SystemChannels.accessibility, null);
+      messenger.setMockMethodCallHandler(SystemChannels.platform, null);
+    });
+    String liveLabel() => tester
+        .widget<Semantics>(find.byWidgetPredicate((w) => w is Semantics && w.properties.liveRegion == true))
+        .properties
+        .label!;
+
+    await tester.pumpWidget(_app(initial: '/toeic-today'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('시작'));
+    await tester.pump();
+    await tester.pump();
+    expect(liveLabel(), 'Q1 준비 시간');
+    await _seconds(tester, 34);
+    // 매초 바뀌는 남은 초는 live region 에 넣지 않는다
+    expect(liveLabel(), 'Q1 준비 시간');
+    expect(announced, isEmpty);
+    await _seconds(tester, 1);
+    expect(announced, ['10초 남았어요']);
+    expect(find.text('곧 끝나요'), findsNothing);
+    await _seconds(tester, 5);
+    expect(announced, ['10초 남았어요', '5초 남았어요']);
+    expect(haptics, ['HapticFeedbackType.selectionClick']);
+    // 남은 5초: 색 말고도 글과 아이콘으로
+    expect(find.text('곧 끝나요'), findsOneWidget);
+    expect(find.byIcon(Icons.timer_outlined), findsOneWidget);
+
+    await _seconds(tester, 5);
+    await tester.pump();
+    expect(liveLabel(), 'Q1 답하기');
+    expect(haptics.last, 'HapticFeedbackType.mediumImpact');
+    expect(find.text('곧 끝나요'), findsNothing);
+    await _seconds(tester, 45);
+    await tester.pumpAndSettle();
+    expect(announced, ['10초 남았어요', '5초 남았어요', '10초 남았어요', '5초 남았어요']);
+    expect(haptics, [
+      'HapticFeedbackType.selectionClick',
+      'HapticFeedbackType.mediumImpact',
+      'HapticFeedbackType.selectionClick',
+      'HapticFeedbackType.lightImpact',
+    ]);
   });
 }
 

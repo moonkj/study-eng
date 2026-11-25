@@ -1,3 +1,5 @@
+import 'dart:ui' show lerpDouble;
+
 import 'package:material_ui/material_ui.dart';
 
 import '../theme/app_theme.dart';
@@ -9,6 +11,7 @@ enum TimerPhase { idle, prep, speak }
 /// 토스 원형 타이머. 크기 64(기본) / 32(상단 미니) / 96(iPad).
 /// 준비→답하기로 바뀌면 색(timerPrep→timerSpeak)과 굵기(5→7, 64 기준)를 240ms 동안 보간한다 (동작 줄이기면 즉시).
 /// 남은 [cautionSeconds]초 이하면 숫자를 caution 색으로 (숫자 자체가 정보라 색만으로 읽지 않는다).
+/// [emphasizeCaution] 이면 그때 링도 굵어지고(64 기준 8) 숫자가 커지고 굵어진다 (토스 문항 화면).
 /// 링 자체는 스크린리더에서 숨긴다: 단계 이름은 [semanticsLabel] 로 live region 에 한 번만 알린다
 /// (매초 읽히면 답하는 중 스크린리더 소리가 마이크로 들어간다).
 class TimerRing extends StatelessWidget {
@@ -20,6 +23,7 @@ class TimerRing extends StatelessWidget {
     this.size = 64,
     this.cautionSeconds = 5,
     this.semanticsLabel,
+    this.emphasizeCaution = false,
   });
 
   final TimerPhase phase;
@@ -36,6 +40,9 @@ class TimerRing extends StatelessWidget {
   /// 있으면 live region 으로 알린다 (예: "Q5 답하기")
   final String? semanticsLabel;
 
+  /// 남은 [cautionSeconds]초부터 링 굵기·숫자 크기로도 강조한다
+  final bool emphasizeCaution;
+
   static const mini = 32.0;
   static const regular = 64.0;
   static const large = 96.0;
@@ -49,23 +56,33 @@ class TimerRing extends StatelessWidget {
     final value = counting && t != null && t > 0 ? (r / t).clamp(0.0, 1.0) : null;
     final caution = counting && r <= cautionSeconds;
     final baseStroke = size * 5 / 64;
-    final numberStyle = size >= large
+    final emphasized = caution && emphasizeCaution;
+    final baseNumber = size >= large
         ? AppType.enHero(weight: 600)
         : size >= regular
         ? AppType.enTitle(weight: 600)
         : AppType.enCaption(weight: 600);
+    final numberStyle = emphasized
+        ? baseNumber.copyWith(fontSize: baseNumber.fontSize! * 26 / 22, fontWeight: FontWeight.w700)
+        : baseNumber;
+    final duration = motion(context, AppMotion.phase);
 
     final ring = TweenAnimationBuilder<double>(
       tween: Tween(end: phase == TimerPhase.speak ? 1 : 0),
-      duration: motion(context, AppMotion.phase),
+      duration: duration,
       curve: AppMotion.curve,
-      builder: (context, k, _) => SizedBox.expand(
-        child: CircularProgressIndicator(
-          value: value,
-          strokeWidth: baseStroke * (1 + 0.4 * k),
-          backgroundColor: c.muted,
-          color: Color.lerp(c.timerPrep, c.timerSpeak, k),
-          strokeCap: StrokeCap.round,
+      builder: (context, k, _) => TweenAnimationBuilder<double>(
+        tween: Tween(end: emphasized ? 1 : 0),
+        duration: duration,
+        curve: AppMotion.curve,
+        builder: (context, u, _) => SizedBox.expand(
+          child: CircularProgressIndicator(
+            value: value,
+            strokeWidth: lerpDouble(baseStroke * (1 + 0.4 * k), baseStroke * 1.6, u)!,
+            backgroundColor: c.muted,
+            color: Color.lerp(c.timerPrep, c.timerSpeak, k),
+            strokeCap: StrokeCap.round,
+          ),
         ),
       ),
     );
