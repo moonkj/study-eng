@@ -89,7 +89,7 @@ class TargetReachedCard extends ConsumerWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            '모의고사 예상 ${s.mocks.last.level} · 지금 목표 ${s.toeicTarget.label} → 다음 ${next.label} (${next.range})',
+            '모의고사 예상 ${s.mocks.last.estimate?.label ?? s.mocks.last.level} · 지금 목표 ${s.toeicTarget.label} → 다음 ${next.label} (${next.range})',
             style: sans(13, color: context.colors.ink2, height: 1.5),
           ),
           const SizedBox(height: 8),

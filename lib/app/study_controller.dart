@@ -16,7 +16,7 @@ import '../domain/speech_score.dart';
 import '../domain/srs.dart';
 import '../domain/study_log.dart';
 import '../domain/toeic_feedback.dart';
-import '../domain/toeic_weakness.dart' show addDailyScore;
+import '../domain/toeic_weakness.dart' show ToeicLog, addDailyScore, toeicSetOn;
 
 /// 소리 내지 않고 속으로 따라 한 문장 표시 (점수 평균에서 뺀다)
 const kSilentAttempt = '<silent>';
@@ -76,19 +76,22 @@ class StudyState {
   /// 토스 모의고사 결과 (오래된 것부터)
   final List<MockResult> mocks;
 
-  /// 토스 루틴 점수 (날짜 → 유형 → 점수)
-  final Map<String, Map<String, int>> toeicLog;
+  /// 토스 루틴 점수 (날짜 → 유형 → Claude 채점 첫 시도·최고 점수)
+  final ToeicLog toeicLog;
 
   /// 지금 토익스피킹 목표
   ToeicTarget get toeicTarget => settings.target;
 
-  /// 가장 최근 모의고사(지금 목표로 본 것)가 목표에 닿았고, 아직 다음 목표 제안을 닫지 않았는지
+  /// 가장 최근 모의고사(지금 목표로 본 것)가 목표에 닿았고, 아직 다음 목표 제안을 닫지 않았는지.
+  /// Claude 채점으로 낸 등급 범위가 있어야 하고, 범위의 아래 등급이 목표 이상이어야 한다 ([meetsTarget]).
   bool get targetReached {
     if (mocks.isEmpty || toeicTarget.next == null) return false;
     final m = mocks.last;
+    final range = m.estimate;
     // 지금 목표로 본 모의고사만 (목표를 올린 뒤에는 새 목표로 다시 봐야 한다)
     return m.target == toeicTarget.label &&
-        meetsTarget(m.level, toeicTarget) &&
+        range != null &&
+        meetsTarget(range.low, toeicTarget) &&
         settings.toeicSuggestDismissed != mockKey(m);
   }
 
@@ -214,7 +217,7 @@ class StudyState {
     AppSettings? settings,
     SeriesState? series,
     List<MockResult>? mocks,
-    Map<String, Map<String, int>>? toeicLog,
+    ToeicLog? toeicLog,
   }) => StudyState(
     now: now,
     pack: pack ?? this.pack,
@@ -460,7 +463,7 @@ class StudyController extends Notifier<StudyState> {
   static DailyPack _prepare(DailyPack raw, Map<String, DayRecord> log, DateTime now) =>
       prepareDailyPack(raw, dayNumber: dayNumberOf(log.keys, now));
 
-  /// 서버에 보낼 팩 요청 (레벨·배운 것·복습 + 최근 주제·자주 틀리는 유형·주간 시리즈)
+  /// 서버에 보낼 팩 요청 (레벨·배운 것·복습 + 최근 주제·자주 틀리는 유형·주간 시리즈 + 그날 토스 세트)
   Map<String, Object?> _requestFor(StudyState s, DateTime date) => buildPackRequest(
     date: date,
     profile: s.profile,
@@ -473,7 +476,19 @@ class StudyController extends Notifier<StudyState> {
     topicHint: topicHintFor(date, recentTopicsOf(s.log, date)).nameKo,
     series: s.series != null && s.series!.continuesOn(date) ? s.series : null,
     toeicTarget: s.settings.toeicTarget == null ? null : s.settings.target.label,
+    toeic: _toeicContextFor(s, date),
   );
+
+  /// 팩을 쓸 날의 토스 세트 정보 (문항 모음이 없으면 null).
+  /// toeicDailyProvider 는 이 상태(studyProvider)를 보고 만들어지므로 그것을 읽지 않고, 같은 함수([toeicSetOn])로 직접 고른다.
+  /// 오늘 팩이고 이어서 하는 날이면 그날의 세트, 내일 팩이면 내일 세트 (약점은 오늘까지 기록으로).
+  Map<String, Object?>? _toeicContextFor(StudyState s, DateTime date) {
+    final bank = ref.read(toeicBankProvider);
+    if (bank == null) return null;
+    final key = dateKey(date);
+    final setDate = key == dateKey(s.now) ? (s.today.carriedFrom ?? key) : key;
+    return toeicPackContext(toeicSetOn(bank, setDate, s.toeicTarget, s.toeicLog, s.mocks), s.toeicTarget);
+  }
 
   /// 요청이 겹치면 가장 최근 요청의 결과만 반영한다.
   int _packRequest = 0;
@@ -715,16 +730,25 @@ class StudyController extends Notifier<StudyState> {
     _set(state.copyWith(today: _progress(spoken: {...state.today.spoken, s.id: heard})));
   }
 
-  /// 오늘 루틴의 토스 문항 결과를 남긴다. 다시 하면 더 높은 점수를 남긴다.
+  /// 오늘 루틴의 토스 문항 결과를 남긴다. 오늘 결과에는 다시 하면 더 높은 점수를 남긴다.
+  /// 유형별 기록(약점 통계)에는 Claude 채점분만, 그날 첫 시도와 최고 점수를 따로 남긴다.
   /// 말하기 단계를 끝낸 뒤 다시 하는 것은 연습이라 기록을 바꾸지 않는다.
   void recordToeicTask(String id, ToeicTaskRecord r) {
     if (state.done.contains(RoutineStep.speaking)) return;
     final before = state.today.toeic[id];
-    if (before != null && before.score >= r.score) return;
+    final better = before == null || r.score > before.score;
+    final log = addDailyScore(
+      state.toeicLog,
+      state.today.carriedFrom ?? state.today.date,
+      r.type,
+      r.score,
+      graded: r.graded,
+    );
+    if (!better && identical(log, state.toeicLog)) return;
     _set(
       state.copyWith(
-        today: _progress(toeic: {...state.today.toeic, id: r}),
-        toeicLog: addDailyScore(state.toeicLog, state.today.carriedFrom ?? state.today.date, r.type, r.score),
+        today: better ? _progress(toeic: {...state.today.toeic, id: r}) : null,
+        toeicLog: log,
       ),
     );
   }

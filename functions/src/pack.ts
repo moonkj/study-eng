@@ -1,7 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 
-import { GeneratedPack, PackRequest, type ErrorType } from "./schema.js";
+import { GeneratedPack, PackRequest, type ErrorType, type ToeicBlock } from "./schema.js";
 
 export const MODEL = "claude-sonnet-5-5";
 
@@ -56,6 +56,41 @@ const ERROR_KO: Record<ErrorType, string> = {
   meaning: "뜻 혼동",
 };
 
+/** 토스 묶음별: 이름과 표현 3개 중 2개로 만들 답변 문형 (예시는 방향만, 그대로 쓰지 않아도 된다) */
+const TOEIC_BLOCK_KO: Record<ToeicBlock, { name: string; patterns: string }> = {
+  respond: {
+    name: "질문에 답하기(Q5-7)",
+    patterns: `준비 3초 뒤 바로 완결 문장으로 답을 시작하고 이유를 붙이는 문형 (예: "I usually ~ because ~", "The last time I ~ was ~", "I'd say ~ is the best option since ~")`,
+  },
+  info: {
+    name: "표 보고 답하기(Q8-10)",
+    patterns: `표의 일정·정보를 안내하고, 잘못 안 정보를 바로잡고, 두 항목 이상을 묶어 말하는 문형 (예: "It's scheduled for ~ at ~", "Actually, ~ has been changed to ~", "There are two ~: first, ~ and second, ~")`,
+  },
+  opinion: {
+    name: "의견 말하기(Q11)",
+    patterns: `의견 → 이유 → 예시 → 마무리를 잇는 문형 (예: "I strongly believe that ~", "The main reason is that ~", "For example, when I ~", "That's why I think ~")`,
+  },
+};
+
+/** 토스 연결 줄: 그날 토스 세트가 주어지면 표현 2개·단어를 그 묶음의 사전 과제로 맞추게 한다 (없으면 빈 문자열) */
+export function toeicLines(req: PackRequest): string {
+  const t = req.toeic;
+  if (!t) return "";
+  const block = TOEIC_BLOCK_KO[t.block];
+  const target = t.target ?? req.toeicTarget ?? "IM3";
+  const highTarget = target === "IH" || target === "AL";
+  const topics = [t.topic?.trim() && `질문 주제 "${t.topic.trim()}"`, t.picturePlace?.trim() && `사진 장소 "${t.picturePlace.trim()}"`]
+    .filter(Boolean)
+    .join(", ");
+  return `
+토익스피킹 연결 (이 팩은 같은 날 토스 말하기의 사전 과제입니다):
+- 목표 등급: ${target} — ${highTarget ? "외운 틀보다 내용을 넓히는 다양한 구조(관계절·조건·대조)" : "짧고 바로 입에서 나오는 기본 틀"}로 맞추세요.
+- 오늘 묶음: ${block.name}${t.focused ? " (약점이라 더 자주 넣은 묶음)" : ""}${topics ? `\n- 오늘 토스 소재: ${topics}` : ""}
+- 표현 3개 중 정확히 2개는 ${block.name} 답변에 그대로 쓸 수 있는 ${block.patterns}으로 만들고, usage 에 토스 ${block.name}에서 어떻게 쓰는지 적으세요. 나머지 1개는 일상 회화 표현으로 둡니다.
+- 단어 10개 중 6개 이상은 오늘 토스 소재(질문 주제·사진 장소)를 말할 때 쓰는 어휘로 고르세요.
+`;
+}
+
 export function buildUserPrompt(req: PackRequest): string {
   const skills = Object.entries(req.skills)
     .map(([k, v]) => `${SKILL_KO[k] ?? k} ${v}`)
@@ -73,7 +108,14 @@ export function buildUserPrompt(req: PackRequest): string {
           : "듣기가 약하니 연음이 자주 일어나는 자연스러운 문장을 섞으세요.";
 
   const recentTopics = req.recentTopics?.length ? req.recentTopics.join(" | ") : "(없음)";
-  const topicLine = req.topicHint?.trim() ? `오늘 상황: ${req.topicHint.trim()} — 이 상황으로 주제를 정하세요.` : "오늘 상황: 자유 (최근 주제와 겹치지 않게)";
+  // 토스 소재가 있으면 그것이 오늘 주제가 된다 (주제 지도 상황은 일상 회화 표현 1개에 참고로)
+  const toeicTopic = req.toeic?.topic?.trim() || req.toeic?.picturePlace?.trim();
+  const hint = req.topicHint?.trim();
+  const topicLine = toeicTopic
+    ? `오늘 상황: 아래 토스 소재에 맞춰 정하세요.${hint ? ` (일상 회화 표현 1개는 "${hint}" 상황도 좋아요)` : ""}`
+    : hint
+      ? `오늘 상황: ${hint} — 이 상황으로 주제를 정하세요.`
+      : "오늘 상황: 자유 (최근 주제와 겹치지 않게)";
   const weakLine = req.weakErrorTypes?.length
     ? `자주 틀리는 오답 유형: ${req.weakErrorTypes.map((t) => `${t}(${ERROR_KO[t]})`).join(", ")} — 오늘 내용 퀴즈 2~3문항은 이 유형을 노린 오답으로 만들고 error_type 도 그 유형으로 적으세요.`
     : "자주 틀리는 오답 유형: (아직 없음)";
@@ -94,7 +136,7 @@ export function buildUserPrompt(req: PackRequest): string {
 ${topicLine}
 ${weakLine}
 ${seriesLine}
-
+${toeicLines(req)}
 오늘 복습할 항목:
 ${review}
 

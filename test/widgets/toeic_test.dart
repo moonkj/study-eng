@@ -46,6 +46,10 @@ class ScriptedSpeech implements SpeechInput {
 }
 
 class FakeGrade implements GradeSource {
+  FakeGrade({this.points});
+
+  /// 유형별 원점수를 따로 줄 때 (없으면 모두 8/10)
+  final GradeResult Function(ToeicTaskType task)? points;
   final calls = <(ToeicTaskType, String)>[];
 
   @override
@@ -59,6 +63,7 @@ class FakeGrade implements GradeSource {
     required int limitSeconds,
   }) async {
     calls.add((task, target));
+    if (points != null) return points!(task);
     return const GradeResult(
       score: 8,
       maxScore: 10,
@@ -322,7 +327,11 @@ void main() {
   testWidgets('모의고사: 11문항을 시험 시간대로 끝까지, 중간 피드백 없이 → 결과 요약과 기록', (tester) async {
     await setPhone(tester);
     final speaker = FakeSpeaker();
-    final grade = FakeGrade();
+    // Q1~Q10 3/3, Q11 3/5 → 가중 비율 (17 + 4×0.6)/21 ≈ 92 → IH 칸 위쪽 절반 → "IH~AL"
+    final grade = FakeGrade(
+      points: (task) =>
+          GradeResult(score: 3, maxScore: task == ToeicTaskType.opinion ? 5 : 3, level: 'IH', summaryKo: '좋아요'),
+    );
     await tester.pumpWidget(_app(initial: '/toeic-mock', speaker: speaker, grade: grade));
     await tester.pumpAndSettle();
     expect(find.text('실제 시험처럼 11문항'), findsOneWidget);
@@ -343,7 +352,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(seen.length, 4);
     expect(find.text('예상 등급'), findsOneWidget);
-    expect(find.text('IH'), findsWidgets); // 서버 점수 80 → IH
+    expect(find.text('IH~AL'), findsOneWidget); // 한 등급이 아니라 범위로
     expect(find.text('목표 IM3 달성!'), findsOneWidget);
     // 표 질문은 듣기로만: 소리로 읽어 줬다
     expect(speaker.spoken.map((e) => e.$1), contains('Where is the workshop?'));
@@ -353,8 +362,9 @@ void main() {
     final s = _c(tester).read(studyProvider);
     final m = s.mocks.single;
     expect(m.scores.length, 11);
-    expect(m.scores.every((e) => e == 80), isTrue);
-    expect(m.level, 'IH');
+    expect(m.scores.take(10).every((e) => e == 100), isTrue);
+    expect(m.points, [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]);
+    expect(m.level, 'IH~AL');
     expect(m.graded, isTrue);
     expect(s.targetReached, isTrue);
     expect(find.text('목표 달성! 다음 목표로 올릴까요?'), findsOneWidget);
@@ -380,8 +390,9 @@ void main() {
         log: base.log,
         settings: base.settings,
         mocks: const [
+          // 기기 점수로만 본 예전 모의고사: 등급 대신 '채점 필요'
           MockResult(date: '2026-11-15', level: 'IM2', target: 'IM3', scores: [62]),
-          MockResult(date: '2026-11-21', level: 'IM3', target: 'IM3', scores: [72]),
+          MockResult(date: '2026-11-21', level: 'IM3~IH', target: 'IM3', scores: [72], graded: true),
         ],
       ),
     );
@@ -401,6 +412,8 @@ void main() {
     await tester.scrollUntilVisible(find.text('토스 모의고사'), 200, scrollable: find.byType(Scrollable).first);
     expect(find.text('목표 IM3 · 140점 (140-150)'), findsOneWidget);
     expect(find.text('11월 21일'), findsOneWidget);
+    expect(find.text('IM3~IH'), findsOneWidget);
+    expect(find.text('채점 필요'), findsOneWidget);
     expect(find.text('평균 62점'), findsOneWidget);
     expect(find.text('모의고사 보기'), findsOneWidget);
   });

@@ -92,16 +92,27 @@ class _ToeicMockScreenState extends ConsumerState<ToeicMockScreen> {
         else
           graded[n]?.percent ?? offlineTurnScore(_outcomes[n]!.task, _outcomes[n]!.outcome),
     ];
+    // 문항별 원점수 (Q1~Q10 0~3, Q11 0~5): Claude 채점분만. 채점 서버가 있는데 아무 말도 안 했으면 실제 시험처럼 0점.
+    final graderOn = ref.read(gradeSourceProvider) != null;
+    final points = <int?>[
+      for (var n = 1; n <= 11; n++)
+        if (graded[n] case final g?)
+          g.maxScore <= 0 ? 0 : (g.score * mockMaxPoints[n - 1] / g.maxScore).round()
+        else if (graderOn && _outcomes[n] != null && _outcomes[n]!.outcome.transcript.trim().isEmpty)
+          0
+        else
+          null,
+    ];
     final s = ref.read(studyProvider);
-    final answered = scores.whereType<int>().toList();
-    final avg = answered.isEmpty ? 0.0 : answered.reduce((a, b) => a + b) / answered.length;
+    // 기기 점수만 있으면 등급을 내지 않는다
+    final range = estimateMockLevel(points);
     final result = MockResult(
       date: dateKey(s.now),
-      level: estimateLevel(avg),
+      level: range?.label ?? '',
       target: s.toeicTarget.label,
       scores: scores,
-      graded:
-          graded.length == _outcomes.values.where((o) => o.outcome.transcript.isNotEmpty).length && graded.isNotEmpty,
+      points: points,
+      graded: range != null,
     );
     ref.read(studyProvider.notifier).recordMock(result);
     setState(() {
@@ -264,7 +275,10 @@ class _Summary extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final s = ref.watch(studyProvider);
     final target = ToeicTarget.values.firstWhere((t) => t.label == result.target, orElse: () => s.toeicTarget);
-    final met = meetsTarget(result.level, target);
+    final range = result.estimate;
+    // 범위의 아래 등급이 목표 이상이면 달성, 위 등급만 닿으면 경계
+    final met = range != null && meetsTarget(range.low, target);
+    final edge = range != null && !met && meetsTarget(range.high, target);
     final say = ref.read(sayProvider);
     return ListView(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
@@ -275,10 +289,27 @@ class _Summary extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text('예상 등급', style: sans(13, color: context.colors.ink2)),
-              Text(result.level, style: serif(44, weight: 600, color: context.colors.penBlue)),
+              if (range != null)
+                Text(range.label, style: serif(44, weight: 600, color: context.colors.penBlue))
+              else
+                Text('채점 필요', style: serif(32, weight: 600, color: context.colors.ink2)),
               Text(
-                met ? '목표 ${target.label} 달성!' : '목표 ${target.label}까지 조금 더',
-                style: sans(15, weight: FontWeight.w700, color: met ? context.colors.success : context.colors.ember),
+                range == null
+                    ? '등급은 Claude 채점으로만 계산해요. 채점 서버에 연결된 뒤 다시 보면 나와요.'
+                    : met
+                    ? '목표 ${target.label} 달성!'
+                    : edge
+                    ? '목표 ${target.label} 경계 · 한 번 더 보면 확실해져요'
+                    : '목표 ${target.label}까지 조금 더',
+                style: sans(
+                  range == null ? 13 : 15,
+                  weight: range == null ? FontWeight.w400 : FontWeight.w700,
+                  color: range == null
+                      ? context.colors.ink2
+                      : met
+                      ? context.colors.success
+                      : context.colors.ember,
+                ),
               ),
               const SizedBox(height: 4),
               Text(

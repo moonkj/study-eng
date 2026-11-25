@@ -327,6 +327,80 @@ test("시리즈 대화: 줄 수, 표현 2개 이상, 등장인물을 검사한�
   assert.match(validatePack(solo, req).join("\n"), /등장인물이 2명 이상/);
 });
 
+const toeicReq: PackRequest = {
+  ...req,
+  topicHint: "카페에서 주문하기",
+  toeicTarget: "IM3",
+  toeic: {
+    block: "opinion",
+    target: "IM3",
+    picturePlace: "cafe counter",
+    topic: "Which do you prefer: studying alone or studying in a group?",
+    focused: true,
+  },
+};
+
+test("토스 세트가 오면: 표현 2개는 그 묶음 답변 문형, 1개는 일상 회화, 단어는 토스 소재 어휘로", () => {
+  const p = buildUserPrompt(toeicReq);
+  assert.match(p, /토익스피킹 연결/);
+  assert.match(p, /목표 등급: IM3 — 짧고 바로 입에서 나오는 기본 틀/);
+  assert.match(p, /오늘 묶음: 의견 말하기\(Q11\) \(약점이라 더 자주 넣은 묶음\)/);
+  assert.match(p, /질문 주제 "Which do you prefer: studying alone or studying in a group\?"/);
+  assert.match(p, /사진 장소 "cafe counter"/);
+  assert.match(p, /표현 3개 중 정확히 2개는 의견 말하기\(Q11\) 답변에/);
+  assert.match(p, /The main reason is that/);
+  assert.match(p, /나머지 1개는 일상 회화 표현/);
+  assert.match(p, /단어 10개 중 6개 이상은 오늘 토스 소재/);
+  // 주제는 토스 소재가 우선, 주제 지도 상황은 일상 표현 1개에 참고로
+  assert.match(p, /오늘 상황: 아래 토스 소재에 맞춰 정하세요\. \(일상 회화 표현 1개는 "카페에서 주문하기" 상황도 좋아요\)/);
+
+  // 묶음별 문형, 목표가 IH 이상이면 다양한 구조, toeic.target 이 없으면 toeicTarget
+  const info = buildUserPrompt({ ...req, toeicTarget: "IH", toeic: { block: "info" } });
+  assert.match(info, /표 보고 답하기\(Q8-10\)/);
+  assert.match(info, /has been changed to/);
+  assert.match(info, /목표 등급: IH — 외운 틀보다/);
+  assert.doesNotMatch(info, /오늘 토스 소재:/);
+  assert.match(buildUserPrompt({ ...req, toeic: { block: "respond" } }), /목표 등급: IM3 .*\n- 오늘 묶음: 질문에 답하기\(Q5-7\)/);
+
+  // 토스 세트가 없으면 예전 프롬프트 그대로
+  assert.doesNotMatch(buildUserPrompt(req), /토익스피킹 연결/);
+});
+
+test("API: 토스 정보가 있는 요청도, 예전 앱 요청(토스 정보 없음)도 받는다. 잘못된 묶음은 거절한다", async () => {
+  const withToeic = await handleDailyPack({
+    method: "POST",
+    appToken: "t",
+    authorization: "Bearer t",
+    body: toeicReq,
+    client: fakeClient([{ parsed_output: goodPack() }]) as never,
+  });
+  assert.equal(withToeic.status, 200);
+  const old = await handleDailyPack({
+    method: "POST",
+    appToken: "t",
+    authorization: "Bearer t",
+    body: req,
+    client: fakeClient([{ parsed_output: goodPack() }]) as never,
+  });
+  assert.equal(old.status, 200);
+  const client = fakeClient([{ parsed_output: goodPack() }]);
+  const bad = await handleDailyPack({
+    method: "POST",
+    appToken: "t",
+    authorization: "Bearer t",
+    body: { ...req, toeic: { block: "picture" } },
+    client: client as never,
+  });
+  assert.equal(bad.status, 400);
+  assert.equal(client.calls.length, 0);
+});
+
+test("API: 토스 정보가 Claude 프롬프트까지 전달된다", async () => {
+  const client = fakeClient([{ parsed_output: goodPack() }]);
+  await handleDailyPack({ method: "POST", appToken: "t", authorization: "Bearer t", body: toeicReq, client: client as never });
+  assert.match(JSON.stringify(client.calls[0]), /의견 말하기\(Q11\)/);
+});
+
 test("대화 제목·회차는 시리즈 요청 그대로, 시리즈가 없으면 새 제목 1회", () => {
   const p = goodPack();
   p.dialogue.title = "Something Else";

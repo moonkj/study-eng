@@ -5,6 +5,39 @@ export const ERROR_TYPES = ["word_choice", "grammar_form", "preposition", "word_
 export const ErrorType = z.enum(ERROR_TYPES);
 export type ErrorType = z.infer<typeof ErrorType>;
 
+/** TOEIC Speaking 문제 유형 */
+export const TOEIC_TASKS = ["read_aloud", "picture", "respond", "info", "opinion"] as const;
+export const ToeicTask = z.enum(TOEIC_TASKS);
+export type ToeicTask = z.infer<typeof ToeicTask>;
+
+/** TOEIC Speaking 레벨 (낮은 순) */
+export const TOEIC_LEVELS = ["NL", "NM", "NH", "IL", "IM1", "IM2", "IM3", "IH", "AL"] as const;
+export const ToeicLevel = z.enum(TOEIC_LEVELS);
+
+/** 학습자가 고르는 목표 레벨 (점수 110/130/140/160/180) */
+export const TOEIC_TARGETS = ["IM1", "IM2", "IM3", "IH", "AL"] as const;
+export const ToeicTarget = z.enum(TOEIC_TARGETS);
+export type ToeicTarget = z.infer<typeof ToeicTarget>;
+
+/** 매일 돌아가며 나오는 토스 묶음 (앱의 ToeicBlock 과 같게): 질문 답하기 Q5-7 / 표 보고 답하기 Q8-10 / 의견 말하기 Q11 */
+export const TOEIC_BLOCKS = ["respond", "info", "opinion"] as const;
+export const ToeicBlock = z.enum(TOEIC_BLOCKS);
+export type ToeicBlock = z.infer<typeof ToeicBlock>;
+
+/** 팩을 쓸 날의 토스 세트: 표현·단어를 그 묶음의 사전 과제로 맞춘다 */
+export const PackToeic = z.object({
+  block: ToeicBlock,
+  /** 목표 레벨 (없으면 요청의 toeicTarget, 그것도 없으면 IM3) */
+  target: ToeicTarget.optional(),
+  /** 그날 사진 묘사(Q3-4) 사진의 장소 (영어) */
+  picturePlace: z.string().max(120).optional(),
+  /** 그날 묶음의 질문 주제: 질문 답하기 상황 / 표 제목 / 의견 질문 (영어) */
+  topic: z.string().max(300).optional(),
+  /** 약점 유형이라 넣은 묶음인지 */
+  focused: z.boolean().optional(),
+});
+export type PackToeic = z.infer<typeof PackToeic>;
+
 /** 앱 → 서버: 오늘의 팩을 만들 때 필요한 학습자 정보 */
 export const PackRequest = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -48,6 +81,10 @@ export const PackRequest = z.object({
       lastSummary: z.string().max(300).optional(),
     })
     .optional(),
+  /** 토익스피킹 목표 (학습자가 고른 경우에만) */
+  toeicTarget: ToeicTarget.optional(),
+  /** 팩을 쓸 날의 토스 세트: 표현 3개 중 2개는 그 묶음 답변 문형, 단어는 그 주제 어휘로 */
+  toeic: PackToeic.optional(),
 });
 export type PackRequest = z.infer<typeof PackRequest>;
 
@@ -161,21 +198,7 @@ export const GeneratedCorrection = z.object({
 });
 export type GeneratedCorrection = z.infer<typeof GeneratedCorrection>;
 
-/** TOEIC Speaking 문제 유형 */
-export const TOEIC_TASKS = ["read_aloud", "picture", "respond", "info", "opinion"] as const;
-export const ToeicTask = z.enum(TOEIC_TASKS);
-export type ToeicTask = z.infer<typeof ToeicTask>;
-
-/** TOEIC Speaking 레벨 (낮은 순) */
-export const TOEIC_LEVELS = ["NL", "NM", "NH", "IL", "IM1", "IM2", "IM3", "IH", "AL"] as const;
-export const ToeicLevel = z.enum(TOEIC_LEVELS);
-
-/** 학습자가 고르는 목표 레벨 (점수 110/130/140/160/180) */
-export const TOEIC_TARGETS = ["IM1", "IM2", "IM3", "IH", "AL"] as const;
-export const ToeicTarget = z.enum(TOEIC_TARGETS);
-export type ToeicTarget = z.infer<typeof ToeicTarget>;
-
-/** 앱 → 서버: TOEIC Speaking 한 문항 채점 요청 */
+/** 앱 → 서버: TOEIC Speaking 한 문항 채점 요청 (토스 유형·레벨·목표 정의는 파일 위쪽, 팩 요청도 함께 쓴다) */
 export const GradeRequest = z.object({
   task: ToeicTask,
   /** 목표 레벨 (없으면 IM3) */

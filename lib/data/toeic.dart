@@ -49,9 +49,10 @@ const toeicLevels = ['NL', 'NM', 'NH', 'IL', 'IM1', 'IM2', 'IM3', 'IH', 'AL'];
 
 int toeicLevelIndex(String level) => toeicLevels.indexOf(level.toUpperCase());
 
-/// [level] 이 [target] 이상인지
+/// [level] 이 [target] 이상인지. 범위("IM2~IM3")면 **아래 등급**으로 본다:
+/// 잘못된 "목표 달성"으로 난이도가 먼저 오르지 않게, 범위 전체가 목표 이상일 때만 달성으로 친다.
 bool meetsTarget(String level, ToeicTarget target) {
-  final i = toeicLevelIndex(level);
+  final i = toeicLevelIndex(level.split('~').first.trim());
   return i >= 0 && i >= toeicLevelIndex(target.label);
 }
 
@@ -390,6 +391,24 @@ ToeicDailySet dailySetFor(ToeicBank bank, DateTime date, ToeicTarget target, {To
     info: block == ToeicBlock.info ? pickFor<InfoSet>(bank.infoTables, (e) => e.level, tier, n) : null,
     opinion: block == ToeicBlock.opinion ? pickFor<OpinionItem>(bank.opinions, (e) => e.level, tier, n) : null,
   );
+}
+
+/// 맞춤 팩 요청에 넣는 그날의 토스 정보: 서버가 표현 2개를 이 묶음 답변 문형으로, 단어를 이 주제 어휘로 맞춘다.
+Map<String, Object?> toeicPackContext(ToeicDailySet set, ToeicTarget target) {
+  // 서버 스키마의 길이 제한에 맞춘다 (사진 장소 120자, 질문 주제 300자)
+  String cut(String s, [int max = 300]) => s.length <= max ? s : s.substring(0, max);
+  final topic = switch (set.block) {
+    ToeicBlock.respond => set.respond?.setting,
+    ToeicBlock.info => set.info == null ? null : [set.info!.table.title, ?set.info!.table.subtitle].join(' · '),
+    ToeicBlock.opinion => set.opinion?.question,
+  };
+  return {
+    'block': set.block.name,
+    'target': target.label,
+    if (set.picture.place.trim().isNotEmpty) 'picturePlace': cut(set.picture.place.trim(), 120),
+    if (topic != null && topic.trim().isNotEmpty) 'topic': cut(topic.trim()),
+    if (set.focused) 'focused': true,
+  };
 }
 
 /// 모의고사 11문항 세트
