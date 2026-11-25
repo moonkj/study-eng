@@ -94,6 +94,15 @@ void main() {
     });
   });
 
+  test('처음 연동하는 기기는 서버(동기화된) 기록을 따른다, 학습한 날이 더 많을 때만 자기 것', () {
+    final synced = _data(step: 8, updatedAt: 1000);
+    final fresh = _data(step: 6);
+    expect(mergeSaved(fresh, synced).contentStep, 8);
+    expect(mergeSaved(synced, fresh).contentStep, 8);
+    final richer = _data(step: 6, log: {'2026-11-20': _day});
+    expect(mergeSaved(richer, synced).contentStep, 6);
+  });
+
   group('동기화 저장소', () {
     test('처음 켠 기기는 자기 기록을 올리고, 다른 기기는 켤 때 받아 합친다', () async {
       final server = FakeServer();

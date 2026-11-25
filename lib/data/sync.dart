@@ -66,6 +66,9 @@ bool _prefer(SavedData a, SavedData b) {
   if (!a.onboarded && b.onboarded) return false;
   final ta = a.updatedAt, tb = b.updatedAt;
   if (ta != null && tb != null) return ta >= tb;
+  // 한쪽만 동기화된 데이터면(처음 연동하는 기기) 동기화된 쪽을 따른다. 처음 기기에 학습한 날이 더 많을 때만 그쪽
+  if (ta != null && tb == null) return b.log.length <= a.log.length;
+  if (tb != null && ta == null) return !(a.log.length <= b.log.length);
   // 아직 동기화한 적 없는 데이터가 섞이면 기록이 많은 쪽 (새 기기의 빈 데이터가 덮어쓰지 않게)
   final la = a.log.length + a.learned.length, lb = b.log.length + b.learned.length;
   if (la != lb) return la > lb;
@@ -254,8 +257,13 @@ class SyncedStore implements AppStore {
     if (!_dirty) return;
     try {
       for (var attempt = 0; attempt < 3; attempt++) {
-        final local = inner.load();
+        var local = inner.load();
         if (local == null) return;
+        // 서버에 올리는 데이터에는 항상 저장 시각을 붙인다 (다른 기기가 합칠 때 기준이 된다)
+        if (local.updatedAt == null) {
+          local = local.copyWith(updatedAt: _now().millisecondsSinceEpoch);
+          await inner.save(local);
+        }
         _dirty = false;
         try {
           meta.version = await client.put(_encode(local), meta.version);
