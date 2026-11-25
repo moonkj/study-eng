@@ -11,6 +11,7 @@ import '../../data/grade_source.dart' show ToeicTaskType;
 import '../../data/toeic.dart';
 import '../../domain/study_log.dart';
 import '../../domain/toeic_feedback.dart';
+import '../../domain/toeic_level.dart' show ToeicEstimate;
 import '../../domain/toeic_weakness.dart';
 import 'toeic_target.dart';
 import 'toeic_task.dart';
@@ -166,7 +167,7 @@ class _ToeicHubScreenState extends ConsumerState<ToeicHubScreen> {
               _TargetHeader(
                 target: s.toeicTarget,
                 chosen: s.settings.toeicTarget != null,
-                lastMock: last,
+                estimate: s.toeicEstimate,
                 onTap: () => pickToeicTarget(context, ref),
               ),
 
@@ -192,7 +193,7 @@ class _ToeicHubScreenState extends ConsumerState<ToeicHubScreen> {
                 title: '실전 모의고사 · 11문항',
                 subtitle: last == null
                     ? '첫 모의고사로 지금 위치를 확인해요 · 약 20분'
-                    : '지난번 예상 ${last.level} · ${_dayLabel(last.date)} · 약 20분',
+                    : '지난번 예상 ${last.estimate?.label ?? '채점 필요'} · ${_dayLabel(last.date)} · 약 20분',
                 onTap: bank == null ? null : () => context.push('/toeic-mock'),
               ),
 
@@ -278,25 +279,26 @@ class _TopBar extends StatelessWidget {
   }
 }
 
-/// 목표 머리: 목표 등급·점수 + 지난 모의고사 예상 등급. 누르면 목표 바꾸기 시트.
+/// 목표 머리: 목표 등급·점수 + 지금 예상 등급(홈 목표 카드와 같은 [ToeicEstimate]). 누르면 목표 바꾸기 시트.
 class _TargetHeader extends StatelessWidget {
-  const _TargetHeader({required this.target, required this.chosen, required this.lastMock, required this.onTap});
+  const _TargetHeader({required this.target, required this.chosen, required this.estimate, required this.onTap});
   final ToeicTarget target;
 
   /// 직접 고른 목표인지 (아니면 기본 목표)
   final bool chosen;
-  final MockResult? lastMock;
+  final ToeicEstimate estimate;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final m = lastMock;
-    final met = m != null && meetsTarget(m.level, target);
-    final estimate = m == null ? '모의고사를 보면 예상 등급이 나와요' : '지난 모의고사 예상 ${m.level}';
+    final e = estimate;
+    // 어림값(진단)으로는 달성이라 하지 않는다. 범위면 아래 등급으로 본다
+    final met = !e.approximate && meetsTarget(e.low, target);
     return Semantics(
       button: true,
-      label: '목표 ${target.label}, ${target.score}점${chosen ? '' : ', 기본 목표'}. $estimate${met ? ', 목표 달성' : ''}. 목표 바꾸기',
+      label:
+          '목표 ${target.label}, ${target.score}점${chosen ? '' : ', 기본 목표'}. ${e.display}${met ? ', 목표 달성' : ''}. 목표 바꾸기',
       excludeSemantics: true,
       child: Material(
         color: c.card,
@@ -345,10 +347,12 @@ class _TargetHeader extends StatelessWidget {
                   spacing: AppSpace.sm,
                   runSpacing: AppSpace.xs,
                   children: [
-                    Text(estimate, style: AppType.callout(weight: m == null ? FontWeight.w400 : FontWeight.w600)),
+                    Text(e.display, style: AppType.callout(weight: FontWeight.w600)),
                     if (met) Tag('목표 달성', icon: Icons.check_rounded, color: c.success, background: c.successTint),
                   ],
                 ),
+                const SizedBox(height: AppSpace.xs),
+                Text(e.basis, style: AppType.caption(color: c.ink2, height: 1.4)),
               ],
             ),
           ),

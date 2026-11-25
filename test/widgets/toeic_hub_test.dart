@@ -62,7 +62,9 @@ void main() {
     expect(find.text('나의 토스 목표'), findsOneWidget);
     expect(find.text('IM3'), findsOneWidget);
     expect(find.text('140점 · 공식 구간 140-150'), findsOneWidget);
-    expect(find.text('모의고사를 보면 예상 등급이 나와요'), findsOneWidget);
+    // 채점 기록이 없으면 홈 목표 카드와 같은 진단 어림 '예상' 등급
+    expect(find.textContaining(RegExp(r'^예상 (NL|NM|NH|IL|IM1|IM2|IM3|IH|AL) · \d+점$')), findsOneWidget);
+    expect(find.textContaining('레벨 진단으로 본 대략의 등급이에요'), findsOneWidget);
     // CEFR 은 보이지 않는다
     expect(find.textContaining('B1'), findsNothing);
 
@@ -86,21 +88,22 @@ void main() {
     expect(find.text('내 상황으로 말하기'), findsWidgets);
   });
 
-  testWidgets('목표 머리를 누르면 목표 바꾸기 시트, 지난 모의고사 예상 등급을 보여 준다', (tester) async {
+  testWidgets('목표 머리를 누르면 목표 바꾸기 시트, 채점된 모의고사 등급 범위를 보여 준다', (tester) async {
     await setPhone(tester);
     await tester.pumpWidget(
       _app(
         store: MemoryStore(
           _seeded(
             mocks: const [
-              MockResult(date: '2026-11-20', level: 'IM3', target: 'IM3', scores: [70]),
+              MockResult(date: '2026-11-20', level: 'IM3~IH', target: 'IM3', scores: [70], graded: true),
             ],
           ),
         ),
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('지난 모의고사 예상 IM3'), findsOneWidget);
+    expect(find.text('IM3~IH'), findsOneWidget);
+    expect(find.text('11월 20일 모의고사 채점 기준'), findsOneWidget);
     expect(find.text('목표 달성'), findsOneWidget);
 
     await tester.tap(find.text('나의 토스 목표'));
@@ -148,6 +151,9 @@ void main() {
     expect(s.today.toeic, isEmpty);
     expect(s.toeicLog, isEmpty);
 
+    // 알림(스낵바)이 사라진 뒤에 누른다 (화면 아래 줄을 가리지 않게)
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
     await tester.scrollUntilVisible(find.text(answers.single.task.title), 200);
     expect(find.text('1개'), findsOneWidget);
     await tester.tap(find.text(answers.single.task.title));

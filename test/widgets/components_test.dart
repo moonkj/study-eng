@@ -108,6 +108,23 @@ void main() {
       handle.dispose();
     });
 
+    testWidgets('emphasizeCaution: 남은 5초부터 링이 굵어지고(8) 숫자가 커진다', (tester) async {
+      await tester.pumpWidget(
+        _wrap(const TimerRing(phase: TimerPhase.prep, remaining: 6, total: 30, emphasizeCaution: true)),
+      );
+      expect(_ring(tester).strokeWidth, 5);
+      final normal = tester.widget<Text>(find.text('6')).style!.fontSize!;
+      await tester.pumpWidget(
+        _wrap(const TimerRing(phase: TimerPhase.prep, remaining: 5, total: 30, emphasizeCaution: true)),
+      );
+      await tester.pump(AppMotion.phase);
+      expect(_ring(tester).strokeWidth, closeTo(8, 1e-9));
+      final big = tester.widget<Text>(find.text('5')).style!;
+      expect(big.fontSize, greaterThan(normal));
+      expect(big.fontWeight, FontWeight.w700);
+      expect(big.color, AppPalette.light.caution);
+    });
+
     testWidgets('미니(32)·글씨 2배에서도 숫자가 링 밖으로 넘치지 않는다', (tester) async {
       tester.platformDispatcher.textScaleFactorTestValue = 2.0;
       addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
@@ -257,5 +274,26 @@ void main() {
       expect(p.timerSpeak, p.ember);
       expect(p.target.a, closeTo(0.5, 0.01));
     }
+  });
+
+  testWidgets('ActionRow current: 펜 파랑 테두리, 부제와 진행 막대가 함께, 오른쪽 값', (tester) async {
+    await tester.pumpWidget(
+      _wrap(
+        ActionRow(
+          number: 2,
+          title: '단어',
+          subtitle: '10개 · 3분',
+          value: '지금',
+          state: ActionRowState.current,
+          progress: 0.4,
+          onTap: () {},
+        ),
+      ),
+    );
+    expect(find.text('10개 · 3분'), findsOneWidget);
+    expect(find.byType(ThinProgress), findsOneWidget);
+    expect(tester.widget<Text>(find.text('지금')).style!.color, AppPalette.light.penBlue);
+    final shape = tester.widget<Material>(find.byType(Material).last).shape as RoundedRectangleBorder;
+    expect(shape.side.color, AppPalette.light.penBlue);
   });
 }

@@ -350,7 +350,9 @@ void main() {
     await tester.pumpWidget(_app(store: store));
     await tester.pumpAndSettle();
     expect(find.text('토스 말하기'), findsOneWidget);
-    expect(find.textContaining('문장 읽기 · 사진 묘사 · 질문 답하기'), findsNothing); // 지금 단계라 부제 대신 진행 표시
+    // 주 버튼이 지금 단계를 가리키고, 루틴 행은 부제(오늘 묶음)와 함께 진행 표시로 남는다
+    expect(find.textContaining('다음: 토스 말하기 이어서'), findsOneWidget);
+    expect(find.textContaining('문장 읽기 · 사진 묘사 · 질문 답하기'), findsOneWidget);
     await tester.tap(find.text('토스 말하기'));
     await tester.pumpAndSettle();
 
@@ -466,6 +468,8 @@ void main() {
     await tester.scrollUntilVisible(find.text('토스 실전 모의고사'), 200, scrollable: find.byType(Scrollable).first);
     expect(find.text('주말이에요 · 11문항 약 20분, 실전처럼'), findsOneWidget); // 11/22 일요일
 
+    // 목표 달성 제안은 목표 카드 위 (맨 위)
+    await tester.scrollUntilVisible(find.text('괜찮아요'), -200, scrollable: find.byType(Scrollable).first);
     await tester.tap(find.text('괜찮아요'));
     await tester.pumpAndSettle();
     expect(find.text('목표 달성! 다음 목표로 올릴까요?'), findsNothing);
@@ -476,7 +480,8 @@ void main() {
     await tester.scrollUntilVisible(find.text('토스 모의고사'), 200, scrollable: find.byType(Scrollable).first);
     expect(find.text('목표 IM3 · 140점 (140-150)'), findsOneWidget);
     expect(find.text('11월 21일'), findsOneWidget);
-    expect(find.text('IM3~IH'), findsOneWidget);
+    // 기록 줄 + 맨 위 '실력 변화'의 예상 등급 (같은 범위로 보인다)
+    expect(find.text('IM3~IH'), findsNWidgets(2));
     expect(find.text('채점 필요'), findsOneWidget);
     expect(find.text('평균 62점'), findsOneWidget);
     expect(find.text('모의고사 보기'), findsOneWidget);

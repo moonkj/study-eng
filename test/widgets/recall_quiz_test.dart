@@ -62,7 +62,13 @@ void main() {
     await tester.pumpWidget(app(initial: '/complete', store: store));
     await tester.pumpAndSettle();
     expect(find.text('9/12'), findsOneWidget);
-    expect(find.text('틀린 문제 다시 보기'), findsOneWidget);
+    // 하단 버튼은 둘만 (홈으로 / 복습 카드). 틀린 문제는 복습 탭 오답 노트에서
+    expect(find.text('홈으로'), findsOneWidget);
+    expect(find.text('틀린 문제 다시 보기'), findsNothing);
+    expect(find.text('오늘 표현으로 내 문장 만들기'), findsNothing);
+    // 토스도 따라 말하기도 안 한 날은 '문장 0개'를 쓰지 않는다
+    expect(find.textContaining('문장 0개'), findsNothing);
+    expect(find.text('표현 3개 · 단어 10개 완료'), findsOneWidget);
   });
 
   testWidgets('단어 평가 되돌리기는 카드를 가리지 않고 평가 버튼 위 줄에 3초 동안 나온다', (tester) async {

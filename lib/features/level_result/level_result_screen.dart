@@ -7,6 +7,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/widgets.dart';
 import '../../domain/level.dart';
+import '../../domain/toeic_level.dart';
 
 class LevelResultScreen extends ConsumerWidget {
   const LevelResultScreen({super.key});
@@ -18,6 +19,9 @@ class LevelResultScreen extends ConsumerWidget {
     final weak = p.weakestSkill;
     final strong = p.strongestSkill;
     final weakIsLow = p.skills[weak]!.step < level.step;
+    // 화면에는 토스 등급만 (CEFR 단계는 내부 난이도용)
+    final toeic = toeicLevelForStep(level.step);
+    final target = ref.watch(studyProvider).toeicTarget.label;
 
     return Scaffold(
       body: SafeArea(
@@ -68,8 +72,11 @@ class LevelResultScreen extends ConsumerWidget {
                                     TextSpan(
                                       children: [
                                         TextSpan(
-                                          text: level.cefr.label,
-                                          // 레벨 결과의 큰 등급 글자만 AppType 밖 예외 (진단 결과 한 번 보는 화면)
+                                          text: '예상 ',
+                                          style: AppType.title2(weight: FontWeight.w600, color: context.colors.ink2),
+                                        ),
+                                        TextSpan(
+                                          text: toeic,
                                           style: serif(
                                             64,
                                             weight: 500,
@@ -78,23 +85,24 @@ class LevelResultScreen extends ConsumerWidget {
                                             letterSpacing: -1,
                                           ),
                                         ),
-                                        TextSpan(
-                                          text: '.${level.sub}',
-                                          style: AppType.enHero(weight: 400, color: context.colors.ink2),
-                                        ),
                                       ],
                                     ),
                                   ),
                                   const SizedBox(height: AppSpace.xs),
-                                  Text(level.cefr.koDescription, style: AppType.body(weight: FontWeight.w600)),
+                                  Text('${toeicLevelScore[toeic]}점 안팎', style: AppType.body(weight: FontWeight.w600)),
                                 ],
                               ),
                             ),
-                            Text('CEFR 기준', style: AppType.caption(color: context.colors.ink2)),
+                            Text('토스 기준 · 대략', style: AppType.caption(color: context.colors.ink2)),
                           ],
                         ),
                         const SizedBox(height: AppSpace.lg),
-                        _Scale(level: level),
+                        LevelScale(current: toeic, target: target),
+                        const SizedBox(height: AppSpace.md),
+                        Text(
+                          '진단 문항으로 어림한 등급이에요. 토스 말하기를 하면 채점 결과로 바뀌어요.',
+                          style: AppType.caption(color: context.colors.ink2, height: 1.5),
+                        ),
                       ],
                     ),
                   ),
@@ -116,7 +124,7 @@ class LevelResultScreen extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Padding(
-                          padding: EdgeInsets.only(top: 2),
+                          padding: EdgeInsets.only(top: AppSpace.xs),
                           child: Icon(Icons.edit_outlined, size: 20, color: context.colors.penBlue),
                         ),
                         const SizedBox(width: AppSpace.md),
@@ -133,11 +141,9 @@ class LevelResultScreen extends ConsumerWidget {
                                     text: '${weak.ko} 연습',
                                     style: AppType.callout(weight: FontWeight.w700, height: 1.6),
                                   ),
-                                  TextSpan(
-                                    text: '이 조금 부족해요. 앞으로 2주 동안 ${weak.ko} 비중을 높이고, ${level.cefr.label} 표현 위주로 출제할게요.',
-                                  ),
+                                  TextSpan(text: '이 조금 부족해요. 앞으로 2주 동안 ${weak.ko} 비중을 높이고, 지금 수준에 맞는 표현 위주로 출제할게요.'),
                                 ] else
-                                  TextSpan(text: '영역별 실력이 고르게 좋아요. ${level.cefr.label} 표현 위주로 출제할게요.'),
+                                  TextSpan(text: '영역별 실력이 고르게 좋아요. 지금 수준에 맞는 표현 위주로 출제할게요.'),
                               ],
                             ),
                           ),
@@ -159,48 +165,6 @@ class LevelResultScreen extends ConsumerWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _Scale extends StatelessWidget {
-  const _Scale({required this.level});
-  final Level level;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = level.cefr.index;
-    final within = (level.step % 3 + level.progressToNext) / 3;
-    return Semantics(
-      label: 'A1부터 C1 중 ${level.label}',
-      child: Row(
-        children: [
-          for (final cefr in Cefr.values)
-            Expanded(
-              child: Padding(
-                padding: EdgeInsets.only(right: cefr == Cefr.c1 ? 0 : AppSpace.xs),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    ThinProgress(
-                      cefr.index < c ? 1 : (cefr.index == c ? within : 0),
-                      height: 6,
-                      color: cefr.index < c ? context.colors.penBlueSoft : context.colors.penBlue,
-                    ),
-                    const SizedBox(height: AppSpace.sm),
-                    Text(
-                      cefr.label,
-                      style: AppType.micro(
-                        weight: cefr.index == c ? FontWeight.w700 : FontWeight.w400,
-                        color: cefr.index == c ? context.colors.penBlue : context.colors.ink2,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-        ],
       ),
     );
   }
@@ -228,7 +192,7 @@ class _SkillBar extends StatelessWidget {
         SizedBox(
           width: 48,
           child: Text(
-            level.label,
+            toeicLevelForStep(level.step),
             textAlign: TextAlign.right,
             style: AppType.callout(weight: FontWeight.w600, color: weak ? context.colors.error : context.colors.ink),
           ),

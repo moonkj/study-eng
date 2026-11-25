@@ -16,6 +16,7 @@ import '../domain/speech_score.dart';
 import '../domain/srs.dart';
 import '../domain/study_log.dart';
 import '../domain/toeic_feedback.dart';
+import '../domain/toeic_level.dart' show ToeicEstimate, estimateToeic;
 import '../domain/toeic_weakness.dart' show ToeicLog, addDailyScore, toeicSetOn;
 
 /// 소리 내지 않고 속으로 따라 한 문장 표시 (점수 평균에서 뺀다)
@@ -81,6 +82,9 @@ class StudyState {
 
   /// 지금 토익스피킹 목표
   ToeicTarget get toeicTarget => settings.target;
+
+  /// 지금 예상 토스 등급 (모의고사 범위 · 루틴 첫 시도 채점 · 없으면 진단 어림). 화면의 등급 표시는 모두 이것으로.
+  ToeicEstimate get toeicEstimate => estimateToeic(mocks: mocks, toeicLog: toeicLog, levelStep: profile.overall.step);
 
   /// 가장 최근 모의고사(지금 목표로 본 것)가 목표에 닿았고, 아직 다음 목표 제안을 닫지 않았는지.
   /// Claude 채점으로 낸 등급 범위가 있어야 하고, 범위의 아래 등급이 목표 이상이어야 한다 ([meetsTarget]).

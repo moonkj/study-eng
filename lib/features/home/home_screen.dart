@@ -10,7 +10,11 @@ import '../../core/layout/adaptive.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/widgets.dart';
+import '../../data/grade_source.dart' show ToeicTaskType;
+import '../../data/models.dart' show Expression;
 import '../../domain/study_log.dart';
+import '../../domain/toeic_level.dart';
+import '../../domain/toeic_weakness.dart';
 import '../../data/toeic.dart';
 import '../commute/commute_home.dart';
 import '../toeic/toeic_target.dart';
@@ -37,9 +41,10 @@ class HomeScreen extends ConsumerWidget {
     final now = ref.watch(clockProvider)();
     // 학습일 새로 고침은 app.dart 의 라우터 리스너가 탭 화면에 있을 때만 한다
     // (홈은 학습 화면 뒤에서도 다시 그려지므로 여기서 하면 루틴 도중 진행이 지워진다)
-    final exp = s.pack.expressions.first;
     // 내용 영역 폭 기준 (iPad 에서는 내비게이션 폭을 뺀 값): 두 단이 답답하지 않을 때만 나눈다
     final wide = MediaQuery.sizeOf(context).width >= 760;
+    final estimate = s.toeicEstimate;
+    final stats = typeStats(s.toeicLog, s.mocks);
 
     final header = Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -48,12 +53,12 @@ class HomeScreen extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(koreanDate(s.now), style: AppType.caption(color: context.colors.ink2, letterSpacing: 0.2)),
+              Text(koreanDate(s.now), style: AppType.callout(color: context.colors.ink2, letterSpacing: 0.2)),
               const SizedBox(height: AppSpace.xs),
               Text(greeting(now), style: AppType.title1(weight: FontWeight.w700, letterSpacing: -0.5)),
               if (!s.allDone && s.restsUsedRecently > 0) ...[
                 const SizedBox(height: AppSpace.xs),
-                Text('쉬는 날 ${s.restsUsedRecently}개로 연속 기록을 지켰어요', style: AppType.caption(color: context.colors.ink2)),
+                Text('쉬는 날 ${s.restsUsedRecently}개로 연속 기록을 지켰어요', style: AppType.callout(color: context.colors.ink2)),
               ],
             ],
           ),
@@ -68,56 +73,47 @@ class HomeScreen extends ConsumerWidget {
       ],
     );
 
-    final heroCard = PaperCard(
-      elevated: true,
-      radius: AppRadius.hero,
-      padding: const EdgeInsets.fromLTRB(AppSpace.xxl, AppSpace.xxl, AppSpace.xxl, AppSpace.xl),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  '오늘의 표현',
-                  style: AppType.caption(weight: FontWeight.w600, color: context.colors.penBlue),
-                ),
-              ),
-              Text('1 / ${s.pack.expressions.length}', style: AppType.caption(color: context.colors.ink2)),
-            ],
-          ),
-          const SizedBox(height: AppSpace.lg),
-          HighlightText(
-            exp.pattern,
-            highlight: exp.highlight,
-            style: AppType.enHero(weight: 500, height: 1.15, letterSpacing: -0.3),
-          ),
-          const SizedBox(height: AppSpace.sm),
-          Text(exp.meaning, style: AppType.body(color: context.colors.ink2)),
-          const SizedBox(height: AppSpace.lg),
-          const Divider(),
-          const SizedBox(height: AppSpace.md),
-          Row(
-            children: [
-              Expanded(
-                child: englishSemantics(
-                  exp.examples.first.en,
-                  Text(
-                    '"${exp.examples.first.en}"',
-                    style: AppType.enCallout(italic: true, color: context.colors.inkSoft),
-                  ),
-                ),
-              ),
-              RoundIconButton(
-                icon: Icons.volume_up_rounded,
-                label: '예문 듣기',
-                onPressed: () => ref.read(sayProvider)(exp.examples.first.en),
-              ),
-            ],
-          ),
-        ],
-      ),
+    // 맨 위 히어로: 토스 목표까지의 거리 (탭하면 토스 화면)
+    final goalCard = _GoalCard(
+      target: s.toeicTarget,
+      estimate: estimate,
+      stats: stats,
+      weak: weakestType(stats),
+      onTap: () => context.push('/toeic'),
     );
+
+    // 알림은 목표 카드 위에 하나만: 목표 달성 > 이어서 하기 > 기본 팩 안내
+    final carriedFrom = s.today.carriedFrom;
+    final Widget? notice = s.targetReached
+        ? const TargetReachedCard()
+        : carriedFrom != null && !s.allDone
+        ? Builder(
+            builder: (context) {
+              final days = daysBetween(parseDateKey(carriedFrom), s.now);
+              return AppBanner(
+                icon: Icons.redo_rounded,
+                message: '${days <= 1 ? '어제' : '$days일 전에'} 하던 루틴을 이어서 해요. 한 만큼은 기록에 남았어요.',
+                actions: [
+                  TextButton(onPressed: ref.read(studyProvider.notifier).dropCarried, child: const Text('새로 시작')),
+                ],
+              );
+            },
+          )
+        : s.packError != null && s.untouched
+        ? AppBanner(
+            icon: Icons.cloud_off_rounded,
+            message: '${s.packError!} 오늘은 기본 학습으로 진행할 수 있어요.',
+            actions: [
+              TextButton(onPressed: () => ref.read(studyProvider.notifier).loadTodayPack(), child: const Text('다시 시도')),
+            ],
+          )
+        : null;
+
+    // 주 버튼 하나: 다음에 할 단계로 바로 (단계 끝의 '이어서 하기' 시트는 각 화면에 그대로 있다).
+    // 루틴을 다 끝낸 날은 버튼 대신 완료 배너(복습 카드가 있으면 그 안에 복습 버튼)
+    final Widget primary = s.allDone
+        ? _DoneCard(state: s)
+        : _PrimaryButton(state: s, toeic: toeic, onPressed: () => context.push(routinePaths[s.current]!));
 
     final routine = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -135,62 +131,33 @@ class HomeScreen extends ConsumerWidget {
           _RoutineRow(step: step, state: s, toeic: toeic),
           const SizedBox(height: AppSpace.sm),
         ],
-        const CommuteEntry(),
-        if (bank != null) ...[
+      ],
+    );
+
+    // 루틴 아래 바로 갈 곳: 복습 · 모의고사 · 출퇴근
+    final more = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (!wide && s.dueCount > 0) ...[
+          _ReviewRow(count: s.dueCount, minutes: s.reviewMinutes),
           const SizedBox(height: AppSpace.sm),
+        ],
+        if (bank != null) ...[
           MockEntryCard(
             // 주말에는 모의고사를 권한다 (언제든 볼 수 있다)
             weekend: s.now.weekday >= DateTime.saturday,
             last: s.mocks.isEmpty ? null : s.mocks.last.estimate?.label,
             onTap: () => context.push('/toeic-mock'),
           ),
+          const SizedBox(height: AppSpace.xs),
         ],
+        const CommuteEntry(),
       ],
     );
 
-    final notice = s.packError != null && s.untouched
-        ? Padding(
-            padding: const EdgeInsets.only(bottom: AppSpace.md),
-            child: AppBanner(
-              icon: Icons.cloud_off_rounded,
-              message: '${s.packError!} 오늘은 기본 학습으로 진행할 수 있어요.',
-              actions: [
-                TextButton(
-                  onPressed: () => ref.read(studyProvider.notifier).loadTodayPack(),
-                  child: const Text('다시 시도'),
-                ),
-              ],
-            ),
-          )
-        : null;
+    final expression = s.packLoading ? null : _ExpressionCard(expression: s.pack.expressions.first);
 
-    final reached = s.targetReached
-        ? const Padding(
-            padding: EdgeInsets.only(bottom: AppSpace.md),
-            child: TargetReachedCard(),
-          )
-        : null;
-
-    final carriedFrom = s.today.carriedFrom;
-    final carryNotice = carriedFrom != null && !s.allDone
-        ? Padding(
-            padding: const EdgeInsets.only(bottom: AppSpace.md),
-            child: Builder(
-              builder: (context) {
-                final days = daysBetween(parseDateKey(carriedFrom), s.now);
-                return AppBanner(
-                  icon: Icons.redo_rounded,
-                  message: '${days <= 1 ? '어제' : '$days일 전에'} 하던 루틴을 이어서 해요. 한 만큼은 기록에 남았어요.',
-                  actions: [
-                    TextButton(onPressed: ref.read(studyProvider.notifier).dropCarried, child: const Text('새로 시작')),
-                  ],
-                );
-              },
-            ),
-          )
-        : null;
-
-    // iPad 가로: 왼쪽(오늘의 표현 + 루틴) / 오른쪽(레벨 · 복습 요약)
+    // iPad 가로: 왼쪽(목표 · 주 버튼 · 루틴) / 오른쪽(복습 · 모의고사 · 오늘의 표현)
     if (wide) {
       return SafeArea(
         child: ListView(
@@ -198,41 +165,42 @@ class HomeScreen extends ConsumerWidget {
           children: [
             header,
             const SizedBox(height: AppSpace.xl),
-            if (s.packLoading)
-              _PreparingCard(onSkip: ref.read(studyProvider.notifier).startWithFallback)
-            else
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    flex: 3,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        ?notice,
-                        ?carryNotice,
-                        ?reached,
-                        if (s.allDone) ...[_DoneCard(state: s), const SizedBox(height: AppSpace.lg)],
-                        heroCard,
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (notice != null) ...[notice, const SizedBox(height: AppSpace.md)],
+                      goalCard,
+                      const SizedBox(height: AppSpace.lg),
+                      if (s.packLoading)
+                        _PreparingCard(onSkip: ref.read(studyProvider.notifier).startWithFallback)
+                      else ...[
+                        primary,
                         const SizedBox(height: AppSpace.xxl),
                         routine,
                       ],
-                    ),
+                    ],
                   ),
-                  const SizedBox(width: AppSpace.xxl),
-                  Expanded(
-                    flex: 2,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        _LevelStrip(state: s),
-                        const SizedBox(height: AppSpace.md),
-                        _ReviewSummary(state: s),
-                      ],
-                    ),
+                ),
+                const SizedBox(width: AppSpace.xxl),
+                Expanded(
+                  flex: 2,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _ReviewSummary(state: s),
+                      const SizedBox(height: AppSpace.md),
+                      more,
+                      if (expression != null) ...[const SizedBox(height: AppSpace.md), expression],
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
+            ),
           ],
         ),
       );
@@ -244,25 +212,262 @@ class HomeScreen extends ConsumerWidget {
         children: [
           header,
           const SizedBox(height: AppSpace.lg),
-          if (s.packLoading) ...[
-            _PreparingCard(onSkip: ref.read(studyProvider.notifier).startWithFallback),
-            const SizedBox(height: AppSpace.xxl),
-            _LevelStrip(state: s),
-          ] else ...[
-            ?notice,
-            ?carryNotice,
-            ?reached,
-            if (s.allDone) ...[_DoneCard(state: s), const SizedBox(height: AppSpace.lg)],
-            heroCard,
+          if (notice != null) ...[notice, const SizedBox(height: AppSpace.md)],
+          goalCard,
+          const SizedBox(height: AppSpace.lg),
+          if (s.packLoading)
+            _PreparingCard(onSkip: ref.read(studyProvider.notifier).startWithFallback)
+          else ...[
+            primary,
             const SizedBox(height: AppSpace.xxl),
             routine,
-            if (s.dueCount > 0) ...[
-              _ReviewRow(count: s.dueCount, minutes: s.reviewMinutes),
-              const SizedBox(height: AppSpace.sm),
-            ],
-            const SizedBox(height: AppSpace.sm),
-            _LevelStrip(state: s),
+            more,
+            const SizedBox(height: AppSpace.lg),
+            ?expression,
           ],
+        ],
+      ),
+    );
+  }
+}
+
+/// 맨 위 '오늘의 목표' 카드: 목표 · 지금 예상 등급 · 등급 눈금(공통 LevelScale) · 유형별 미니 막대 · (시험일)
+class _GoalCard extends StatelessWidget {
+  const _GoalCard({
+    required this.target,
+    required this.estimate,
+    required this.stats,
+    required this.onTap,
+    this.weak,
+    // ignore: unused_element_parameter
+    this.examDate,
+    // ignore: unused_element_parameter
+    this.today,
+  });
+
+  final ToeicTarget target;
+  final ToeicEstimate estimate;
+  final Map<ToeicTaskType, TypeStat> stats;
+  final ToeicTaskType? weak;
+  final VoidCallback onTap;
+
+  /// 시험일 (아직 입력하는 곳이 없어 늘 null → 숨김. 시험일 기능(P1-10)이 생기면 넘긴다)
+  final DateTime? examDate;
+  final DateTime? today;
+
+  static const _short = {
+    ToeicTaskType.readAloud: '문장 읽기',
+    ToeicTaskType.picture: '사진',
+    ToeicTaskType.respond: '질문',
+    ToeicTaskType.info: '표',
+    ToeicTaskType.opinion: '의견',
+  };
+
+  int? get _daysLeft => examDate == null || today == null
+      ? null
+      : DateTime(
+          examDate!.year,
+          examDate!.month,
+          examDate!.day,
+        ).difference(DateTime(today!.year, today!.month, today!.day)).inDays;
+
+  @override
+  Widget build(BuildContext context) {
+    final days = _daysLeft;
+    final now = estimate.approximate ? '예상 ${estimate.label}' : '지금 ${estimate.label}';
+    // 스크린리더: 한 문장 요약
+    final summary = [
+      '오늘의 목표',
+      '목표 ${toeicLevelLabel(target.label)}',
+      estimate.approximate
+          ? '예상 ${estimate.low}'
+          : '지금 예상 ${estimate.low}${estimate.isRange ? '에서 ${estimate.high}' : ''}',
+      if (weak != null) '약점 ${toeicTypeKo[weak]}',
+      if (days != null && days >= 0) '시험까지 $days일',
+    ].join(', ');
+    return Semantics(
+      button: true,
+      label: summary,
+      excludeSemantics: true,
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(AppRadius.hero),
+          boxShadow: AppShadow.card(context.colors),
+        ),
+        child: Material(
+          color: context.colors.card,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.hero),
+            side: BorderSide(color: context.colors.line),
+          ),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(AppRadius.hero),
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(AppSpace.xl, AppSpace.lg, AppSpace.xl, AppSpace.md),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        '오늘의 목표',
+                        style: AppType.caption(
+                          weight: FontWeight.w600,
+                          color: context.colors.penBlue,
+                          letterSpacing: 0.4,
+                        ),
+                      ),
+                      const Spacer(),
+                      if (days != null && days >= 0)
+                        Text(
+                          days == 0 ? '오늘 시험' : '시험까지 $days일',
+                          // 7일 안이면 눈에 띄게 (크게 키우지는 않는다)
+                          style: AppType.caption(
+                            weight: FontWeight.w600,
+                            color: days <= 7 ? context.colors.ember : context.colors.ink2,
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpace.sm),
+                  Text('목표 ${toeicLevelLabel(target.label)}', style: AppType.headline(weight: FontWeight.w600)),
+                  const SizedBox(height: AppSpace.xs),
+                  Text(now, style: AppType.enTitle(weight: 500, color: context.colors.penBlue)),
+                  const SizedBox(height: AppSpace.xs),
+                  Text(estimate.basis, style: AppType.caption(color: context.colors.ink2, height: 1.4)),
+                  const SizedBox(height: AppSpace.md),
+                  LevelScale(
+                    current: estimate.low,
+                    currentHigh: estimate.high,
+                    target: target.label,
+                    previous: estimate.previous,
+                  ),
+                  const SizedBox(height: AppSpace.md),
+                  if (stats.isEmpty)
+                    Text('토스 말하기를 하면 유형별 점수가 쌓여요 · 하루 약 8분', style: AppType.caption(color: context.colors.ink2))
+                  else
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        for (final t in _short.keys) ...[
+                          if (t != _short.keys.first) const SizedBox(width: AppSpace.sm),
+                          Expanded(
+                            child: _TypeMiniBar(name: _short[t]!, average: stats[t]?.average, weak: t == weak),
+                          ),
+                        ],
+                      ],
+                    ),
+                  const SizedBox(height: AppSpace.xs),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '토스 전체 보기',
+                          style: AppType.callout(weight: FontWeight.w600, color: context.colors.penBlue),
+                        ),
+                        Icon(Icons.chevron_right_rounded, size: 18, color: context.colors.penBlue),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 목표 카드 안 유형 하나의 미니 막대 (약점은 색만이 아니라 글자로도)
+class _TypeMiniBar extends StatelessWidget {
+  const _TypeMiniBar({required this.name, required this.average, required this.weak});
+  final String name;
+  final double? average;
+  final bool weak;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          name,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: AppType.micro(weight: weak ? FontWeight.w700 : FontWeight.w400, color: context.colors.ink2),
+        ),
+        const SizedBox(height: AppSpace.xs),
+        ThinProgress((average ?? 0) / 100, height: 6, color: weak ? context.colors.ember : context.colors.penBlue),
+        if (weak) ...[
+          const SizedBox(height: AppSpace.xs),
+          Text(
+            '약점',
+            style: AppType.micro(weight: FontWeight.w700, color: context.colors.error),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// 홈의 주 버튼: 시작 전 "오늘 루틴 시작 · 약 N분" / 진행 중 "다음: ○○ 이어서 · 약 N분"
+class _PrimaryButton extends StatelessWidget {
+  const _PrimaryButton({required this.state, required this.toeic, required this.onPressed});
+  final StudyState state;
+  final ToeicDailySet? toeic;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final minutes = remainingMinutes(state, toeic: toeic);
+    final label = state.untouched
+        ? '오늘 루틴 시작 · 약 $minutes분'
+        : '다음: ${stepTitle(state.current!, state, toeic: toeic)} 이어서 · 약 $minutes분';
+    return FilledButton(
+      onPressed: onPressed,
+      child: Text(label, textAlign: TextAlign.center),
+    );
+  }
+}
+
+/// 맨 아래 작은 카드: 오늘의 표현 (형광펜은 그대로)
+class _ExpressionCard extends ConsumerWidget {
+  const _ExpressionCard({required this.expression});
+  final Expression expression;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final exp = expression;
+    return PaperCard(
+      padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.md, AppSpace.md, AppSpace.md),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '오늘의 표현',
+                  style: AppType.caption(weight: FontWeight.w600, color: context.colors.penBlue),
+                ),
+                const SizedBox(height: AppSpace.sm),
+                HighlightText(exp.pattern, highlight: exp.highlight, style: AppType.enBody(weight: 500, height: 1.25)),
+                const SizedBox(height: AppSpace.xs),
+                Text(exp.meaning, style: AppType.callout(color: context.colors.ink2)),
+              ],
+            ),
+          ),
+          const SizedBox(width: AppSpace.sm),
+          RoundIconButton(
+            icon: Icons.volume_up_rounded,
+            label: '예문 듣기',
+            filled: false,
+            onPressed: () => ref.read(sayProvider)(exp.examples.first.en),
+          ),
         ],
       ),
     );
@@ -355,10 +560,10 @@ class _PreparingCardState extends State<_PreparingCard> {
             style: AppType.caption(weight: FontWeight.w600, color: context.colors.penBlue),
           ),
           const SizedBox(height: AppSpace.lg),
-          Text('내 레벨에 맞춰\n오늘의 학습을 만들고 있어요', style: AppType.title2(weight: FontWeight.w700, height: 1.4)),
+          Text('목표에 맞춰\n오늘의 학습을 만들고 있어요', style: AppType.title2(weight: FontWeight.w700, height: 1.4)),
           const SizedBox(height: AppSpace.sm),
           Text(
-            _slow ? '조금 오래 걸리고 있어요. 기본 학습으로 먼저 시작해도 돼요.' : '오늘의 표현·단어·문장과 퀴즈를 만들고 있어요 · 보통 30초~1분',
+            _slow ? '조금 오래 걸리고 있어요. 기본 학습으로 먼저 시작해도 돼요.' : '오늘의 표현·단어와 퀴즈를 만들고 있어요 · 보통 30초~1분',
             style: AppType.caption(color: context.colors.ink2),
           ),
           const SizedBox(height: AppSpace.lg),
@@ -536,6 +741,7 @@ class _RoutineRow extends StatelessWidget {
     final done = state.done.contains(step);
     final current = state.current == step;
     final (title, sub) = _texts;
+    // 루틴 행은 진행 표시: 주 버튼이 '다음 할 것'을 맡으므로 지금 단계는 테두리·진행 막대로만 구분한다
     return ActionRow(
       number: step.index + 1,
       title: title,
@@ -543,67 +749,11 @@ class _RoutineRow extends StatelessWidget {
       state: done
           ? ActionRowState.done
           : current
-          ? ActionRowState.emphasis
+          ? ActionRowState.current
           : ActionRowState.normal,
       progress: current ? _progress : null,
-      value: current ? (_progress > 0 ? '이어서' : '시작') : null,
+      value: current ? '지금' : null,
       onTap: () => context.push(routinePaths[step]!),
-    );
-  }
-}
-
-class _LevelStrip extends StatelessWidget {
-  const _LevelStrip({required this.state});
-  final StudyState state;
-
-  @override
-  Widget build(BuildContext context) {
-    final level = state.profile.overall;
-    return Material(
-      color: context.colors.sand,
-      borderRadius: BorderRadius.circular(AppRadius.row),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(AppRadius.row),
-        onTap: () => context.push('/level-result'),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpace.lg, vertical: AppSpace.lg),
-          child: Row(
-            children: [
-              SizedBox(
-                width: 60,
-                child: Text(level.label, style: AppType.enTitle(weight: 600, color: context.colors.penBlue)),
-              ),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Text(
-                          level.isMax ? '최고 단계' : '다음 단계 ${level.next.label}까지',
-                          style: AppType.caption(weight: FontWeight.w600),
-                        ),
-                        const Spacer(),
-                        Text(
-                          '${(level.progressToNext * 100).round()}%',
-                          style: AppType.caption(color: context.colors.ink2),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: AppSpace.sm),
-                    ThinProgress(
-                      level.progressToNext,
-                      height: 6,
-                      color: context.colors.penBlue,
-                      track: context.colors.sandDeep,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }

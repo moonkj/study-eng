@@ -12,6 +12,10 @@ enum ActionRowState {
   /// 강조: 지금 할 일 (진한 면, 최소 높이 64)
   emphasis,
 
+  /// 지금 단계 (진한 면 대신 펜 파랑 테두리·번호 원, 부제 아래 진행 막대, 오른쪽 값도 펜 파랑).
+  /// 주 버튼이 따로 '다음 할 것'을 맡는 화면(홈 루틴 목록)에서 쓴다.
+  current,
+
   /// 완료: 체크 + 제목 취소선 + '완료'
   done,
 
@@ -60,7 +64,7 @@ class ActionRow extends StatelessWidget {
 
   final ActionRowState state;
 
-  /// 0~1. 강조 상태에서 제목 아래 얇은 진행 막대로 보인다 (부제 대신).
+  /// 0~1. 강조 상태에서 제목 아래 얇은 진행 막대로 보인다 (부제 대신). 지금 단계 상태면 부제 아래 (0보다 클 때만).
   final double? progress;
 
   final VoidCallback? onTap;
@@ -88,6 +92,7 @@ class ActionRow extends StatelessWidget {
     final emphasis = state == ActionRowState.emphasis;
     final done = state == ActionRowState.done;
     final locked = state == ActionRowState.locked;
+    final current = state == ActionRowState.current;
     final fg = emphasis ? c.onEmphasis : (locked ? c.ink2 : c.ink);
     final soft = emphasis ? c.onEmphasisSoft : c.ink2;
     final accent = emphasis ? c.onEmphasisAccent : c.penBlue;
@@ -105,6 +110,8 @@ class ActionRow extends StatelessWidget {
         : c.card;
     final BorderSide side = !bordered || emphasis
         ? BorderSide.none
+        : current
+        ? BorderSide(color: c.penBlue, width: 1.5)
         : BorderSide(color: tinted && !done ? c.penBlueTint : c.line);
 
     Widget? lead = leading;
@@ -121,11 +128,14 @@ class ActionRow extends StatelessWidget {
               alignment: Alignment.center,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.all(color: emphasis ? accent : c.lineStrong, width: emphasis ? 2 : 1.5),
+                border: Border.all(
+                  color: emphasis || current ? accent : c.lineStrong,
+                  width: emphasis || current ? 2 : 1.5,
+                ),
               ),
               child: Text(
                 '$number',
-                style: AppType.caption(weight: FontWeight.w700, color: emphasis ? accent : c.ink2),
+                style: AppType.caption(weight: FontWeight.w700, color: emphasis || current ? accent : c.ink2),
               ),
             );
     } else if (lead == null && icon != null) {
@@ -152,7 +162,11 @@ class ActionRow extends StatelessWidget {
               child: Text(
                 label,
                 textAlign: TextAlign.right,
-                style: emphasis ? AppType.caption(weight: FontWeight.w600, color: fg) : AppType.caption(color: soft),
+                style: emphasis
+                    ? AppType.caption(weight: FontWeight.w600, color: fg)
+                    : current
+                    ? AppType.caption(weight: FontWeight.w600, color: accent)
+                    : AppType.caption(color: soft),
               ),
             ),
           if (chevron && onTap != null && !done && !locked)
@@ -187,6 +201,10 @@ class ActionRow extends StatelessWidget {
                           ThinProgress(progress!, color: accent, track: c.onEmphasis.withValues(alpha: 0.2)),
                         ] else if (subtitle != null && !done)
                           Text(subtitle!, style: AppType.caption(color: soft)),
+                        if (current && progress != null && progress! > 0) ...[
+                          const SizedBox(height: AppSpace.sm),
+                          ThinProgress(progress!, color: accent),
+                        ],
                       ],
                     ),
                   ),

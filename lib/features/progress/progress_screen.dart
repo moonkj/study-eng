@@ -15,6 +15,7 @@ import '../../domain/level.dart';
 import '../../domain/mastery.dart';
 import '../../domain/study_log.dart';
 import '../../data/toeic.dart';
+import '../../domain/toeic_level.dart';
 import '../../domain/toeic_weakness.dart';
 import '../toeic/toeic_target.dart';
 
@@ -48,25 +49,23 @@ class ProgressScreen extends ConsumerWidget {
               children: [
                 Row(
                   children: [
-                    Text('레벨 성장', style: AppType.callout(weight: FontWeight.w600)),
+                    Text('실력 변화', style: AppType.callout(weight: FontWeight.w600)),
                     const Spacer(),
+                    // 실력은 토스 등급으로만 (채점 기록이 없으면 진단으로 어림한 '예상')
                     Text(
-                      '지금 ${s.profile.overall.label}',
+                      s.toeicEstimate.display,
                       style: AppType.caption(weight: FontWeight.w600, color: context.colors.success),
                     ),
                   ],
                 ),
                 const SizedBox(height: AppSpace.sm),
                 if (points.length < 2)
-                  SizedBox(
-                    height: 110,
-                    child: Center(
-                      child: Text(
-                        '루틴을 이틀 이상 끝내면\n레벨 변화가 여기에 그려져요',
-                        textAlign: TextAlign.center,
-                        style: AppType.callout(color: context.colors.ink2, height: 1.5),
-                      ),
-                    ),
+                  EmptyState(
+                    icon: Icons.show_chart_rounded,
+                    message: '루틴을 이틀 끝내면 변화가 여기에 그려져요',
+                    time: '하루 약 15분',
+                    actionLabel: s.allDone ? null : '오늘 루틴 하기',
+                    onAction: () => context.go('/'),
                   )
                 else
                   SizedBox(
@@ -110,6 +109,25 @@ class ProgressScreen extends ConsumerWidget {
           if (s.toeicLog.isNotEmpty || s.mocks.isNotEmpty) ...[
             const SizedBox(height: AppSpace.md),
             _ToeicTypesCard(state: s),
+          ] else if (ref.watch(toeicBankProvider) != null) ...[
+            const SizedBox(height: AppSpace.md),
+            PaperCard(
+              padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.lg, AppSpace.lg, AppSpace.sm),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('토스 유형별 점수', style: AppType.callout(weight: FontWeight.w600)),
+                  const SizedBox(height: AppSpace.sm),
+                  EmptyState(
+                    icon: Icons.mic_none_rounded,
+                    message: '오늘 토스 말하기를 하면 유형별 점수가 쌓여요',
+                    time: '약 8분',
+                    actionLabel: '토스 말하기 시작',
+                    onAction: () => context.push('/toeic-today'),
+                  ),
+                ],
+              ),
+            ),
           ],
           const SizedBox(height: AppSpace.md),
           _MyExpressionsCard(state: s),
@@ -154,7 +172,7 @@ class ProgressScreen extends ConsumerWidget {
           Text('자동 조정 내역', style: AppType.callout(weight: FontWeight.w600)),
           const SizedBox(height: AppSpace.sm),
           if (s.lastAdjustmentReasons.isEmpty)
-            Text('첫 루틴을 끝내면 내일 학습을 어떻게 바꿨는지 알려드려요.', style: AppType.caption(color: context.colors.ink2)),
+            Text('오늘 루틴(약 15분)을 끝내면 내일 학습을 어떻게 바꿨는지 알려드려요.', style: AppType.caption(color: context.colors.ink2)),
           for (final r in s.lastAdjustmentReasons)
             Padding(
               padding: const EdgeInsets.only(bottom: AppSpace.sm),
@@ -305,11 +323,13 @@ class _GrowthPainter extends CustomPainter {
     }
     // 세로축: 최저/최고 레벨 라벨
     // 위아래가 같은 단계면(변화가 작은 기간) 한 번만 쓴다
-    final top = Level((maxV - 30).round()).label, bottom = Level((minV + 30).round()).label;
+    // 세로축 라벨은 토스 등급으로 (내부 레벨 점수를 대략 바꾼 값)
+    String label(double v) => toeicLevelForStep(Level(v.round()).step);
+    final top = label(maxV - 30), bottom = label(minV + 30);
     for (final (v, y) in [(maxV - 30, 8.0), if (top != bottom) (minV + 30, size.height - 26)]) {
       final tp = TextPainter(
         text: TextSpan(
-          text: Level(v.round()).label,
+          text: label(v),
           style: AppType.micro(weight: FontWeight.w400, color: colors.ink2),
         ),
         textDirection: TextDirection.ltr,

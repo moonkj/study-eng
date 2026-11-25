@@ -8,6 +8,7 @@ import '../../core/layout/adaptive.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/widgets.dart';
+import '../../domain/toeic_level.dart';
 import '../toeic/toeic_target.dart' show pickToeicTarget;
 
 class SettingsScreen extends ConsumerWidget {
@@ -16,8 +17,9 @@ class SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final st = ref.watch(studyProvider);
-    final level = st.profile.overall;
     final settings = st.settings;
+    // 순서: 토스 목표 → 알림 → 음성·속도 → 화면 테마 → 학습 내용 → (접힌) 표현 난이도·재진단.
+    // 실력은 토스 등급으로만 보여 주고 내부 난이도 단계(CEFR)는 쉬운 말로만 쓴다
     return SafeArea(
       child: ListView(
         padding: readablePadding(context, maxWidth: 680),
@@ -27,52 +29,15 @@ class SettingsScreen extends ConsumerWidget {
           _Group(
             children: [
               _Item(
-                icon: Icons.school_outlined,
-                title: '내 레벨',
-                value: level.label,
-                onTap: () => context.push('/level-result'),
-              ),
-              _Item(icon: Icons.quiz_outlined, title: '레벨 다시 진단하기', onTap: () => context.push('/level-test')),
-              _Item(
                 icon: Icons.flag_outlined,
                 title: '토스 목표',
-                value:
-                    '${st.toeicTarget.label} · ${st.toeicTarget.score}점${settings.toeicTarget == null ? ' (기본)' : ''}',
+                value: '${toeicLevelLabel(st.toeicTarget.label)}${settings.toeicTarget == null ? ' (기본)' : ''}',
                 onTap: () => pickToeicTarget(context, ref),
               ),
             ],
           ),
           const SizedBox(height: AppSpace.md),
-          _Group(
-            children: [
-              _Item(
-                icon: Icons.auto_awesome_outlined,
-                title: '학습 내용',
-                value: ref.watch(packSourceProvider) == null
-                    ? '기본 샘플 (서버 미연결)'
-                    : (st.pack.fromClaude ? 'Claude 맞춤 생성' : '기본 샘플'),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpace.md),
           _Group(children: [_ReminderItem(minutes: settings.reminderMinutes)]),
-          const SizedBox(height: AppSpace.md),
-          _Group(
-            children: [
-              _Item(
-                icon: Icons.contrast_rounded,
-                title: '화면 테마',
-                value: themes[settings.theme] ?? themes['system'],
-                onTap: () => _pick<String>(
-                  context,
-                  title: '화면 테마',
-                  options: themes,
-                  selected: settings.theme,
-                  onSelect: (v) => ref.read(studyProvider.notifier).updateSettings(settings.copyWith(theme: v)),
-                ),
-              ),
-            ],
-          ),
           const SizedBox(height: AppSpace.md),
           _Group(
             children: [
@@ -104,6 +69,63 @@ class SettingsScreen extends ConsumerWidget {
                     ref.read(studyProvider.notifier).updateSettings(settings.copyWith(speed: v));
                     ref.read(sayProvider)("I've been meaning to call you.");
                   },
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpace.md),
+          _Group(
+            children: [
+              _Item(
+                icon: Icons.contrast_rounded,
+                title: '화면 테마',
+                value: themes[settings.theme] ?? themes['system'],
+                onTap: () => _pick<String>(
+                  context,
+                  title: '화면 테마',
+                  options: themes,
+                  selected: settings.theme,
+                  onSelect: (v) => ref.read(studyProvider.notifier).updateSettings(settings.copyWith(theme: v)),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpace.md),
+          _Group(
+            children: [
+              _Item(
+                icon: Icons.auto_awesome_outlined,
+                title: '학습 내용',
+                value: ref.watch(packSourceProvider) == null
+                    ? '기본 샘플 (서버 미연결)'
+                    : (st.pack.fromClaude ? 'Claude 맞춤 생성' : '기본 샘플'),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpace.md),
+          // 거의 바꿀 일이 없어 접어 둔다: 표현·단어 난이도는 목표와 정답률로 자동
+          _Group(
+            children: [
+              Theme(
+                data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                child: ExpansionTile(
+                  leading: Icon(Icons.tune_rounded, color: context.colors.penBlue),
+                  title: Text('표현 난이도 (자동)', style: AppType.body(weight: FontWeight.w500)),
+                  subtitle: Text(
+                    difficultyKo(st.contentStep, st.toeicTarget.contentStep),
+                    style: AppType.callout(color: context.colors.ink2),
+                  ),
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(72, 0, AppSpace.lg, AppSpace.sm),
+                      child: Text(
+                        '토스 목표에 맞춰 정하고, 퀴즈 정답률을 보고 매일 조금씩 바꿔요.',
+                        style: AppType.callout(color: context.colors.ink2, height: 1.5),
+                      ),
+                    ),
+                    _Item(icon: Icons.school_outlined, title: '레벨 진단 결과', onTap: () => context.push('/level-result')),
+                    _Item(icon: Icons.quiz_outlined, title: '레벨 다시 진단하기', onTap: () => context.push('/level-test')),
+                  ],
                 ),
               ),
             ],

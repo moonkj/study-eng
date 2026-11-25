@@ -6,8 +6,11 @@ import '../../app/study_controller.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/widgets.dart';
+import '../../data/toeic.dart' show toeicLevelIndex;
 import '../../domain/level.dart';
 import '../../domain/srs.dart';
+import '../../domain/toeic_feedback.dart' show estimateLevel;
+import '../../domain/toeic_level.dart';
 import '../../domain/study_log.dart';
 import '../../domain/mastery.dart';
 import '../settings/settings_screen.dart' show formatMinutes;
@@ -59,8 +62,23 @@ class _CompleteScreenState extends ConsumerState<CompleteScreen> {
       s.now,
     );
     final graduated = graduatedToday(s.today.cardsBefore, s.cards).length;
-    final levelUp = before.step < now.step;
-    // 축하 문구 우선순위: 레벨 업 > 연속 마일스톤 > 최고 기록을 처음 넘은 날 > 복귀
+    // 실력은 토스 등급으로: 채점 기록이 있으면 그것으로, 없으면 진단 결과를 어림한 '예상' 등급
+    final estimate = s.toeicEstimate;
+    final toeicBefore = toeicLevelForStep(before.step), toeicNow = toeicLevelForStep(now.step);
+    // 어림 등급이 한 칸 올랐을 때만 축하 (채점 기록이 있으면 채점 등급이 기준이라 어림값 변화는 말하지 않는다)
+    final levelUp = estimate.approximate && toeicLevelIndex(toeicNow) > toeicLevelIndex(toeicBefore);
+    // 오늘 한 토스 말하기 (주인공): 개수 · 평균, 채점받은 것이 있으면 등급
+    final toeicDone = s.today.toeic.values.toList();
+    final toeicAvg = s.toeicAverage;
+    final graded = [
+      for (final r in toeicDone)
+        if (r.graded) r.score,
+    ];
+    final toeicLevel = graded.isEmpty ? null : estimateLevel(graded.reduce((a, b) => a + b) / graded.length);
+    // 오늘 실제로 한 것만: 토스 루틴이면 토스 말하기 개수, 예전 따라 말하기면 문장 수 (토스 날 '문장 0개'가 나오지 않게)
+    final doneSummary =
+        '${['표현 ${s.pack.expressions.length}개', '단어 ${s.pack.words.length}개', if (toeicDone.isNotEmpty) '토스 말하기 ${toeicDone.length}개' else if (s.spokenCount > 0) '문장 ${s.spokenCount}개'].join(' · ')} 완료';
+    // 축하 문구 우선순위: 예상 등급 업 > 연속 마일스톤 > 최고 기록을 처음 넘은 날 > 복귀
     final streak = s.streakDays;
     final prevBest = s.previousLongest;
     final milestone = switch (streak) {
@@ -110,10 +128,7 @@ class _CompleteScreenState extends ConsumerState<CompleteScreen> {
                           ],
                         ),
                         child: levelUp
-                            ? Text(
-                                now.label,
-                                style: AppType.enHero(weight: 600, color: context.colors.onEmphasisAccent),
-                              )
+                            ? Text(toeicNow, style: AppType.enHero(weight: 600, color: context.colors.onEmphasisAccent))
                             : Icon(
                                 Icons.local_fire_department_rounded,
                                 size: 46,
@@ -122,7 +137,28 @@ class _CompleteScreenState extends ConsumerState<CompleteScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: AppSpace.xxl),
+                  const SizedBox(height: 26),
+                  // 토스 결과가 먼저: 오늘 한 토스 말하기 평균 (등급은 Claude 채점을 받은 것만)
+                  if (toeicAvg != null) ...[
+                    Center(
+                      child: Text(
+                        '오늘 토스 평균 ${toeicAvg.round()}점',
+                        textAlign: TextAlign.center,
+                        style: AppType.title1(weight: FontWeight.w700, letterSpacing: -0.5),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpace.xs),
+                    Center(
+                      child: Text(
+                        toeicLevel != null
+                            ? '채점 기준 $toeicLevel 수준 · 목표 ${toeicLevelLabel(s.toeicTarget.label)}'
+                            : '목표 ${toeicLevelLabel(s.toeicTarget.label)} · 등급은 채점을 받으면 보여요',
+                        textAlign: TextAlign.center,
+                        style: AppType.callout(color: context.colors.ink2),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpace.lg),
+                  ],
                   Center(
                     // 연속 학습일이 하나 올라가는 순간을 보여준다
                     child: TweenAnimationBuilder<double>(
@@ -132,10 +168,17 @@ class _CompleteScreenState extends ConsumerState<CompleteScreen> {
                       builder: (_, v, _) => Text.rich(
                         TextSpan(
                           children: [
-                            TextSpan(text: '${v.round()}', style: AppType.enDisplay(weight: 500, letterSpacing: -1)),
+                            // 토스 결과가 있는 날은 연속일을 한 단계 작게
+                            TextSpan(
+                              text: '${v.round()}',
+                              style: (toeicAvg != null ? AppType.enHero : AppType.enDisplay)(
+                                weight: 500,
+                                letterSpacing: -1,
+                              ),
+                            ),
                             TextSpan(
                               text: '일 연속',
-                              style: AppType.title2(weight: FontWeight.w600),
+                              style: (toeicAvg != null ? AppType.headline : AppType.title2)(weight: FontWeight.w600),
                             ),
                           ],
                         ),
@@ -145,15 +188,18 @@ class _CompleteScreenState extends ConsumerState<CompleteScreen> {
                   const SizedBox(height: AppSpace.sm),
                   Center(
                     child: Text(
-                      levelUp ? '레벨 업! ${before.label} → ${now.label}' : milestone ?? '오늘 루틴 완료!',
+                      levelUp ? '예상 등급 업! $toeicBefore → $toeicNow' : milestone ?? '오늘 루틴 완료!',
                       textAlign: TextAlign.center,
-                      style: AppType.title2(weight: FontWeight.w700, letterSpacing: -0.4),
+                      style: (toeicAvg != null ? AppType.headline : AppType.title2)(
+                        weight: FontWeight.w700,
+                        letterSpacing: -0.4,
+                      ),
                     ),
                   ),
                   const SizedBox(height: AppSpace.sm),
                   Center(
                     child: Text(
-                      '표현 ${s.pack.expressions.length}개 · 단어 ${s.pack.words.length}개 · 문장 ${s.spokenCount}개 완료',
+                      doneSummary,
                       textAlign: TextAlign.center,
                       style: AppType.callout(color: context.colors.ink2),
                     ),
@@ -191,7 +237,7 @@ class _CompleteScreenState extends ConsumerState<CompleteScreen> {
                       Expanded(
                         child: StatTile(
                           value: speaking == null ? '-' : '${speaking.round()}',
-                          label: '말하기 평균',
+                          label: toeicDone.isNotEmpty ? '토스 평균' : '말하기 평균',
                           centered: true,
                         ),
                       ),
@@ -202,6 +248,7 @@ class _CompleteScreenState extends ConsumerState<CompleteScreen> {
                     ],
                   ),
                   const SizedBox(height: AppSpace.md),
+                  // 실력은 토스 등급으로만 보여 준다 (CEFR 레벨 점수는 내부 난이도용)
                   PaperCard(
                     padding: const EdgeInsets.all(AppSpace.lg),
                     child: Column(
@@ -209,58 +256,22 @@ class _CompleteScreenState extends ConsumerState<CompleteScreen> {
                       children: [
                         Row(
                           children: [
-                            Text('레벨 점수', style: AppType.callout(weight: FontWeight.w600)),
+                            Text('토스 예상 등급', style: AppType.callout(weight: FontWeight.w600)),
                             const Spacer(),
-                            // 점수가 내려간 날은 숫자로 탓하지 않는다 (아래에 이유를 보여 준다)
-                            if (delta != null && delta >= 0)
-                              Text(
-                                '${delta >= 0 ? '+' : ''}$delta',
-                                style: AppType.callout(
-                                  weight: FontWeight.w700,
-                                  color: delta >= 0 ? context.colors.success : context.colors.error,
-                                ),
-                              ),
+                            Text(
+                              '목표 ${toeicLevelLabel(s.toeicTarget.label)}',
+                              style: AppType.caption(color: context.colors.ink2),
+                            ),
                           ],
                         ),
                         const SizedBox(height: AppSpace.sm),
-                        Row(
-                          children: [
-                            Text(now.label, style: AppType.enBody(weight: 600, color: context.colors.penBlue)),
-                            const SizedBox(width: AppSpace.sm),
-                            Expanded(
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(4),
-                                child: SizedBox(
-                                  height: 8,
-                                  width: double.infinity,
-                                  child: Stack(
-                                    children: [
-                                      Positioned.fill(child: ColoredBox(color: context.colors.line)),
-                                      FractionallySizedBox(
-                                        alignment: Alignment.centerLeft,
-                                        heightFactor: 1,
-                                        widthFactor: now.progressToNext,
-                                        child: ColoredBox(color: context.colors.highlighter),
-                                      ),
-                                      FractionallySizedBox(
-                                        alignment: Alignment.centerLeft,
-                                        heightFactor: 1,
-                                        widthFactor: before.step == now.step ? before.progressToNext : 0,
-                                        child: ColoredBox(color: context.colors.penBlue),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: AppSpace.sm),
-                            Text(now.next.label, style: AppType.enBody(color: context.colors.ink2)),
-                          ],
-                        ),
-                        if (before.step < now.step) ...[
+                        Text(estimate.display, style: AppType.enTitle(weight: 600, color: context.colors.penBlue)),
+                        const SizedBox(height: AppSpace.xs),
+                        Text(estimate.basis, style: AppType.caption(color: context.colors.ink2, height: 1.4)),
+                        if (levelUp) ...[
                           const SizedBox(height: AppSpace.sm),
                           Text(
-                            '레벨 업! ${before.label} → ${now.label}',
+                            '예상 등급이 올랐어요! $toeicBefore → $toeicNow',
                             style: AppType.callout(weight: FontWeight.w700, color: context.colors.success),
                           ),
                         ],
@@ -294,7 +305,7 @@ class _CompleteScreenState extends ConsumerState<CompleteScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Padding(
-                                  padding: EdgeInsets.only(top: 2),
+                                  padding: EdgeInsets.only(top: AppSpace.xs),
                                   child: Icon(Icons.north_east_rounded, size: 16, color: context.colors.penBlue),
                                 ),
                                 const SizedBox(width: AppSpace.sm),
@@ -310,21 +321,14 @@ class _CompleteScreenState extends ConsumerState<CompleteScreen> {
             ),
             BottomActions(
               children: [
+                // 버튼은 둘만: 홈으로 / 복습 카드. 내 문장 만들기·대화 듣기는 토스 화면의 '더 연습하기'로,
+                // 틀린 문제는 복습 탭(오답 노트)에서 본다
                 FilledButton(onPressed: () => context.go('/'), child: const Text('홈으로')),
                 if (s.dueCount > 0)
                   OutlinedButton(
                     onPressed: () => context.pushReplacement('/review-session'),
                     child: Text('복습 카드 ${s.dueCount}장도 넘기기 · ${s.reviewMinutes}분'),
                   ),
-                // 배운 표현을 내 것으로: 내 상황으로 한 문장 만들기, 오늘 표현이 나오는 시리즈 대화
-                OutlinedButton(onPressed: () => context.push('/my-sentence'), child: const Text('오늘 표현으로 내 문장 만들기')),
-                if (s.pack.dialogue != null)
-                  OutlinedButton(
-                    onPressed: () => context.push('/dialogue'),
-                    child: Text('${s.pack.dialogue!.title} · ${s.pack.dialogue!.episode}화 듣기'),
-                  ),
-                if (quizCorrect < quizTotal)
-                  TextButton(onPressed: () => context.go('/review'), child: const Text('틀린 문제 다시 보기')),
               ],
             ),
           ],
