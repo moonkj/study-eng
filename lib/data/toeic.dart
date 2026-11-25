@@ -359,24 +359,33 @@ class ToeicDailySet {
     this.respond,
     this.info,
     this.opinion,
+    this.focused = false,
   });
   final ReadAloudItem readAloud;
   final PictureItem picture;
   final ToeicBlock block;
+
+  /// 약점 유형이라 넣은 묶음인지
+  final bool focused;
   final QuestionSet? respond;
   final InfoSet? info;
   final OpinionItem? opinion;
 }
 
-ToeicDailySet dailySetFor(ToeicBank bank, DateTime date, ToeicTarget target) {
+/// [focus]: 약점 묶음. 이틀에 한 번은 돌아가는 차례 대신 이 묶음을 넣는다 (나머지 날은 평소대로 돌아가 다른 유형도 놓치지 않는다).
+ToeicDailySet dailySetFor(ToeicBank bank, DateTime date, ToeicTarget target, {ToeicBlock? focus}) {
   final d = dayIndexOf(date);
   final tier = target.tier;
-  final block = ToeicBlock.values[d % 3];
-  final n = d ~/ 3;
+  final rotation = ToeicBlock.values[d % 3];
+  final focused = focus != null && focus != rotation && d.isOdd;
+  final block = focused ? focus : rotation;
+  // 약점 날은 그 묶음 안에서 날마다 다음 문항으로
+  final n = focused ? d : d ~/ 3;
   return ToeicDailySet(
     readAloud: pickFor(bank.readAloud, (e) => e.level, tier, d),
     picture: pickFor(bank.pictures, (e) => e.level, tier, d),
     block: block,
+    focused: focused,
     respond: block == ToeicBlock.respond ? pickFor<QuestionSet>(bank.questions, (e) => e.level, tier, n) : null,
     info: block == ToeicBlock.info ? pickFor<InfoSet>(bank.infoTables, (e) => e.level, tier, n) : null,
     opinion: block == ToeicBlock.opinion ? pickFor<OpinionItem>(bank.opinions, (e) => e.level, tier, n) : null,

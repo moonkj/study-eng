@@ -15,6 +15,7 @@ import '../../domain/level.dart';
 import '../../domain/mastery.dart';
 import '../../domain/study_log.dart';
 import '../../data/toeic.dart';
+import '../../domain/toeic_weakness.dart';
 import '../toeic/toeic_target.dart';
 
 class ProgressScreen extends ConsumerWidget {
@@ -100,6 +101,7 @@ class ProgressScreen extends ConsumerWidget {
           ],
           const SizedBox(height: 12),
           _ToeicCard(state: s, ready: ref.watch(toeicBankProvider) != null),
+          if (s.toeicLog.isNotEmpty || s.mocks.isNotEmpty) ...[const SizedBox(height: 12), _ToeicTypesCard(state: s)],
           const SizedBox(height: 12),
           _MyExpressionsCard(state: s),
           const SizedBox(height: 12),
@@ -404,6 +406,89 @@ class _MyExpressionsCard extends StatelessWidget {
               Icon(Icons.chevron_right_rounded, color: context.colors.ink2),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 토스 유형별 최근 점수와 약점
+class _ToeicTypesCard extends StatelessWidget {
+  const _ToeicTypesCard({required this.state});
+  final StudyState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final stats = typeStats(state.toeicLog, state.mocks);
+    final weak = weakestType(stats);
+    final weakIsBlock = weak != null && blockType.containsValue(weak);
+    return PaperCard(
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('토스 유형별 점수', style: sans(14, weight: FontWeight.w600)),
+          const SizedBox(height: 2),
+          Text('유형마다 최근 5번 평균 (루틴·모의고사)', style: sans(12, color: context.colors.ink2)),
+          const SizedBox(height: 10),
+          for (final type in toeicTypeKo.keys)
+            _TypeRow(name: toeicTypeKo[type]!, stat: stats[type], weak: type == weak),
+          if (weak != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              weakIsBlock
+                  ? '${toeicTypeKo[weak]}이(가) 가장 약해요. 매일 루틴에 이틀에 한 번 더 나와요.'
+                  : '${toeicTypeKo[weak]}이(가) 가장 약해요. 매일 루틴에 나오니 모범 답안을 따라 말해 보세요.',
+              style: sans(13, height: 1.5),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _TypeRow extends StatelessWidget {
+  const _TypeRow({required this.name, required this.stat, required this.weak});
+  final String name;
+  final TypeStat? stat;
+  final bool weak;
+
+  @override
+  Widget build(BuildContext context) {
+    final avg = stat?.average.round();
+    return Semantics(
+      label: avg == null ? '$name, 기록 없음' : '$name, 평균 $avg점${weak ? ', 약점' : ''}',
+      excludeSemantics: true,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 5),
+        child: Row(
+          children: [
+            SizedBox(width: 104, child: Text(name, style: sans(13))),
+            Expanded(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: (avg ?? 0) / 100,
+                  minHeight: 8,
+                  backgroundColor: context.colors.track,
+                  color: weak ? context.colors.error : context.colors.success,
+                ),
+              ),
+            ),
+            SizedBox(
+              width: 64,
+              child: Text(
+                avg == null ? '-' : '$avg점',
+                textAlign: TextAlign.right,
+                style: sans(13, weight: weak ? FontWeight.w700 : FontWeight.w400),
+              ),
+            ),
+            if (weak) ...[
+              const SizedBox(width: 6),
+              Tag('약점', color: context.colors.error, background: context.colors.errorTint),
+            ],
+          ],
         ),
       ),
     );

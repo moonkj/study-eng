@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import '../core/theme/app_theme.dart';
 import '../core/theme/tokens.dart';
 import '../domain/study_log.dart';
+import '../domain/toeic_weakness.dart';
 import '../core/audio/tts.dart';
 import '../data/toeic.dart';
 import '../features/toeic/toeic_task.dart';
@@ -24,8 +25,10 @@ final toeicDailyProvider = Provider<ToeicDailySet?>((ref) {
   final bank = ref.watch(toeicBankProvider);
   if (bank == null) return null;
   final s = ref.watch(studyProvider);
-  final carried = s.today.carriedFrom;
-  return dailySetFor(bank, carried == null ? s.now : parseDateKey(carried), s.toeicTarget);
+  final date = s.today.carriedFrom ?? dateKey(s.now);
+  // 그날 전 기록으로만 약점을 정한다 (오늘 문항을 하는 동안 세트가 바뀌지 않게)
+  final focus = weakBlock(typeStats(s.toeicLog, s.mocks, before: date));
+  return dailySetFor(bank, parseDateKey(date), s.toeicTarget, focus: focus);
 });
 
 /// 오늘의 토스 문항들 (목표 단계 모범 답안)

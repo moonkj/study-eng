@@ -16,6 +16,7 @@ import '../domain/speech_score.dart';
 import '../domain/srs.dart';
 import '../domain/study_log.dart';
 import '../domain/toeic_feedback.dart';
+import '../domain/toeic_weakness.dart' show addDailyScore;
 
 /// 소리 내지 않고 속으로 따라 한 문장 표시 (점수 평균에서 뺀다)
 const kSilentAttempt = '<silent>';
@@ -47,6 +48,7 @@ class StudyState {
     this.packError,
     this.series,
     this.mocks = const [],
+    this.toeicLog = const {},
   });
 
   final DateTime now;
@@ -73,6 +75,9 @@ class StudyState {
 
   /// 토스 모의고사 결과 (오래된 것부터)
   final List<MockResult> mocks;
+
+  /// 토스 루틴 점수 (날짜 → 유형 → 점수)
+  final Map<String, Map<String, int>> toeicLog;
 
   /// 지금 토익스피킹 목표
   ToeicTarget get toeicTarget => settings.target;
@@ -209,6 +214,7 @@ class StudyState {
     AppSettings? settings,
     SeriesState? series,
     List<MockResult>? mocks,
+    Map<String, Map<String, int>>? toeicLog,
   }) => StudyState(
     now: now,
     pack: pack ?? this.pack,
@@ -226,6 +232,7 @@ class StudyState {
     settings: settings ?? this.settings,
     series: series ?? this.series,
     mocks: mocks ?? this.mocks,
+    toeicLog: toeicLog ?? this.toeicLog,
   );
 
   /// 서버 팩이 아닌 기본 팩이고, 그 내용을 오늘 이전에 이미 배웠는지 (오프라인으로 같은 팩을 다시 하는 날)
@@ -267,6 +274,7 @@ class StudyState {
     learned: learned,
     series: series,
     mocks: mocks,
+    toeicLog: toeicLog,
   );
 }
 
@@ -410,6 +418,7 @@ class StudyController extends Notifier<StudyState> {
       packLoading: loading,
       series: saved?.series,
       mocks: saved?.mocks ?? const [],
+      toeicLog: saved?.toeicLog ?? const {},
     );
   }
 
@@ -712,7 +721,12 @@ class StudyController extends Notifier<StudyState> {
     if (state.done.contains(RoutineStep.speaking)) return;
     final before = state.today.toeic[id];
     if (before != null && before.score >= r.score) return;
-    _set(state.copyWith(today: _progress(toeic: {...state.today.toeic, id: r})));
+    _set(
+      state.copyWith(
+        today: _progress(toeic: {...state.today.toeic, id: r}),
+        toeicLog: addDailyScore(state.toeicLog, state.today.carriedFrom ?? state.today.date, r.type, r.score),
+      ),
+    );
   }
 
   /// 모의고사 결과를 남긴다 (최근 30개)

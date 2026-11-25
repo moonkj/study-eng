@@ -278,6 +278,7 @@ class SavedData {
     this.settings = const AppSettings(),
     this.series,
     this.mocks = const [],
+    this.toeicLog = const {},
   });
 
   final LearnerProfile profile;
@@ -303,6 +304,9 @@ class SavedData {
   /// 토스 모의고사 결과 (오래된 것부터, 최근 30개)
   final List<MockResult> mocks;
 
+  /// 토스 루틴 점수 (날짜 → 유형 → 점수, 최근 60일). 약점 유형을 찾는 데 쓴다.
+  final Map<String, Map<String, int>> toeicLog;
+
   static const version = 1;
 
   Map<String, Object?> toJson() => {
@@ -319,6 +323,7 @@ class SavedData {
     'settings': settings.toJson(),
     if (series != null) 'series': series!.toJson(),
     if (mocks.isNotEmpty) 'mocks': [for (final m in mocks) m.toJson()],
+    if (toeicLog.isNotEmpty) 'toeicLog': toeicLog,
   };
 
   /// 섹션별로 따로 읽는다. 기록·카드·팩 중 하나가 깨져도 나머지(특히 레벨과 연속 기록)는 살린다.
@@ -393,6 +398,17 @@ class SavedData {
       ),
       series: section(() => SeriesState.fromJson(j['series']), null),
       mocks: section(() => [for (final m in (j['mocks'] as List?) ?? const []) ?MockResult.fromJson(m)], const []),
+      toeicLog: section(
+        () => {
+          for (final e in ((j['toeicLog'] as Map?) ?? const {}).entries)
+            if (_isDateKey(e.key) && e.value is Map)
+              e.key as String: {
+                for (final t in (e.value as Map).entries)
+                  if (t.key is String && t.value is num) t.key as String: (t.value as num).toInt().clamp(0, 100),
+              },
+        },
+        const {},
+      ),
     );
   }
 }

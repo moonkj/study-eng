@@ -570,7 +570,7 @@ class _RoutineRow extends StatelessWidget {
     RoutineStep.speaking => (
       stepTitle(step, state, toeic: toeic),
       toeic != null
-          ? '문장 읽기 · 사진 묘사 · ${_blockKo[toeic!.block]} · ${stepMinutes(step, state, toeic: toeic)}분'
+          ? '문장 읽기 · 사진 묘사 · ${_blockKo[toeic!.block]}${toeic!.focused ? '(약점)' : ''} · ${stepMinutes(step, state, toeic: toeic)}분'
           : '${state.pack.sentences.length}문장 · ${stepMinutes(step, state)}분',
     ),
     RoutineStep.quiz => (
