@@ -81,19 +81,40 @@ Future<void> setPhone(WidgetTester tester) async {
 }
 
 void main() {
-  testWidgets('홈: 날짜, 오늘의 표현, 루틴, 레벨이 보인다', (tester) async {
+  testWidgets('홈: 날짜, 토스 목표 카드, 주 버튼, 루틴, 맨 아래 오늘의 표현이 보인다', (tester) async {
     await setPhone(tester);
     await tester.pumpWidget(app());
     await tester.pumpAndSettle();
 
     expect(find.text('11월 22일 일요일'), findsOneWidget);
     expect(find.text('좋은 아침이에요'), findsOneWidget);
-    expect(find.text('계속 ~하려고 했어'), findsOneWidget);
-    expect(find.text('오늘의 표현 3개'), findsOneWidget);
     expect(find.text('오늘 하면 13일'), findsOneWidget); // 어제까지 12일 연속, 오늘 아직
-    // 루틴 아래(출퇴근 모드 버튼 밑)의 레벨 카드까지 내린다
-    await tester.scrollUntilVisible(find.text('B1.2'), 200, scrollable: find.byType(Scrollable).first);
-    expect(find.text('B1.2'), findsOneWidget);
+    // 맨 위 목표 카드: 목표와 예상 등급 (채점 기록이 없으니 진단(B1.2)을 어림한 '예상')
+    expect(find.text('오늘의 목표'), findsOneWidget);
+    expect(find.text('목표 IM3 · 140점'), findsOneWidget);
+    expect(find.text('예상 IM3 · 140점'), findsOneWidget);
+    expect(find.textContaining('오늘 루틴 시작 · 약'), findsOneWidget); // 주 버튼 하나
+    expect(find.text('오늘의 표현 3개'), findsOneWidget);
+    // 오늘의 표현은 루틴·출퇴근 아래 작은 카드로
+    await tester.scrollUntilVisible(find.text('계속 ~하려고 했어'), 200, scrollable: find.byType(Scrollable).first);
+    expect(find.text('계속 ~하려고 했어'), findsOneWidget);
+    expect(find.text("TODAY'S EXPRESSION"), findsNothing);
+  });
+
+  testWidgets('홈: 주 버튼은 다음 단계로 바로 가고, 목표 카드는 토스 화면을 연다', (tester) async {
+    await setPhone(tester);
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.textContaining('오늘 루틴 시작 · 약'));
+    await tester.pumpAndSettle();
+    expect(find.text('처음 봐요'), findsOneWidget); // 1단계 표현 화면
+    await tester.tap(find.byTooltip('홈으로').first);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('오늘의 목표'));
+    await tester.pumpAndSettle();
+    expect(find.text('오늘 토스 말하기'), findsOneWidget);
   });
 
   testWidgets('하루 루틴 전체를 끝내면 완료 화면과 내일 조정이 나온다', (tester) async {
@@ -177,9 +198,12 @@ void main() {
     await tester.pumpWidget(app(speaker: speaker));
     await tester.pumpAndSettle();
 
+    // 오늘의 표현 카드는 홈 맨 아래
+    await tester.scrollUntilVisible(find.text('계속 ~하려고 했어'), 200, scrollable: find.byType(Scrollable).first);
     await tester.tap(labeled('예문 듣기').first);
     expect(speaker.spoken.last, ("I've been meaning to call you.", false));
 
+    await tester.scrollUntilVisible(find.text('예문 따라 말하기'), -200, scrollable: find.byType(Scrollable).first);
     await tester.tap(find.text('예문 따라 말하기'));
     await tester.pumpAndSettle();
     await tester.tap(labeled('천천히 듣기'));
@@ -227,21 +251,25 @@ void main() {
     expect(reminder.scheduled.single.$2, '쉬는 날로 지켜 둔 12일');
   });
 
-  testWidgets('첫 실행이면 환영 화면이 나오고, 건너뛰면 B1.1로 시작한다', (tester) async {
+  testWidgets('첫 실행이면 환영 화면(토스 목표)이 나오고, 건너뛰면 B1.1(예상 IM2)로 시작한다', (tester) async {
     await setPhone(tester);
     await tester.pumpWidget(app(store: MemoryStore()));
     await tester.pumpAndSettle();
 
     expect(find.text('레벨 진단 시작하기'), findsOneWidget);
+    expect(find.text('목표 IM3 · 140점'), findsOneWidget); // 목표 점수가 첫 화면에
     await tester.tap(find.text('진단 없이 바로 시작'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('네, 간단한 대화는 돼요 (B1부터)'));
+    await tester.tap(find.text('네, 간단한 대화는 돼요'));
     await tester.pumpAndSettle();
-    expect(find.text('오늘의 루틴'), findsOneWidget);
     expect(find.text('오늘부터 시작'), findsOneWidget);
-    // 루틴 아래(출퇴근 모드 버튼 밑)의 레벨 카드까지 내린다
-    await tester.scrollUntilVisible(find.text('B1.1'), 200, scrollable: find.byType(Scrollable).first);
-    expect(find.text('B1.1'), findsOneWidget);
+    final s = ProviderScope.containerOf(tester.element(find.byType(Scaffold).first)).read(studyProvider);
+    expect(s.profile.overall.label, 'B1.1'); // 내부 난이도는 CEFR 그대로
+    // 화면에는 토스 기준 예상 등급만
+    expect(find.text('예상 IM2 · 130점'), findsOneWidget);
+    expect(find.text('B1.1'), findsNothing);
+    await tester.scrollUntilVisible(find.text('오늘의 루틴'), 200, scrollable: find.byType(Scrollable).first);
+    expect(find.text('오늘의 루틴'), findsOneWidget);
   });
 
   testWidgets('레벨 진단 12문항을 마치면 결과 화면으로 간다', (tester) async {

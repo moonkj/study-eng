@@ -69,6 +69,8 @@ GoRouter buildRouter({String initialLocation = '/', bool Function()? isOnboarded
         _focused('/speaking', const SpeakingScreen()),
         _focused('/toeic-today', const ToeicDailyScreen()),
         _focused('/toeic-mock', const ToeicMockScreen()),
+        // 임시 자리: 토스 허브(P0-5, toeic_hub_screen.dart)가 들어오면 이 줄과 _ToeicHubPlaceholder 를 지우고 바꾼다
+        _focused('/toeic', const _ToeicHubPlaceholder()),
         _focused('/quiz', const QuizScreen()),
         _focused('/commute', const CommuteScreen()),
         _focused('/complete', const CompleteScreen()),
@@ -296,6 +298,46 @@ class _SideNav extends StatelessWidget {
                 ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 임시(placeholder): 홈 목표 카드가 여는 '/toeic'. 토스 허브 화면(P0-5)으로 통째로 바꿀 자리라 최소한만 둔다.
+/// 완료 화면에서 뺀 '내 문장 만들기'·'대화 듣기'도 허브의 '더 연습하기'로 옮겨 갈 때까지 여기서 들어간다.
+class _ToeicHubPlaceholder extends StatelessWidget {
+  const _ToeicHubPlaceholder();
+
+  @override
+  Widget build(BuildContext context) {
+    Widget item(String title, String path) => ListTile(
+      minTileHeight: 56,
+      title: Text(title, style: sans(15, weight: FontWeight.w500)),
+      trailing: Icon(Icons.chevron_right_rounded, color: context.colors.ink2),
+      onTap: () => context.push(path),
+    );
+    return Scaffold(
+      body: SafeArea(
+        child: ListView(
+          children: [
+            Align(
+              alignment: Alignment.centerLeft,
+              child: IconButton(
+                tooltip: '닫기',
+                onPressed: () => context.canPop() ? context.pop() : context.go('/'),
+                icon: const Icon(Icons.close_rounded),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 4, 24, 12),
+              child: Text('토스', style: sans(26, weight: FontWeight.w700)),
+            ),
+            item('오늘 토스 말하기', '/toeic-today'),
+            item('실전 모의고사 · 약 20분', '/toeic-mock'),
+            item('오늘 표현으로 내 문장 만들기', '/my-sentence'),
+            item('대화 듣기', '/dialogue'),
+          ],
         ),
       ),
     );

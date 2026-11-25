@@ -10,6 +10,7 @@ import '../../data/models.dart';
 import '../../data/sample_content.dart';
 import '../../domain/adaptive_test.dart';
 import '../../domain/level.dart';
+import '../../domain/toeic_level.dart';
 
 class LevelTestScreen extends ConsumerStatefulWidget {
   const LevelTestScreen({super.key});
@@ -203,7 +204,8 @@ class _DifficultyCard extends StatelessWidget {
                         style: sans(14, weight: FontWeight.w600),
                       ),
                       TextSpan(
-                        text: current.cefr.label,
+                        // CEFR 대신 토스 등급으로 (대략)
+                        text: '${toeicLevelForStep(current.step)} 수준',
                         style: sans(14, weight: FontWeight.w700, color: context.colors.penBlue),
                       ),
                     ],

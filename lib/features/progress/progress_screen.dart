@@ -15,6 +15,7 @@ import '../../domain/level.dart';
 import '../../domain/mastery.dart';
 import '../../domain/study_log.dart';
 import '../../data/toeic.dart';
+import '../../domain/toeic_level.dart';
 import '../../domain/toeic_weakness.dart';
 import '../toeic/toeic_target.dart';
 
@@ -48,25 +49,25 @@ class ProgressScreen extends ConsumerWidget {
               children: [
                 Row(
                   children: [
-                    Text('레벨 성장', style: sans(14, weight: FontWeight.w600)),
+                    Text('실력 변화', style: sans(14, weight: FontWeight.w600)),
                     const Spacer(),
+                    // 실력은 토스 등급으로만 (채점 기록이 없으면 진단으로 어림한 '예상')
                     Text(
-                      '지금 ${s.profile.overall.label}',
+                      estimateToeic(
+                        mocks: s.mocks,
+                        today: s.today.toeic.values,
+                        levelStep: s.profile.overall.step,
+                      ).display,
                       style: sans(12, weight: FontWeight.w600, color: context.colors.success),
                     ),
                   ],
                 ),
                 const SizedBox(height: 8),
                 if (points.length < 2)
-                  SizedBox(
-                    height: 110,
-                    child: Center(
-                      child: Text(
-                        '루틴을 이틀 이상 끝내면\n레벨 변화가 여기에 그려져요',
-                        textAlign: TextAlign.center,
-                        style: sans(13, color: context.colors.ink2, height: 1.5),
-                      ),
-                    ),
+                  _Empty(
+                    text: '루틴을 이틀 끝내면 변화가 여기에 그려져요 · 하루 약 15분',
+                    action: s.allDone ? null : '오늘 루틴 하기',
+                    onAction: () => context.go('/'),
                   )
                 else
                   SizedBox(
@@ -101,7 +102,26 @@ class ProgressScreen extends ConsumerWidget {
           ],
           const SizedBox(height: 12),
           _ToeicCard(state: s, ready: ref.watch(toeicBankProvider) != null),
-          if (s.toeicLog.isNotEmpty || s.mocks.isNotEmpty) ...[const SizedBox(height: 12), _ToeicTypesCard(state: s)],
+          if (s.toeicLog.isNotEmpty || s.mocks.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            _ToeicTypesCard(state: s),
+          ] else if (ref.watch(toeicBankProvider) != null) ...[
+            const SizedBox(height: 12),
+            PaperCard(
+              padding: const EdgeInsets.fromLTRB(18, 16, 18, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('토스 유형별 점수', style: sans(14, weight: FontWeight.w600)),
+                  _Empty(
+                    text: '오늘 토스 말하기를 하면 유형별 점수가 쌓여요 · 약 8분',
+                    action: '토스 말하기 시작',
+                    onAction: () => context.push('/toeic-today'),
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 12),
           _MyExpressionsCard(state: s),
           const SizedBox(height: 12),
@@ -145,7 +165,7 @@ class ProgressScreen extends ConsumerWidget {
           Text('자동 조정 내역', style: sans(14, weight: FontWeight.w600)),
           const SizedBox(height: 8),
           if (s.lastAdjustmentReasons.isEmpty)
-            Text('첫 루틴을 끝내면 내일 학습을 어떻게 바꿨는지 알려드려요.', style: sans(13, color: context.colors.ink2)),
+            Text('오늘 루틴(약 15분)을 끝내면 내일 학습을 어떻게 바꿨는지 알려드려요.', style: sans(13, color: context.colors.ink2)),
           for (final r in s.lastAdjustmentReasons)
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
@@ -317,11 +337,13 @@ class _GrowthPainter extends CustomPainter {
     }
     // 세로축: 최저/최고 레벨 라벨
     // 위아래가 같은 단계면(변화가 작은 기간) 한 번만 쓴다
-    final top = Level((maxV - 30).round()).label, bottom = Level((minV + 30).round()).label;
+    // 세로축 라벨은 토스 등급으로 (내부 레벨 점수를 대략 바꾼 값)
+    String label(double v) => toeicLevelForStep(Level(v.round()).step);
+    final top = label(maxV - 30), bottom = label(minV + 30);
     for (final (v, y) in [(maxV - 30, 8.0), if (top != bottom) (minV + 30, size.height - 26)]) {
       final tp = TextPainter(
         text: TextSpan(
-          text: Level(v.round()).label,
+          text: label(v),
           style: sans(10, color: colors.ink2),
         ),
         textDirection: TextDirection.ltr,
@@ -516,7 +538,7 @@ class _ToeicCard extends StatelessWidget {
           if (state.targetReached) ...[const SizedBox(height: 10), const TargetReachedCard()],
           const SizedBox(height: 6),
           if (recent.isEmpty)
-            Text('아직 본 모의고사가 없어요.', style: sans(13, color: context.colors.ink2))
+            Text('첫 모의고사로 지금 위치를 확인해요 · 약 20분', style: sans(13, color: context.colors.ink2))
           else
             for (final m in recent)
               MockHistoryRow(
@@ -533,6 +555,28 @@ class _ToeicCard extends StatelessWidget {
               alignment: Alignment.centerLeft,
               child: TextButton(onPressed: () => context.push('/toeic-mock'), child: const Text('모의고사 보기')),
             ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 빈 상태: 다음 행동 + 걸리는 시간 (+ 행동 버튼)
+class _Empty extends StatelessWidget {
+  const _Empty({required this.text, this.action, this.onAction});
+  final String text;
+  final String? action;
+  final VoidCallback? onAction;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(text, style: sans(13, color: context.colors.ink2, height: 1.5)),
+          if (action != null) TextButton(onPressed: onAction, child: Text(action!)),
         ],
       ),
     );
