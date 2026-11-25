@@ -22,8 +22,8 @@ class SettingsScreen extends ConsumerWidget {
       child: ListView(
         padding: readablePadding(context, maxWidth: 680),
         children: [
-          Text('설정', style: sans(26, weight: FontWeight.w700, letterSpacing: -0.5)),
-          const SizedBox(height: 16),
+          Text('설정', style: AppType.title1(weight: FontWeight.w700, letterSpacing: -0.5)),
+          const SizedBox(height: AppSpace.lg),
           _Group(
             children: [
               _Item(
@@ -42,7 +42,7 @@ class SettingsScreen extends ConsumerWidget {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.md),
           _Group(
             children: [
               _Item(
@@ -54,9 +54,9 @@ class SettingsScreen extends ConsumerWidget {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.md),
           _Group(children: [_ReminderItem(minutes: settings.reminderMinutes)]),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.md),
           _Group(
             children: [
               _Item(
@@ -73,7 +73,7 @@ class SettingsScreen extends ConsumerWidget {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.md),
           _Group(
             children: [
               _Item(
@@ -131,19 +131,19 @@ void _pick<T>(
     shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.sheet))),
     builder: (ctx) => SafeArea(
       child: Padding(
-        padding: EdgeInsets.fromLTRB(12, 20, 12, 12),
+        padding: EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xl, AppSpace.md, AppSpace.md),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-              padding: EdgeInsets.fromLTRB(12, 0, 12, 8),
-              child: Text(title, style: sans(17, weight: FontWeight.w700)),
+              padding: EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.sm),
+              child: Text(title, style: AppType.headline(weight: FontWeight.w700)),
             ),
             for (final e in options.entries)
               ListTile(
                 minTileHeight: 52,
-                title: Text(e.value, style: sans(15)),
+                title: Text(e.value, style: AppType.body()),
                 trailing: e.key == selected ? Icon(Icons.check_rounded, color: context.colors.penBlue) : null,
                 onTap: () {
                   onSelect(e.key);
@@ -164,13 +164,16 @@ class _Group extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PaperCard(
-      padding: EdgeInsets.symmetric(vertical: 4),
+      padding: EdgeInsets.symmetric(vertical: AppSpace.xs),
       // 목록 항목의 터치 물결 효과가 카드 배경 위에 보이도록
       child: Material(
         type: MaterialType.transparency,
         child: Column(
           children: [
-            for (var i = 0; i < children.length; i++) ...[if (i > 0) const Divider(indent: 52), children[i]],
+            for (var i = 0; i < children.length; i++) ...[
+              if (i > 0) const Divider(indent: ActionRow.dividerIndent),
+              children[i],
+            ],
           ],
         ),
       ),
@@ -187,19 +190,7 @@ class _Item extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      minTileHeight: 56,
-      leading: Icon(icon, color: context.colors.penBlue),
-      title: Text(title, style: sans(15, weight: FontWeight.w500)),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (value != null) Text(value!, style: sans(14, color: context.colors.ink2)),
-          if (onTap != null) Icon(Icons.chevron_right_rounded, color: context.colors.ink2),
-        ],
-      ),
-      onTap: onTap,
-    );
+    return ActionRow(icon: icon, title: title, value: value, onTap: onTap, bordered: false);
   }
 }
 
@@ -231,7 +222,7 @@ class _ReminderItem extends ConsumerWidget {
       children: [
         SwitchListTile(
           secondary: Icon(Icons.notifications_none_rounded, color: context.colors.penBlue),
-          title: Text('아침 알림', style: sans(15, weight: FontWeight.w500)),
+          title: Text('아침 알림', style: AppType.body(weight: FontWeight.w500)),
           subtitle: Consumer(
             builder: (_, ref, _) {
               final blocked = ref.watch(reminderBlockedProvider);
@@ -241,7 +232,7 @@ class _ReminderItem extends ConsumerWidget {
                     : blocked
                     ? '휴대폰 설정에서 알림 권한이 꺼져 있어요'
                     : '매일 ${formatMinutes(minutes!)}',
-                style: sans(13, color: on && blocked ? context.colors.error : context.colors.ink2),
+                style: AppType.caption(color: on && blocked ? context.colors.error : context.colors.ink2),
               );
             },
           ),
@@ -253,11 +244,11 @@ class _ReminderItem extends ConsumerWidget {
         if (on)
           ListTile(
             minTileHeight: 52,
-            contentPadding: const EdgeInsets.only(left: 72, right: 16),
-            title: Text('알림 시각', style: sans(14)),
+            contentPadding: const EdgeInsets.only(left: 72, right: AppSpace.lg),
+            title: Text('알림 시각', style: AppType.callout()),
             trailing: Text(
               formatMinutes(minutes!),
-              style: sans(14, weight: FontWeight.w600, color: context.colors.penBlue),
+              style: AppType.callout(weight: FontWeight.w600, color: context.colors.penBlue),
             ),
             onTap: () async {
               final picked = await showTimePicker(

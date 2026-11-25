@@ -4,8 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../app/study_controller.dart';
 import '../../core/layout/adaptive.dart';
-import '../../core/theme/app_theme.dart';
 import '../../core/theme/tokens.dart';
+import '../../core/widgets/widgets.dart';
 import '../../data/models.dart';
 import '../speaking/speaking_screen.dart';
 
@@ -32,7 +32,7 @@ class CommuteEntry extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (silent.isNotEmpty) ...[_EveningSpeakCard(sentences: silent), const SizedBox(height: 8)],
+        if (silent.isNotEmpty) ...[_EveningSpeakCard(sentences: silent), const SizedBox(height: AppSpace.sm)],
         Align(
           alignment: Alignment.centerLeft,
           child: TextButton.icon(
@@ -42,7 +42,7 @@ class CommuteEntry extends ConsumerWidget {
             // 루틴 목록 아래 한 줄로 작게 (홈 아래 레벨 카드를 밀어내지 않게)
             style: TextButton.styleFrom(
               visualDensity: VisualDensity.compact,
-              padding: const EdgeInsets.symmetric(horizontal: 8),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
             ),
           ),
         ),
@@ -71,32 +71,11 @@ class _EveningSpeakCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: context.colors.penBlueTint,
-      borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: () => _open(context),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 56),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
-              children: [
-                Icon(Icons.record_voice_over_outlined, color: context.colors.penBlue, size: 22),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Text(
-                    '속으로 따라 한 문장 ${sentences.length}개, 소리 내어 말해 볼까요?',
-                    style: sans(15, weight: FontWeight.w500, height: 1.4),
-                  ),
-                ),
-                Icon(Icons.chevron_right_rounded, color: context.colors.ink2, size: 20),
-              ],
-            ),
-          ),
-        ),
-      ),
+    return ActionRow(
+      icon: Icons.record_voice_over_outlined,
+      title: '속으로 따라 한 문장 ${sentences.length}개, 소리 내어 말해 볼까요?',
+      tinted: true,
+      onTap: () => _open(context),
     );
   }
 }

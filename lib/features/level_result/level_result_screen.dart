@@ -27,7 +27,7 @@ class LevelResultScreen extends ConsumerWidget {
             Align(
               alignment: Alignment.centerLeft,
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(8, 8, 0, 0),
+                padding: const EdgeInsets.fromLTRB(AppSpace.sm, AppSpace.sm, 0, 0),
                 child: IconButton(
                   tooltip: '닫기',
                   // 바로 아래가 환영 화면일 수 있으므로(첫 진단) 항상 홈으로
@@ -38,22 +38,22 @@ class LevelResultScreen extends ConsumerWidget {
             ),
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(24, 4, 24, 0),
+                padding: const EdgeInsets.fromLTRB(AppSpace.xxl, AppSpace.xs, AppSpace.xxl, 0),
                 children: [
                   Text(
                     '내 레벨',
-                    style: sans(13, weight: FontWeight.w600, color: context.colors.penBlue, letterSpacing: 0.8),
+                    style: AppType.callout(weight: FontWeight.w600, color: context.colors.penBlue, letterSpacing: 0.8),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpace.sm),
                   Text(
                     ref.watch(studyProvider).packLoading ? '지금 레벨에 맞는\n학습을 준비하고 있어요' : '지금 레벨에 딱 맞는\n학습을 준비했어요',
-                    style: sans(24, weight: FontWeight.w700, height: 1.35, letterSpacing: -0.4),
+                    style: AppType.title1(weight: FontWeight.w700, height: 1.35, letterSpacing: -0.4),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: AppSpace.xxl),
                   PaperCard(
                     elevated: true,
                     radius: AppRadius.hero,
-                    padding: const EdgeInsets.fromLTRB(22, 24, 22, 22),
+                    padding: const EdgeInsets.fromLTRB(AppSpace.xxl, AppSpace.xxl, AppSpace.xxl, AppSpace.xxl),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -69,6 +69,7 @@ class LevelResultScreen extends ConsumerWidget {
                                       children: [
                                         TextSpan(
                                           text: level.cefr.label,
+                                          // 레벨 결과의 큰 등급 글자만 AppType 밖 예외 (진단 결과 한 번 보는 화면)
                                           style: serif(
                                             64,
                                             weight: 500,
@@ -79,35 +80,38 @@ class LevelResultScreen extends ConsumerWidget {
                                         ),
                                         TextSpan(
                                           text: '.${level.sub}',
-                                          style: serif(32, color: context.colors.ink2),
+                                          style: AppType.enHero(weight: 400, color: context.colors.ink2),
                                         ),
                                       ],
                                     ),
                                   ),
-                                  const SizedBox(height: 4),
-                                  Text(level.cefr.koDescription, style: sans(15, weight: FontWeight.w600)),
+                                  const SizedBox(height: AppSpace.xs),
+                                  Text(level.cefr.koDescription, style: AppType.body(weight: FontWeight.w600)),
                                 ],
                               ),
                             ),
-                            Text('CEFR 기준', style: sans(12, color: context.colors.ink2)),
+                            Text('CEFR 기준', style: AppType.caption(color: context.colors.ink2)),
                           ],
                         ),
-                        const SizedBox(height: 18),
+                        const SizedBox(height: AppSpace.lg),
                         _Scale(level: level),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 24),
-                  Text('영역별 실력', style: sans(15, weight: FontWeight.w700)),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpace.xxl),
+                  Text('영역별 실력', style: AppType.body(weight: FontWeight.w700)),
+                  const SizedBox(height: AppSpace.md),
                   for (final skill in Skill.values) ...[
                     _SkillBar(skill: skill, level: p.skills[skill]!, weak: skill == weak && weakIsLow),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: AppSpace.md),
                   ],
-                  const SizedBox(height: 10),
+                  const SizedBox(height: AppSpace.sm),
                   Container(
-                    padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
-                    decoration: BoxDecoration(color: context.colors.sand, borderRadius: BorderRadius.circular(16)),
+                    padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.lg, AppSpace.lg, AppSpace.lg),
+                    decoration: BoxDecoration(
+                      color: context.colors.sand,
+                      borderRadius: BorderRadius.circular(AppRadius.row),
+                    ),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -115,11 +119,11 @@ class LevelResultScreen extends ConsumerWidget {
                           padding: EdgeInsets.only(top: 2),
                           child: Icon(Icons.edit_outlined, size: 20, color: context.colors.penBlue),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: AppSpace.md),
                         Expanded(
                           child: Text.rich(
                             TextSpan(
-                              style: sans(14, height: 1.6),
+                              style: AppType.callout(height: 1.6),
                               children: [
                                 // 모든 영역이 같은 점수면(진단을 건너뛴 경우) 강점을 단정하지 않는다
                                 if (strong != weak && p.skills[strong] != p.skills[weak])
@@ -127,7 +131,7 @@ class LevelResultScreen extends ConsumerWidget {
                                 if (weakIsLow) ...[
                                   TextSpan(
                                     text: '${weak.ko} 연습',
-                                    style: sans(14, weight: FontWeight.w700, height: 1.6),
+                                    style: AppType.callout(weight: FontWeight.w700, height: 1.6),
                                   ),
                                   TextSpan(
                                     text: '이 조금 부족해요. 앞으로 2주 동안 ${weak.ko} 비중을 높이고, ${level.cefr.label} 표현 위주로 출제할게요.',
@@ -175,7 +179,7 @@ class _Scale extends StatelessWidget {
           for (final cefr in Cefr.values)
             Expanded(
               child: Padding(
-                padding: EdgeInsets.only(right: cefr == Cefr.c1 ? 0 : 4),
+                padding: EdgeInsets.only(right: cefr == Cefr.c1 ? 0 : AppSpace.xs),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -184,11 +188,10 @@ class _Scale extends StatelessWidget {
                       height: 6,
                       color: cefr.index < c ? context.colors.penBlueSoft : context.colors.penBlue,
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: AppSpace.sm),
                     Text(
                       cefr.label,
-                      style: sans(
-                        11,
+                      style: AppType.micro(
                         weight: cefr.index == c ? FontWeight.w700 : FontWeight.w400,
                         color: cefr.index == c ? context.colors.penBlue : context.colors.ink2,
                       ),
@@ -213,7 +216,7 @@ class _SkillBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        SizedBox(width: 76, child: Text(skill.ko, style: sans(14))),
+        SizedBox(width: 76, child: Text(skill.ko, style: AppType.callout())),
         Expanded(
           child: ThinProgress(
             (level.score + 1) / (Level.maxScore + 1),
@@ -227,7 +230,7 @@ class _SkillBar extends StatelessWidget {
           child: Text(
             level.label,
             textAlign: TextAlign.right,
-            style: sans(13, weight: FontWeight.w600, color: weak ? context.colors.error : context.colors.ink),
+            style: AppType.callout(weight: FontWeight.w600, color: weak ? context.colors.error : context.colors.ink),
           ),
         ),
       ],

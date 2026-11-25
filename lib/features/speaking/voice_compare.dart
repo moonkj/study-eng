@@ -125,20 +125,20 @@ class _VoiceCompareCardState extends ConsumerState<VoiceCompareCard> {
       Row(
         children: [
           Icon(Icons.graphic_eq_rounded, size: 16, color: context.colors.penBlue),
-          const SizedBox(width: 6),
+          const SizedBox(width: AppSpace.sm),
           Text(
             '내 목소리와 비교',
-            style: sans(13, weight: FontWeight.w600, color: context.colors.penBlue),
+            style: AppType.callout(weight: FontWeight.w600, color: context.colors.penBlue),
           ),
           const Spacer(),
           if (_state == _Rec.recording)
             Text(
               '녹음 중 $_seconds초 / ${kMaxVoiceRecording.inSeconds}초',
-              style: sans(12, weight: FontWeight.w600, color: context.colors.error),
+              style: AppType.caption(weight: FontWeight.w600, color: context.colors.error),
             ),
         ],
       ),
-      const SizedBox(height: 10),
+      const SizedBox(height: AppSpace.sm),
     ];
     switch (_state) {
       case _Rec.idle:
@@ -194,12 +194,12 @@ class _VoiceCompareCardState extends ConsumerState<VoiceCompareCard> {
     }
     if (_error != null) {
       children.addAll([
-        const SizedBox(height: 8),
-        Text(_error!, style: sans(13, height: 1.5, color: context.colors.error)),
+        const SizedBox(height: AppSpace.sm),
+        Text(_error!, style: AppType.callout(height: 1.5, color: context.colors.error)),
       ]);
     }
     return PaperCard(
-      padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
+      padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.lg, AppSpace.lg, AppSpace.lg),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: children),
     );
   }

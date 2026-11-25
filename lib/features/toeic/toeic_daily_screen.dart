@@ -68,7 +68,7 @@ class _ToeicDailyState extends ConsumerState<_ToeicDaily> with StudyScreenGuard 
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(8, 8, 4, 0),
+              padding: const EdgeInsets.fromLTRB(AppSpace.sm, AppSpace.sm, AppSpace.xs, 0),
               child: StudyTopBar(
                 title: '토스 말하기 · 목표 ${s.toeicTarget.label}',
                 index: _askTarget ? 0 : _index,
@@ -79,23 +79,23 @@ class _ToeicDailyState extends ConsumerState<_ToeicDaily> with StudyScreenGuard 
             Expanded(
               child: _askTarget
                   ? ListView(
-                      padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
+                      padding: const EdgeInsets.fromLTRB(AppSpace.xxl, AppSpace.lg, AppSpace.xxl, AppSpace.lg),
                       children: [
-                        Text('목표 점수를 골라요', style: sans(20, weight: FontWeight.w700)),
-                        const SizedBox(height: 4),
+                        Text('목표 점수를 골라요', style: AppType.title2(weight: FontWeight.w700)),
+                        const SizedBox(height: AppSpace.xs),
                         Text(
                           '목표에 맞는 문항과 모범 답안으로 연습해요. 표현·단어 난이도도 맞춰져요. 설정에서 언제든 바꿀 수 있어요.',
-                          style: sans(13, color: context.colors.ink2, height: 1.5),
+                          style: AppType.callout(color: context.colors.ink2, height: 1.5),
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: AppSpace.sm),
                         PaperCard(
-                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          padding: const EdgeInsets.symmetric(vertical: AppSpace.xs),
                           child: Material(
                             type: MaterialType.transparency,
                             child: ToeicTargetList(selected: _picked, onSelect: (t) => setState(() => _picked = t)),
                           ),
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: AppSpace.lg),
                         FilledButton(
                           onPressed: () {
                             ref.read(studyProvider.notifier).setToeicTarget(_picked);

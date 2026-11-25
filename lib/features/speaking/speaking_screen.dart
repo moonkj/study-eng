@@ -195,19 +195,19 @@ class _SpeakingScreenState extends ConsumerState<SpeakingScreen> with StudyScree
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(8, 8, 12, 0),
+                padding: const EdgeInsets.fromLTRB(AppSpace.sm, AppSpace.sm, AppSpace.md, 0),
                 child: StudyTopBar(title: widget.title, index: _index, total: _sentences.length),
               ),
               Expanded(
                 child: ListView(
-                  padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+                  padding: const EdgeInsets.fromLTRB(AppSpace.xxl, AppSpace.lg, AppSpace.xxl, 0),
                   children: [
                     Align(
                       alignment: Alignment.centerLeft,
                       child: FilterChip(
                         label: Text(
                           '소리 내기 어려워요',
-                          style: sans(13, weight: FontWeight.w500, color: context.colors.ink),
+                          style: AppType.callout(weight: FontWeight.w500, color: context.colors.ink),
                         ),
                         avatar: Icon(_quiet ? Icons.volume_off_rounded : Icons.volume_off_outlined, size: 16),
                         selected: _quiet,
@@ -222,13 +222,13 @@ class _SpeakingScreenState extends ConsumerState<SpeakingScreen> with StudyScree
                         }),
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: AppSpace.lg),
                     _SentenceView(text: sentence.en, result: result),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: AppSpace.sm),
                     Row(
                       children: [
                         Expanded(
-                          child: Text(sentence.ko, style: sans(15, color: context.colors.ink2)),
+                          child: Text(sentence.ko, style: AppType.body(color: context.colors.ink2)),
                         ),
                         RoundIconButton(
                           icon: Icons.volume_up_rounded,
@@ -238,7 +238,7 @@ class _SpeakingScreenState extends ConsumerState<SpeakingScreen> with StudyScree
                         ),
                       ],
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: AppSpace.xxl),
                     if (_quiet)
                       const _QuietCard()
                     else if (_listening)
@@ -251,9 +251,9 @@ class _SpeakingScreenState extends ConsumerState<SpeakingScreen> with StudyScree
                         previousBest: _latest.containsKey(sentence.id) ? _previousBest[sentence.id] : null,
                         best: _bestFor(st, sentence)?.score,
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: AppSpace.md),
                       _TipCard(result: result),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: AppSpace.md),
                       VoiceCompareCard(key: ValueKey('voice-${sentence.id}'), text: sentence.en, sayNative: sayRaw),
                     ] else
                       const _HintCard(listening: false),
@@ -261,7 +261,7 @@ class _SpeakingScreenState extends ConsumerState<SpeakingScreen> with StudyScree
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(24, 8, 24, 20),
+                padding: const EdgeInsets.fromLTRB(AppSpace.xxl, AppSpace.sm, AppSpace.xxl, AppSpace.xl),
                 child: _quiet
                     ? Row(
                         children: [
@@ -271,7 +271,7 @@ class _SpeakingScreenState extends ConsumerState<SpeakingScreen> with StudyScree
                             semantic: '천천히 듣기',
                             onTap: () => say(sentence.en, slow: true),
                           ),
-                          const SizedBox(width: 16),
+                          const SizedBox(width: AppSpace.lg),
                           Expanded(
                             child: FilledButton(onPressed: _silentNext, child: const Text('속으로 따라 했어요 · 다음')),
                           ),
@@ -313,10 +313,10 @@ class _SpeakingScreenState extends ConsumerState<SpeakingScreen> with StudyScree
                                   ),
                                 ),
                               ),
-                              SizedBox(height: 14),
+                              SizedBox(height: AppSpace.lg),
                               Text(
                                 _listening ? '다 말했으면 누르기' : (result == null ? '눌러서 말하기' : '한 번 더 말하기'),
-                                style: sans(12, color: context.colors.ink2),
+                                style: AppType.caption(color: context.colors.ink2),
                               ),
                             ],
                           ),
@@ -349,8 +349,10 @@ class _QuietCard extends StatelessWidget {
       child: Row(
         children: [
           Icon(Icons.hearing_rounded, color: context.colors.penBlue),
-          SizedBox(width: 12),
-          Expanded(child: Text('이어폰으로 문장을 듣고, 입 모양만 따라 하거나 속으로 따라 해 보세요. 점수는 매기지 않아요.', style: sans(14, height: 1.55))),
+          SizedBox(width: AppSpace.md),
+          Expanded(
+            child: Text('이어폰으로 문장을 듣고, 입 모양만 따라 하거나 속으로 따라 해 보세요. 점수는 매기지 않아요.', style: AppType.callout(height: 1.55)),
+          ),
         ],
       ),
     );
@@ -364,7 +366,7 @@ class _SentenceView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final style = serif(32, weight: 500, height: 1.3, letterSpacing: -0.3);
+    final style = AppType.enHero(weight: 500, height: 1.3, letterSpacing: -0.3);
     final r = result;
     if (r == null) return Text(text, style: style);
     return Wrap(
@@ -437,7 +439,7 @@ class _ScoreCard extends StatelessWidget {
 
   Widget _card(BuildContext context) {
     return PaperCard(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(AppSpace.lg),
       child: Row(
         children: [
           SizedBox(
@@ -455,32 +457,32 @@ class _ScoreCard extends StatelessWidget {
                     strokeCap: StrokeCap.round,
                   ),
                 ),
-                Text('${result.score}', style: serif(22, weight: 600)),
+                Text('${result.score}', style: AppType.enTitle(weight: 600)),
               ],
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: AppSpace.lg),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(result.verdict, style: sans(15, weight: FontWeight.w700)),
+                Text(result.verdict, style: AppType.body(weight: FontWeight.w700)),
                 if (_change != null) ...[
-                  const SizedBox(height: 2),
+                  const SizedBox(height: AppSpace.xs),
                   Text(
                     _change!,
-                    style: sans(13, weight: FontWeight.w600, color: context.colors.penBlue),
+                    style: AppType.callout(weight: FontWeight.w600, color: context.colors.penBlue),
                   ),
                 ],
-                const SizedBox(height: 4),
+                const SizedBox(height: AppSpace.xs),
                 Text.rich(
                   TextSpan(
                     children: [
                       TextSpan(
                         text: '들린 문장: ',
-                        style: sans(13, color: context.colors.ink2),
+                        style: AppType.caption(color: context.colors.ink2),
                       ),
-                      TextSpan(text: '"${result.heard}"', style: serif(15, italic: true)),
+                      TextSpan(text: '"${result.heard}"', style: AppType.enCallout(italic: true)),
                     ],
                   ),
                 ),
@@ -508,7 +510,7 @@ class _TipCard extends StatelessWidget {
     final substituted = {for (final x in subs) x.said.toLowerCase()};
     final pronTips = koreanPronTips(missed.where((w) => !substituted.contains(w.toLowerCase())));
     return Container(
-      padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+      padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.lg, AppSpace.lg, AppSpace.lg),
       decoration: BoxDecoration(color: context.colors.penBlueTint, borderRadius: BorderRadius.circular(AppRadius.card)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -516,41 +518,41 @@ class _TipCard extends StatelessWidget {
           Row(
             children: [
               Icon(Icons.auto_awesome_outlined, size: 14, color: context.colors.penBlue),
-              const SizedBox(width: 6),
+              const SizedBox(width: AppSpace.sm),
               Text(
                 '선생님 한마디',
-                style: sans(12, weight: FontWeight.w600, color: context.colors.penBlue),
+                style: AppType.caption(weight: FontWeight.w600, color: context.colors.penBlue),
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          Text(tip, style: sans(14, height: 1.6)),
+          const SizedBox(height: AppSpace.sm),
+          Text(tip, style: AppType.callout(height: 1.6)),
           for (final x in subs) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpace.sm),
             Text.rich(
               TextSpan(
                 children: [
-                  TextSpan(text: "'${x.said}'", style: serif(15, weight: 600)),
+                  TextSpan(text: "'${x.said}'", style: AppType.enCallout(weight: 600)),
                   TextSpan(
                     text: ' → ',
-                    style: sans(13, color: context.colors.ink2),
+                    style: AppType.caption(color: context.colors.ink2),
                   ),
                   TextSpan(
                     text: "'${x.heard}'",
-                    style: serif(15, italic: true, color: context.colors.error),
+                    style: AppType.enCallout(italic: true, color: context.colors.error),
                   ),
                   TextSpan(
                     text: ' 로 들렸어요',
-                    style: sans(13, color: context.colors.ink2),
+                    style: AppType.caption(color: context.colors.ink2),
                   ),
                 ],
               ),
             ),
-            if (x.tip != null) Text(x.tip!, style: sans(13, height: 1.55, color: context.colors.inkSoft)),
+            if (x.tip != null) Text(x.tip!, style: AppType.callout(height: 1.55, color: context.colors.inkSoft)),
           ],
           for (final t in pronTips) ...[
-            const SizedBox(height: 6),
-            Text('· $t', style: sans(13, height: 1.55, color: context.colors.inkSoft)),
+            const SizedBox(height: AppSpace.sm),
+            Text('· $t', style: AppType.callout(height: 1.55, color: context.colors.inkSoft)),
           ],
         ],
       ),
@@ -569,13 +571,13 @@ class _HintCard extends StatelessWidget {
       child: Row(
         children: [
           Icon(listening ? Icons.hearing_rounded : Icons.record_voice_over_outlined, color: context.colors.penBlue),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpace.md),
           Expanded(
             child: listening && partial.isNotEmpty
-                ? Text('"$partial"', style: serif(17, italic: true, height: 1.4))
+                ? Text('"$partial"', style: AppType.enBody(italic: true, height: 1.4))
                 : Text(
                     listening ? '듣고 있어요. 천천히, 또박또박 말해 보세요.' : '문장을 먼저 듣고, 아래 버튼을 눌러 소리 내어 따라 말해 보세요.',
-                    style: sans(14, height: 1.55),
+                    style: AppType.callout(height: 1.55),
                   ),
           ),
         ],
@@ -597,8 +599,8 @@ class _ErrorCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(message, style: sans(14, height: 1.55)),
-          const SizedBox(height: 10),
+          Text(message, style: AppType.callout(height: 1.55)),
+          const SizedBox(height: AppSpace.sm),
           Wrap(
             spacing: 8,
             children: [
@@ -652,8 +654,8 @@ class _SideButton extends StatelessWidget {
                 ),
                 child: Icon(icon, size: 20, color: filled ? context.colors.card : context.colors.penBlue),
               ),
-              const SizedBox(height: 4),
-              Text(label, style: sans(12, color: enabled ? context.colors.ink : context.colors.ink2)),
+              const SizedBox(height: AppSpace.xs),
+              Text(label, style: AppType.caption(color: enabled ? context.colors.ink : context.colors.ink2)),
             ],
           ),
         ),

@@ -95,7 +95,7 @@ class _ReviewSessionScreenState extends ConsumerState<ReviewSessionScreen> with 
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(8, 8, 12, 0),
+                padding: const EdgeInsets.fromLTRB(AppSpace.sm, AppSpace.sm, AppSpace.md, 0),
                 child: StudyTopBar(
                   title: !finished && _index >= _firstPass ? '몰랐던 카드 한 번 더' : '복습',
                   index: _index,
@@ -122,7 +122,7 @@ class _ReviewSessionScreenState extends ConsumerState<ReviewSessionScreen> with 
               ),
               if (!finished && _items.isNotEmpty)
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+                  padding: const EdgeInsets.fromLTRB(AppSpace.xl, AppSpace.sm, AppSpace.xl, AppSpace.lg),
                   child: _revealed
                       ? _RatingButtons(onRate: _rate)
                       : FilledButton(
@@ -158,12 +158,21 @@ class _RatingButtons extends StatelessWidget {
     if (vertical) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [for (final b in buttons.reversed) Padding(padding: const EdgeInsets.only(bottom: 8), child: b)],
+        children: [
+          for (final b in buttons.reversed)
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpace.sm),
+              child: b,
+            ),
+        ],
       );
     }
     return Row(
       children: [
-        for (var i = 0; i < buttons.length; i++) ...[if (i > 0) const SizedBox(width: 8), Expanded(child: buttons[i])],
+        for (var i = 0; i < buttons.length; i++) ...[
+          if (i > 0) const SizedBox(width: AppSpace.sm),
+          Expanded(child: buttons[i]),
+        ],
       ],
     );
   }
@@ -196,11 +205,11 @@ class _Card extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
+      padding: const EdgeInsets.fromLTRB(AppSpace.xl, AppSpace.xxl, AppSpace.xl, 0),
       child: PaperCard(
         elevated: true,
         radius: AppRadius.sheet,
-        padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
+        padding: const EdgeInsets.fromLTRB(AppSpace.xxl, AppSpace.xxl, AppSpace.xxl, AppSpace.xxl),
         child: LayoutBuilder(
           // 큰 글씨에서 내용이 카드보다 길어지면 스크롤 (평소에는 가운데 정렬 그대로)
           builder: (context, box) => SingleChildScrollView(
@@ -218,7 +227,7 @@ class _Card extends StatelessWidget {
                             background: context.colors.sand,
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: AppSpace.sm),
                         const Spacer(),
                         RoundIconButton(
                           icon: Icons.volume_up_rounded,
@@ -233,27 +242,26 @@ class _Card extends StatelessWidget {
                       Text(
                         item.meaning,
                         textAlign: TextAlign.center,
-                        style: sans(26, weight: FontWeight.w700, height: 1.35, letterSpacing: -0.4),
+                        style: AppType.title1(weight: FontWeight.w700, height: 1.35, letterSpacing: -0.4),
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: AppSpace.md),
                       Text(
                         '영어로 어떻게 말할까요? 속으로 말해 보거나 소리 내어 말해 보세요',
                         textAlign: TextAlign.center,
-                        style: sans(13, color: context.colors.ink2),
+                        style: AppType.caption(color: context.colors.ink2),
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: AppSpace.md),
                       OutlinedButton.icon(
                         onPressed: listening ? null : onSpeak,
                         icon: Icon(listening ? Icons.hearing_rounded : Icons.mic_none_rounded, size: 18),
                         label: Text(listening ? '듣고 있어요' : (spoken == null ? '말해 보기' : '다시 말해 보기')),
                       ),
                       if (spoken != null) ...[
-                        const SizedBox(height: 8),
+                        const SizedBox(height: AppSpace.sm),
                         Text(
                           '${spoken!.score}점 · 들린 문장 "${spoken!.heard}"',
                           textAlign: TextAlign.center,
-                          style: sans(
-                            13,
+                          style: AppType.callout(
                             weight: FontWeight.w600,
                             color: spoken!.score >= 80 ? context.colors.success : context.colors.ember,
                           ),
@@ -265,15 +273,18 @@ class _Card extends StatelessWidget {
                         Text(
                           item.text,
                           textAlign: TextAlign.center,
-                          style: serif(item.kind == 'word' ? 44 : 32, weight: 500, height: 1.2, letterSpacing: -0.5),
+                          style: (item.kind == 'word' ? AppType.enDisplay : AppType.enHero)(
+                            height: 1.2,
+                            letterSpacing: -0.5,
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      Text('뜻을 먼저 떠올려 보세요', style: sans(13, color: context.colors.ink2)),
+                      const SizedBox(height: AppSpace.md),
+                      Text('뜻을 먼저 떠올려 보세요', style: AppType.caption(color: context.colors.ink2)),
                     ],
                     const Spacer(),
                     const Divider(),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: AppSpace.lg),
                     AnimatedSwitcher(
                       duration: motion(context, AppMotion.fast),
                       // 뜻이 나타나면 스크린리더가 바로 읽어 준다
@@ -295,7 +306,7 @@ class _Card extends StatelessWidget {
                                 item.text,
                                 key: const ValueKey('english'),
                                 textAlign: TextAlign.center,
-                                style: serif(28, weight: 500, height: 1.25),
+                                style: AppType.enHero(weight: 500, height: 1.25),
                               ),
                             )
                           : revealed
@@ -304,7 +315,7 @@ class _Card extends StatelessWidget {
                               key: const ValueKey('meaning'),
                               semanticsLabel: '뜻: ${item.meaning}',
                               textAlign: TextAlign.center,
-                              style: sans(20, weight: FontWeight.w700),
+                              style: AppType.title2(weight: FontWeight.w700),
                             )
                           : TextButton.icon(
                               key: const ValueKey('hidden'),
@@ -333,14 +344,14 @@ class _Summary extends StatelessWidget {
     final known = results.where((r) => r == SelfRating.know).length;
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(32),
+        padding: const EdgeInsets.all(AppSpace.xxxl),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.task_alt_rounded, size: 56, color: context.colors.success),
-            const SizedBox(height: 16),
-            Text('${results.length}장 복습 완료', style: sans(22, weight: FontWeight.w700)),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpace.lg),
+            Text('${results.length}장 복습 완료', style: AppType.title2(weight: FontWeight.w700)),
+            const SizedBox(height: AppSpace.sm),
             Text(
               known == 0
                   ? '오늘 다시 본 것만으로도 기억이 단단해져요. 곧 다시 보여 드릴게요.'
@@ -348,7 +359,7 @@ class _Summary extends StatelessWidget {
                   ? '모두 기억하고 있었어요. 다음 복습은 더 뒤로 미뤄 둘게요.'
                   : '$known장은 기억하고 있었어요. 헷갈린 카드는 곧 다시 보여 드릴게요.',
               textAlign: TextAlign.center,
-              style: sans(14, color: context.colors.ink2, height: 1.5),
+              style: AppType.callout(color: context.colors.ink2, height: 1.5),
             ),
           ],
         ),
@@ -364,11 +375,11 @@ class _Empty extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(32),
+        padding: const EdgeInsets.all(AppSpace.xxxl),
         child: Text(
           '오늘 복습할 카드가 없어요.\n잊어버릴 때쯤 다시 보여 드릴게요.',
           textAlign: TextAlign.center,
-          style: sans(15, color: context.colors.ink2, height: 1.6),
+          style: AppType.body(color: context.colors.ink2, height: 1.6),
         ),
       ),
     );

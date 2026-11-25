@@ -29,10 +29,10 @@ class ReviewScreen extends ConsumerWidget {
       child: ListView(
         padding: readablePadding(context, maxWidth: 680),
         children: [
-          Text('복습', style: sans(26, weight: FontWeight.w700, letterSpacing: -0.5)),
-          const SizedBox(height: 6),
-          Text('잊어버릴 때쯤 다시 보여드려요 (1 · 3 · 7 · 14 · 30일)', style: sans(13, color: context.colors.ink2)),
-          const SizedBox(height: 16),
+          Text('복습', style: AppType.title1(weight: FontWeight.w700, letterSpacing: -0.5)),
+          const SizedBox(height: AppSpace.sm),
+          Text('잊어버릴 때쯤 다시 보여드려요 (1 · 3 · 7 · 14 · 30일)', style: AppType.caption(color: context.colors.ink2)),
+          const SizedBox(height: AppSpace.lg),
           PaperCard(
             elevated: true,
             child: Row(
@@ -41,9 +41,9 @@ class ReviewScreen extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('오늘 복습할 카드', style: sans(13, color: context.colors.ink2)),
-                      const SizedBox(height: 2),
-                      Text('$dueCount장', style: serif(32, weight: 500)),
+                      Text('오늘 복습할 카드', style: AppType.caption(color: context.colors.ink2)),
+                      const SizedBox(height: AppSpace.xs),
+                      Text('$dueCount장', style: AppType.enHero(weight: 500)),
                     ],
                   ),
                 ),
@@ -55,45 +55,45 @@ class ReviewScreen extends ConsumerWidget {
               ],
             ),
           ),
-          const SizedBox(height: 22),
-          Text('오답 노트', style: sans(15, weight: FontWeight.w700)),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpace.xxl),
+          Text('오답 노트', style: AppType.body(weight: FontWeight.w700)),
+          const SizedBox(height: AppSpace.sm),
           if (wrong.isEmpty)
             _Empty(text: '오늘 틀린 문제가 없어요. 퀴즈를 풀면 여기에 모여요.')
           else
             for (final q in wrong) ...[
               PaperCard(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(AppSpace.lg),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(q.prompt, style: sans(15, weight: FontWeight.w600)),
-                    const SizedBox(height: 6),
+                    Text(q.prompt, style: AppType.body(weight: FontWeight.w600)),
+                    const SizedBox(height: AppSpace.sm),
                     englishSemantics(
                       q.choices[q.answerIndex],
-                      Text(q.choices[q.answerIndex], style: serif(17, color: context.colors.success)),
+                      Text(q.choices[q.answerIndex], style: AppType.enBody(color: context.colors.success)),
                     ),
-                    const SizedBox(height: 6),
-                    Text(q.explanation, style: sans(13, color: context.colors.ink2, height: 1.5)),
+                    const SizedBox(height: AppSpace.sm),
+                    Text(q.explanation, style: AppType.callout(color: context.colors.ink2, height: 1.5)),
                   ],
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpace.sm),
             ],
-          const SizedBox(height: 18),
-          Text('단어장', style: sans(15, weight: FontWeight.w700)),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpace.lg),
+          Text('단어장', style: AppType.body(weight: FontWeight.w700)),
+          const SizedBox(height: AppSpace.sm),
           if (scheduled.isEmpty)
             _Empty(text: '단어 카드를 평가하면 다음 복습 날짜가 여기에 표시돼요.')
           else
             PaperCard(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.lg, vertical: AppSpace.xs),
               child: Column(
                 children: [
                   for (final c in scheduled)
                     Container(
                       constraints: const BoxConstraints(minHeight: 52),
-                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      padding: const EdgeInsets.symmetric(vertical: AppSpace.sm),
                       decoration: BoxDecoration(
                         border: c == scheduled.first ? null : Border(top: BorderSide(color: context.colors.line)),
                       ),
@@ -102,18 +102,18 @@ class ReviewScreen extends ConsumerWidget {
                           Expanded(
                             child: englishSemantics(
                               words[c.itemId]!.word,
-                              Text(words[c.itemId]!.word, style: serif(18)),
+                              Text(words[c.itemId]!.word, style: AppType.enBody()),
                             ),
                           ),
                           Flexible(
                             child: Text(
                               words[c.itemId]!.meaning,
-                              style: sans(13, color: context.colors.ink2),
+                              style: AppType.caption(color: context.colors.ink2),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          const SizedBox(width: AppSpace.md),
                           Tag(
                             '${c.due.difference(DateTime(now.year, now.month, now.day)).inDays}일 뒤',
                             color: context.colors.ink,
@@ -138,12 +138,12 @@ class _Empty extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(AppSpace.lg),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppRadius.row),
         border: Border.all(color: context.colors.line),
       ),
-      child: Text(text, style: sans(14, color: context.colors.ink2, height: 1.5)),
+      child: Text(text, style: AppType.callout(color: context.colors.ink2, height: 1.5)),
     );
   }
 }

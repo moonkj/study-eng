@@ -104,7 +104,7 @@ class _ExpressionScreenState extends ConsumerState<ExpressionScreen> with StudyS
           child: Column(
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(8, 8, 16, 0),
+                padding: const EdgeInsets.fromLTRB(AppSpace.sm, AppSpace.sm, AppSpace.lg, 0),
                 child: Row(
                   children: [
                     IconButton(
@@ -120,7 +120,7 @@ class _ExpressionScreenState extends ConsumerState<ExpressionScreen> with StudyS
                       child: Text(
                         '${_index + 1}/${items.length}',
                         textAlign: TextAlign.right,
-                        style: sans(13, color: context.colors.ink2),
+                        style: AppType.caption(color: context.colors.ink2),
                       ),
                     ),
                   ],
@@ -132,13 +132,13 @@ class _ExpressionScreenState extends ConsumerState<ExpressionScreen> with StudyS
                   itemCount: items.length,
                   onPageChanged: (i) => setState(() => _index = i),
                   itemBuilder: (_, i) => SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+                    padding: const EdgeInsets.fromLTRB(AppSpace.xl, AppSpace.lg, AppSpace.xl, 0),
                     child: _ExpressionCard(e: items[i]),
                   ),
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.only(top: 12),
+                padding: const EdgeInsets.only(top: AppSpace.md),
                 // 좁은 화면·큰 글씨에서는 줄을 바꾼다
                 child: Wrap(
                   alignment: WrapAlignment.center,
@@ -146,7 +146,7 @@ class _ExpressionScreenState extends ConsumerState<ExpressionScreen> with StudyS
                   spacing: 8,
                   runSpacing: 8,
                   children: [
-                    Text('이 표현은', style: sans(13, color: context.colors.ink2)),
+                    Text('이 표현은', style: AppType.caption(color: context.colors.ink2)),
                     _ChoicePill(
                       label: '이미 알아요',
                       selected: known == true,
@@ -172,7 +172,7 @@ class _ExpressionScreenState extends ConsumerState<ExpressionScreen> with StudyS
                           label: const Text('말해보기'),
                         ),
                       ),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: AppSpace.sm),
                       Expanded(
                         flex: 14,
                         child: FilledButton(
@@ -209,18 +209,18 @@ class _Pron extends StatelessWidget {
           Row(
             children: [
               Icon(Icons.graphic_eq_rounded, size: 16, color: context.colors.penBlue),
-              const SizedBox(width: 6),
+              const SizedBox(width: AppSpace.sm),
               Flexible(
                 child: Text(
                   pron,
-                  style: sans(15, weight: FontWeight.w600, color: context.colors.penBlue),
+                  style: AppType.body(weight: FontWeight.w600, color: context.colors.penBlue),
                 ),
               ),
             ],
           ),
           if (tip != null) ...[
-            const SizedBox(height: 2),
-            Text(tip!, style: sans(13, color: context.colors.ink2, height: 1.5)),
+            const SizedBox(height: AppSpace.xs),
+            Text(tip!, style: AppType.callout(color: context.colors.ink2, height: 1.5)),
           ],
         ],
       ),
@@ -237,29 +237,29 @@ class _ExpressionCard extends ConsumerWidget {
     return PaperCard(
       elevated: true,
       radius: AppRadius.sheet,
-      padding: const EdgeInsets.fromLTRB(22, 26, 22, 22),
+      padding: const EdgeInsets.fromLTRB(AppSpace.xxl, AppSpace.xxl, AppSpace.xxl, AppSpace.xxl),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Tag(e.levelLabel),
-              const SizedBox(width: 6),
+              const SizedBox(width: AppSpace.sm),
               Tag(e.topic, color: context.colors.ink2, background: context.colors.mutedSoft),
             ],
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: AppSpace.lg),
           HighlightText(
             e.pattern,
             highlight: e.highlight,
-            style: serif(36, weight: 500, height: 1.15, letterSpacing: -0.5),
+            style: AppType.enHero(weight: 500, height: 1.15, letterSpacing: -0.5),
           ),
-          const SizedBox(height: 8),
-          Text(e.meaning, style: sans(17, weight: FontWeight.w600)),
-          if (e.pronKo != null) ...[const SizedBox(height: 8), _Pron(pron: e.pronKo!, tip: e.linkTip)],
-          const SizedBox(height: 6),
-          Text(e.usage, style: sans(14, color: context.colors.ink2, height: 1.6)),
-          const SizedBox(height: 18),
+          const SizedBox(height: AppSpace.sm),
+          Text(e.meaning, style: AppType.headline(weight: FontWeight.w600)),
+          if (e.pronKo != null) ...[const SizedBox(height: AppSpace.sm), _Pron(pron: e.pronKo!, tip: e.linkTip)],
+          const SizedBox(height: AppSpace.sm),
+          Text(e.usage, style: AppType.callout(color: context.colors.ink2, height: 1.6)),
+          const SizedBox(height: AppSpace.lg),
           for (var i = 0; i < e.examples.length; i++)
             ExampleRow(
               en: e.examples[i].en,
@@ -267,24 +267,27 @@ class _ExpressionCard extends ConsumerWidget {
               onListen: () => ref.read(sayProvider)(e.examples[i].en),
             ),
           if (e.compare != null) ...[
-            const SizedBox(height: 4),
+            const SizedBox(height: AppSpace.xs),
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              decoration: BoxDecoration(color: context.colors.paper, borderRadius: BorderRadius.circular(14)),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.lg, vertical: AppSpace.md),
+              decoration: BoxDecoration(
+                color: context.colors.paper,
+                borderRadius: BorderRadius.circular(AppRadius.row),
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     '헷갈리기 쉬운 표현',
-                    style: sans(12, weight: FontWeight.w600, color: context.colors.penBlue),
+                    style: AppType.caption(weight: FontWeight.w600, color: context.colors.penBlue),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: AppSpace.xs),
                   Text.rich(
                     TextSpan(
                       children: [
-                        TextSpan(text: e.compare!.$1, style: serif(15)),
-                        TextSpan(text: ' ${e.compare!.$2}', style: sans(13, height: 1.55)),
+                        TextSpan(text: e.compare!.$1, style: AppType.enCallout()),
+                        TextSpan(text: ' ${e.compare!.$2}', style: AppType.callout(height: 1.55)),
                       ],
                     ),
                   ),
@@ -345,9 +348,12 @@ class _ChoicePill extends StatelessWidget {
           onTap: onTap,
           child: Container(
             constraints: const BoxConstraints(minHeight: 44),
-            padding: const EdgeInsets.symmetric(horizontal: 14),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.lg),
             alignment: Alignment.center,
-            child: Text(label, style: sans(13, color: selected ? context.colors.onEmphasis : context.colors.ink)),
+            child: Text(
+              label,
+              style: AppType.callout(color: selected ? context.colors.onEmphasis : context.colors.ink),
+            ),
           ),
         ),
       ),

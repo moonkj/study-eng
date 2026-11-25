@@ -5,6 +5,15 @@ import 'package:go_router/go_router.dart';
 import '../theme/app_theme.dart';
 import '../theme/tokens.dart';
 
+export 'action_row.dart';
+export 'banner.dart';
+export 'empty_state.dart';
+export 'level_scale.dart';
+export 'score_badge.dart';
+export 'section_header.dart';
+export 'stat_tile.dart';
+export 'timer_ring.dart';
+
 /// 종이 카드
 class PaperCard extends StatelessWidget {
   const PaperCard({
@@ -127,16 +136,16 @@ class Tag extends StatelessWidget {
     final background = this.background ?? context.colors.penBlueTint;
     return Container(
       constraints: const BoxConstraints(minHeight: 26),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: 3),
       decoration: BoxDecoration(color: background, borderRadius: BorderRadius.circular(13)),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (icon != null) ...[Icon(icon, size: 13, color: color), const SizedBox(width: 4)],
+          if (icon != null) ...[Icon(icon, size: 13, color: color), const SizedBox(width: AppSpace.xs)],
           Flexible(
             child: Text(
               label,
-              style: sans(12, weight: FontWeight.w600, color: color),
+              style: AppType.caption(weight: FontWeight.w600, color: color),
             ),
           ),
         ],
@@ -248,7 +257,7 @@ class StudyTopBar extends StatelessWidget {
           onPressed: () => context.canPop() ? context.pop() : context.go('/'),
           icon: Icon(close ? Icons.close_rounded : Icons.chevron_left_rounded, size: 26),
         ),
-        const SizedBox(width: 4),
+        const SizedBox(width: AppSpace.xs),
         Expanded(
           child: Semantics(
             // 스크린리더: '오늘의 단어, 10개 중 3개 완료'
@@ -257,21 +266,21 @@ class StudyTopBar extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: sans(15, weight: FontWeight.w700)),
-                const SizedBox(height: 6),
+                Text(title, style: AppType.body(weight: FontWeight.w700)),
+                const SizedBox(height: AppSpace.sm),
                 ThinProgress(total == 0 ? 0 : index / total),
               ],
             ),
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: AppSpace.md),
         ExcludeSemantics(
           child: Text(
             '$index/$total',
-            style: sans(13, weight: FontWeight.w600, color: context.colors.ink2),
+            style: AppType.caption(weight: FontWeight.w600, color: context.colors.ink2),
           ),
         ),
-        if (trailing != null) trailing! else const SizedBox(width: 8),
+        if (trailing != null) trailing! else const SizedBox(width: AppSpace.sm),
       ],
     );
   }
@@ -289,7 +298,7 @@ class ExampleRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 14),
+      padding: const EdgeInsets.symmetric(vertical: AppSpace.lg),
       decoration: divider
           ? BoxDecoration(
               border: Border(
@@ -303,13 +312,13 @@ class ExampleRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                englishSemantics(en, Text(en, style: serif(18, height: 1.35))),
-                const SizedBox(height: 3),
-                Text(ko, style: sans(13, color: context.colors.ink2)),
+                englishSemantics(en, Text(en, style: AppType.enBody(height: 1.35))),
+                const SizedBox(height: AppSpace.xs),
+                Text(ko, style: AppType.caption(color: context.colors.ink2)),
               ],
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpace.md),
           RoundIconButton(icon: Icons.volume_up_rounded, label: '예문 듣기', filled: false, onPressed: onListen),
         ],
       ),

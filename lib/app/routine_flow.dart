@@ -106,23 +106,23 @@ Future<void> _finish(BuildContext context, WidgetRef ref, RoutineStep step) asyn
     showDragHandle: true,
     builder: (ctx) => SafeArea(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
+        padding: const EdgeInsets.fromLTRB(AppSpace.xxl, 0, AppSpace.xxl, AppSpace.xl),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(_doneTitle(step), style: sans(20, weight: FontWeight.w700)),
-            const SizedBox(height: 6),
+            Text(_doneTitle(step), style: AppType.title2(weight: FontWeight.w700)),
+            const SizedBox(height: AppSpace.sm),
             Text(
               stale
                   ? '날짜가 바뀌었어요. 마저 하면 어제 기록으로 남고, 지금 그만두면 어제 진행은 기록되지 않아요.'
                   : '남은 단계 $remaining개 · 약 ${remainingMinutes(s, toeic: toeic)}분 · 다음은 ${stepTitle(next, s, toeic: toeic)}',
-              style: sans(14, color: context.colors.ink2),
+              style: AppType.callout(color: context.colors.ink2),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: AppSpace.xl),
             // 키보드(Enter)로도 바로 이어갈 수 있게
             FilledButton(autofocus: true, onPressed: () => Navigator.pop(ctx, 'go'), child: const Text('이어서 하기')),
-            const SizedBox(height: 4),
+            const SizedBox(height: AppSpace.xs),
             TextButton(onPressed: () => Navigator.pop(ctx, 'later'), child: Text(stale ? '오늘 걸로 새로 시작' : '나중에 할게요')),
             // 바쁜 날: 표현만 하고 끝내도 연속 기록은 이어진다 (축하 화면 없이)
             if (step == RoutineStep.expressions && !stale && !s.log.containsKey(dateKey(s.now)))

@@ -170,11 +170,10 @@ class TabShell extends StatelessWidget {
                                   size: 22,
                                   color: shell.currentIndex == i ? context.colors.ink : context.colors.ink2,
                                 ),
-                                const SizedBox(height: 3),
+                                const SizedBox(height: AppSpace.xs),
                                 Text(
                                   tabs[i].$3,
-                                  style: sans(
-                                    12,
+                                  style: AppType.caption(
                                     weight: shell.currentIndex == i ? FontWeight.w700 : FontWeight.w500,
                                     color: shell.currentIndex == i ? context.colors.ink : context.colors.ink2,
                                   ),
@@ -210,20 +209,17 @@ class _SideNav extends StatelessWidget {
       child: SafeArea(
         right: false,
         child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: extended ? 16 : 8, vertical: 20),
+          padding: EdgeInsets.symmetric(horizontal: extended ? AppSpace.lg : AppSpace.sm, vertical: AppSpace.xl),
           child: Column(
             crossAxisAlignment: extended ? CrossAxisAlignment.start : CrossAxisAlignment.center,
             children: [
               Padding(
-                padding: EdgeInsets.only(left: extended ? 12 : 0, bottom: 28),
-                child: Text(
-                  extended ? 'todaye' : 't.',
-                  style: serif(extended ? 28 : 26, weight: 500, letterSpacing: -0.5),
-                ),
+                padding: EdgeInsets.only(left: extended ? AppSpace.md : 0, bottom: AppSpace.xxl),
+                child: Text(extended ? 'todaye' : 't.', style: AppType.enHero(letterSpacing: -0.5)),
               ),
               for (var i = 0; i < TabShell.tabs.length; i++)
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 6),
+                  padding: const EdgeInsets.only(bottom: AppSpace.sm),
                   child: Semantics(
                     selected: current == i,
                     button: true,
@@ -231,16 +227,16 @@ class _SideNav extends StatelessWidget {
                     excludeSemantics: true,
                     child: Material(
                       color: current == i ? context.colors.sand : Colors.transparent,
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(AppRadius.nav),
                       child: DecoratedBox(
                         // 선택 표시를 배경색만이 아니라 왼쪽 막대로도 (배경과 대비가 낮아서)
                         position: DecorationPosition.foreground,
                         decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(AppRadius.nav),
                           border: current == i ? Border(left: BorderSide(color: context.colors.ink, width: 3)) : null,
                         ),
                         child: InkWell(
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(AppRadius.nav),
                           onTap: () => onSelect(i),
                           // 큰 글씨에서도 넘치지 않게 최소 높이
                           child: ConstrainedBox(
@@ -252,17 +248,16 @@ class _SideNav extends StatelessWidget {
                             child: extended
                                 ? Row(
                                     children: [
-                                      const SizedBox(width: 12),
+                                      const SizedBox(width: AppSpace.md),
                                       Icon(
                                         current == i ? TabShell.tabs[i].$2 : TabShell.tabs[i].$1,
                                         size: 22,
                                         color: current == i ? context.colors.ink : context.colors.ink2,
                                       ),
-                                      const SizedBox(width: 14),
+                                      const SizedBox(width: AppSpace.lg),
                                       Text(
                                         TabShell.tabs[i].$3,
-                                        style: sans(
-                                          15,
+                                        style: AppType.body(
                                           weight: current == i ? FontWeight.w700 : FontWeight.w500,
                                           color: current == i ? context.colors.ink : context.colors.ink2,
                                         ),
@@ -277,11 +272,10 @@ class _SideNav extends StatelessWidget {
                                         size: 22,
                                         color: current == i ? context.colors.ink : context.colors.ink2,
                                       ),
-                                      const SizedBox(height: 4),
+                                      const SizedBox(height: AppSpace.xs),
                                       Text(
                                         TabShell.tabs[i].$3,
-                                        style: sans(
-                                          12,
+                                        style: AppType.caption(
                                           weight: current == i ? FontWeight.w700 : FontWeight.w500,
                                           color: current == i ? context.colors.ink : context.colors.ink2,
                                         ),

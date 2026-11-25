@@ -20,21 +20,21 @@ class WelcomeScreen extends ConsumerWidget {
           children: [
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(28, 64, 28, 0),
+                padding: const EdgeInsets.fromLTRB(AppSpace.xxl, 64, AppSpace.xxl, 0),
                 children: [
                   HighlightText(
                     'todaye',
                     highlight: 'today',
-                    style: serif(44, weight: 500, letterSpacing: -1, height: 1.2),
+                    style: AppType.enDisplay(weight: 500, letterSpacing: -1, height: 1.2),
                   ),
-                  const SizedBox(height: 6),
-                  Text('오늘의 영어', style: sans(15, color: context.colors.ink2)),
-                  const SizedBox(height: 40),
+                  const SizedBox(height: AppSpace.sm),
+                  Text('오늘의 영어', style: AppType.body(color: context.colors.ink2)),
+                  const SizedBox(height: AppSpace.xxxl),
                   Text(
                     '하루 10~15분,\n내 레벨에 딱 맞는 영어 루틴',
-                    style: sans(26, weight: FontWeight.w700, height: 1.35, letterSpacing: -0.5),
+                    style: AppType.title1(weight: FontWeight.w700, height: 1.35, letterSpacing: -0.5),
                   ),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: AppSpace.xxl),
                   const _Point(n: '1', title: '레벨 진단 4분', body: '12문항이면 지금 실력과 약한 영역을 알 수 있어요.'),
                   const _Point(
                     n: '2',
@@ -72,17 +72,17 @@ void _askLevel(BuildContext context, WidgetRef ref) {
     shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.sheet))),
     builder: (_) => SafeArea(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+        padding: const EdgeInsets.fromLTRB(AppSpace.xxl, AppSpace.xxl, AppSpace.xxl, AppSpace.lg),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('영어로 짧은 대화를 할 수 있나요?', style: sans(18, weight: FontWeight.w700)),
-            const SizedBox(height: 6),
-            Text('나중에 설정에서 언제든 진단받을 수 있어요.', style: sans(13, color: context.colors.ink2)),
-            const SizedBox(height: 20),
+            Text('영어로 짧은 대화를 할 수 있나요?', style: AppType.headline(weight: FontWeight.w700)),
+            const SizedBox(height: AppSpace.sm),
+            Text('나중에 설정에서 언제든 진단받을 수 있어요.', style: AppType.caption(color: context.colors.ink2)),
+            const SizedBox(height: AppSpace.xl),
             FilledButton(onPressed: () => start(false), child: const Text('네, 간단한 대화는 돼요 (B1부터)')),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpace.sm),
             OutlinedButton(onPressed: () => start(true), child: const Text('아직 어려워요 (A2부터)')),
           ],
         ),
@@ -100,7 +100,7 @@ class _Point extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 18),
+      padding: const EdgeInsets.only(bottom: AppSpace.lg),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -114,17 +114,17 @@ class _Point extends StatelessWidget {
             ),
             child: Text(
               n,
-              style: sans(13, weight: FontWeight.w600, color: context.colors.ink2),
+              style: AppType.caption(weight: FontWeight.w600, color: context.colors.ink2),
             ),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: AppSpace.lg),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: sans(16, weight: FontWeight.w700)),
-                const SizedBox(height: 2),
-                Text(body, style: sans(14, color: context.colors.ink2, height: 1.5)),
+                Text(title, style: AppType.body(weight: FontWeight.w700)),
+                const SizedBox(height: AppSpace.xs),
+                Text(body, style: AppType.callout(color: context.colors.ink2, height: 1.5)),
               ],
             ),
           ),

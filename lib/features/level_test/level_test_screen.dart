@@ -56,7 +56,7 @@ class _LevelTestScreenState extends ConsumerState<LevelTestScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(8, 8, 20, 0),
+              padding: const EdgeInsets.fromLTRB(AppSpace.sm, AppSpace.sm, AppSpace.xl, 0),
               child: Row(
                 children: [
                   IconButton(
@@ -64,7 +64,7 @@ class _LevelTestScreenState extends ConsumerState<LevelTestScreen> {
                     onPressed: () => popOrHome(context),
                     icon: const Icon(Icons.close_rounded),
                   ),
-                  const SizedBox(width: 4),
+                  const SizedBox(width: AppSpace.xs),
                   Expanded(
                     child: Row(
                       children: [
@@ -72,7 +72,7 @@ class _LevelTestScreenState extends ConsumerState<LevelTestScreen> {
                           Expanded(
                             child: Container(
                               height: 4,
-                              margin: EdgeInsets.only(right: i == _test.totalItems - 1 ? 0 : 4),
+                              margin: EdgeInsets.only(right: i == _test.totalItems - 1 ? 0 : AppSpace.xs),
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(2),
                                 color: i < _test.answered
@@ -86,29 +86,29 @@ class _LevelTestScreenState extends ConsumerState<LevelTestScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: AppSpace.md),
                   Text(
                     '${_test.answered + 1}/${_test.totalItems}',
-                    style: sans(13, weight: FontWeight.w600, color: context.colors.ink2),
+                    style: AppType.caption(weight: FontWeight.w600, color: context.colors.ink2),
                   ),
                 ],
               ),
             ),
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(24, 22, 24, 0),
+                padding: const EdgeInsets.fromLTRB(AppSpace.xxl, AppSpace.xxl, AppSpace.xxl, 0),
                 children: [
                   _DifficultyCard(test: _test, current: current),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: AppSpace.xxxl),
                   Text(
                     item.skill.ko,
-                    style: sans(13, weight: FontWeight.w600, color: context.colors.penBlue, letterSpacing: 0.4),
+                    style: AppType.callout(weight: FontWeight.w600, color: context.colors.penBlue, letterSpacing: 0.4),
                   ),
-                  const SizedBox(height: 8),
-                  Text(item.instruction, style: sans(19, weight: FontWeight.w600, height: 1.45)),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: AppSpace.sm),
+                  Text(item.instruction, style: AppType.title2(weight: FontWeight.w600, height: 1.45)),
+                  const SizedBox(height: AppSpace.xl),
                   Container(
-                    padding: const EdgeInsets.fromLTRB(22, 24, 22, 24),
+                    padding: const EdgeInsets.fromLTRB(AppSpace.xxl, AppSpace.xxl, AppSpace.xxl, AppSpace.xxl),
                     decoration: BoxDecoration(
                       color: context.colors.card,
                       borderRadius: BorderRadius.circular(AppRadius.card),
@@ -120,15 +120,15 @@ class _LevelTestScreenState extends ConsumerState<LevelTestScreen> {
                         if (hasBlank)
                           _BlankSentence(item.sentence)
                         else
-                          Text(item.sentence, style: serif(25, height: 1.35)),
+                          Text(item.sentence, style: AppType.enTitle(weight: 400, height: 1.35)),
                         if (item.translation.isNotEmpty) ...[
-                          const SizedBox(height: 10),
-                          Text(item.translation, style: sans(14, color: context.colors.ink2)),
+                          const SizedBox(height: AppSpace.sm),
+                          Text(item.translation, style: AppType.callout(color: context.colors.ink2)),
                         ],
                       ],
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSpace.lg),
                   for (var i = 0; i < item.choices.length; i++) ...[
                     _Option(
                       label: item.choices[i],
@@ -136,13 +136,13 @@ class _LevelTestScreenState extends ConsumerState<LevelTestScreen> {
                       serifFont: item.skill != Skill.vocabulary && item.skill != Skill.listening,
                       onTap: () => setState(() => _selected = i),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSpace.sm),
                   ],
                 ],
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(24, 8, 24, 12),
+              padding: const EdgeInsets.fromLTRB(AppSpace.xxl, AppSpace.sm, AppSpace.xxl, AppSpace.md),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -156,7 +156,7 @@ class _LevelTestScreenState extends ConsumerState<LevelTestScreen> {
                     onPressed: () => _submit(Answer.unsure),
                     child: Text(
                       '잘 모르겠어요 (찍지 않기)',
-                      style: sans(14, color: context.colors.ink2).copyWith(decoration: TextDecoration.underline),
+                      style: AppType.callout(color: context.colors.ink2).copyWith(decoration: TextDecoration.underline),
                     ),
                   ),
                 ],
@@ -178,10 +178,10 @@ class _DifficultyCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final steps = [...test.history.map((h) => h.step), current.step];
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.lg, vertical: AppSpace.md),
       decoration: BoxDecoration(
         color: context.colors.card,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AppRadius.row),
         border: Border.all(color: context.colors.line),
       ),
       child: Row(
@@ -192,19 +192,19 @@ class _DifficultyCard extends StatelessWidget {
               children: [
                 Text(
                   test.correctStreak >= 2 ? '연속 ${test.correctStreak}문제 정답! 조금 더 어렵게' : '답에 따라 난이도가 바뀌어요',
-                  style: sans(12, color: context.colors.ink2),
+                  style: AppType.caption(color: context.colors.ink2),
                 ),
-                SizedBox(height: 2),
+                SizedBox(height: AppSpace.xs),
                 Text.rich(
                   TextSpan(
                     children: [
                       TextSpan(
                         text: '지금 문제 난이도 ',
-                        style: sans(14, weight: FontWeight.w600),
+                        style: AppType.callout(weight: FontWeight.w600),
                       ),
                       TextSpan(
                         text: current.cefr.label,
-                        style: sans(14, weight: FontWeight.w700, color: context.colors.penBlue),
+                        style: AppType.callout(weight: FontWeight.w700, color: context.colors.penBlue),
                       ),
                     ],
                   ),
@@ -287,7 +287,7 @@ class _BlankSentence extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final parts = sentence.split('___');
-    final style = serif(25, height: 1.4);
+    final style = AppType.enTitle(weight: 400, height: 1.4);
     return Text.rich(
       TextSpan(
         style: style,
@@ -298,7 +298,7 @@ class _BlankSentence extends StatelessWidget {
             baseline: TextBaseline.alphabetic,
             child: Container(
               width: 110,
-              margin: EdgeInsets.symmetric(horizontal: 4),
+              margin: EdgeInsets.symmetric(horizontal: AppSpace.xs),
               decoration: BoxDecoration(
                 border: Border(bottom: BorderSide(color: context.colors.penBlue, width: 2)),
               ),
@@ -327,19 +327,19 @@ class _Option extends StatelessWidget {
       child: Material(
         color: selected ? context.colors.penBlueTint : context.colors.card,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(AppRadius.row),
           side: BorderSide(color: selected ? context.colors.penBlue : context.colors.line, width: selected ? 2 : 1),
         ),
         child: InkWell(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(AppRadius.row),
           onTap: onTap,
           child: ConstrainedBox(
             constraints: BoxConstraints(minHeight: 54),
             child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+              padding: EdgeInsets.symmetric(horizontal: AppSpace.lg, vertical: AppSpace.md),
               child: Row(
                 children: [
-                  Expanded(child: Text(label, style: serifFont ? serif(18) : sans(16))),
+                  Expanded(child: Text(label, style: serifFont ? AppType.enBody() : AppType.body())),
                   if (selected) Icon(Icons.check_rounded, color: context.colors.penBlue, size: 20),
                 ],
               ),

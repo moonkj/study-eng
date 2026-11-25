@@ -94,7 +94,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> with StudyScreenGuard {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(8, 8, 20, 0),
+                padding: const EdgeInsets.fromLTRB(AppSpace.sm, AppSpace.sm, AppSpace.xl, 0),
                 child: Row(
                   children: [
                     IconButton(
@@ -102,19 +102,19 @@ class _QuizScreenState extends ConsumerState<QuizScreen> with StudyScreenGuard {
                       onPressed: () => popOrHome(context),
                       icon: const Icon(Icons.close_rounded),
                     ),
-                    const SizedBox(width: 4),
+                    const SizedBox(width: AppSpace.xs),
                     Expanded(child: _Segments(state: s)),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: AppSpace.md),
                     Text(
                       '${_index + 1}/${quiz.length}',
-                      style: sans(13, weight: FontWeight.w600, color: context.colors.ink2),
+                      style: AppType.caption(weight: FontWeight.w600, color: context.colors.ink2),
                     ),
                   ],
                 ),
               ),
               Expanded(
                 child: ListView(
-                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
+                  padding: const EdgeInsets.fromLTRB(AppSpace.xl, AppSpace.xxl, AppSpace.xl, AppSpace.xl),
                   children: [
                     Align(
                       alignment: Alignment.centerLeft,
@@ -127,14 +127,17 @@ class _QuizScreenState extends ConsumerState<QuizScreen> with StudyScreenGuard {
                             )
                           : Tag('오늘 배운 내용'),
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: AppSpace.lg),
                     Text(
                       item.isRecall ? '첫 글자를 보고 빈칸에 들어갈 영어를 써 주세요' : '알맞은 영어 문장을 골라주세요',
-                      style: sans(15, weight: FontWeight.w500, color: context.colors.ink2),
+                      style: AppType.body(weight: FontWeight.w500, color: context.colors.ink2),
                     ),
-                    const SizedBox(height: 8),
-                    Text(item.prompt, style: sans(26, weight: FontWeight.w700, letterSpacing: -0.5, height: 1.35)),
-                    const SizedBox(height: 22),
+                    const SizedBox(height: AppSpace.sm),
+                    Text(
+                      item.prompt,
+                      style: AppType.title1(weight: FontWeight.w700, letterSpacing: -0.5, height: 1.35),
+                    ),
+                    const SizedBox(height: AppSpace.xxl),
                     if (item.isRecall)
                       RecallQuestion(
                         key: ValueKey(item.id),
@@ -158,7 +161,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> with StudyScreenGuard {
                               : _Status.dim,
                           onTap: answered ? null : () => _answer(i),
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: AppSpace.sm),
                       ],
                   ],
                 ),
@@ -261,16 +264,16 @@ class _Choice extends StatelessWidget {
         child: Material(
           color: bg,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(AppRadius.row),
             side: BorderSide(color: border, width: width),
           ),
           child: InkWell(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(AppRadius.row),
             onTap: onTap,
             child: ConstrainedBox(
               constraints: const BoxConstraints(minHeight: 58),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                padding: const EdgeInsets.symmetric(horizontal: AppSpace.lg, vertical: AppSpace.md),
                 child: Row(
                   children: [
                     Expanded(
@@ -279,8 +282,7 @@ class _Choice extends StatelessWidget {
                         Text(
                           text,
                           style:
-                              serif(
-                                18,
+                              AppType.enBody(
                                 color: status == _Status.wrong || status == _Status.dim
                                     ? context.colors.ink2
                                     : context.colors.ink,
@@ -294,12 +296,12 @@ class _Choice extends StatelessWidget {
                     if (status == _Status.correct)
                       Text(
                         '정답',
-                        style: sans(12, weight: FontWeight.w700, color: context.colors.success),
+                        style: AppType.caption(weight: FontWeight.w700, color: context.colors.success),
                       ),
                     if (status == _Status.wrong)
                       Text(
                         '내 답',
-                        style: sans(12, weight: FontWeight.w700, color: context.colors.error),
+                        style: AppType.caption(weight: FontWeight.w700, color: context.colors.error),
                       ),
                   ],
                 ),
@@ -348,7 +350,12 @@ class _Feedback extends StatelessWidget {
     final answer = item.choices[item.answerIndex];
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.fromLTRB(22, 22, 22, 16 + MediaQuery.paddingOf(context).bottom),
+      padding: EdgeInsets.fromLTRB(
+        AppSpace.xxl,
+        AppSpace.xxl,
+        AppSpace.xxl,
+        AppSpace.lg + MediaQuery.paddingOf(context).bottom,
+      ),
       decoration: BoxDecoration(
         color: context.colors.card,
         borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.sheet)),
@@ -373,43 +380,43 @@ class _Feedback extends StatelessWidget {
                     color: correct ? context.colors.success : context.colors.error,
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: AppSpace.sm),
                 Expanded(
-                  child: Text(correct ? '정답이에요!' : '아쉬워요. 정답과 이 부분이 달라요', style: sans(16, weight: FontWeight.w700)),
+                  child: Text(correct ? '정답이에요!' : '아쉬워요. 정답과 이 부분이 달라요', style: AppType.body(weight: FontWeight.w700)),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpace.md),
             if (!correct) ...[
               // 내 답(취소선) → 정답(굵게) 을 나란히 보여 차이가 바로 보이게
               if (mine != null)
                 Text(
                   mine!,
-                  style: serif(16, color: context.colors.ink2).copyWith(decoration: TextDecoration.lineThrough),
+                  style: AppType.enCallout(color: context.colors.ink2).copyWith(decoration: TextDecoration.lineThrough),
                 ),
-              const SizedBox(height: 4),
+              const SizedBox(height: AppSpace.xs),
               Row(
                 children: [
-                  Expanded(child: englishSemantics('정답 $answer', Text(answer, style: serif(18, weight: 600)))),
+                  Expanded(child: englishSemantics('정답 $answer', Text(answer, style: AppType.enBody(weight: 600)))),
                   RoundIconButton(icon: Icons.volume_up_rounded, label: '정답 듣기', onPressed: onListen),
                 ],
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: AppSpace.sm),
             ] else if (correct) ...[
               Row(
                 children: [
-                  Expanded(child: englishSemantics('정답 $answer', Text(answer, style: serif(18, weight: 600)))),
+                  Expanded(child: englishSemantics('정답 $answer', Text(answer, style: AppType.enBody(weight: 600)))),
                   RoundIconButton(icon: Icons.volume_up_rounded, label: '정답 듣기', onPressed: onListen),
                 ],
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: AppSpace.sm),
             ],
-            Text(item.explanation, style: sans(14, height: 1.65, color: context.colors.inkSoft)),
+            Text(item.explanation, style: AppType.callout(height: 1.65, color: context.colors.inkSoft)),
             if (!correct) ...[
-              const SizedBox(height: 8),
-              Text('틀린 표현은 복습 카드로 곧 다시 만나요.', style: sans(12, color: context.colors.ink2)),
+              const SizedBox(height: AppSpace.sm),
+              Text('틀린 표현은 복습 카드로 곧 다시 만나요.', style: AppType.caption(color: context.colors.ink2)),
             ],
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpace.lg),
             SizedBox(
               width: double.infinity,
               child: FilledButton(onPressed: onNext, child: Text(nextLabel)),

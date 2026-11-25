@@ -234,7 +234,7 @@ class _CommuteScreenState extends ConsumerState<CommuteScreen> with StudyScreenG
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(8, 8, 12, 0),
+                padding: const EdgeInsets.fromLTRB(AppSpace.sm, AppSpace.sm, AppSpace.md, 0),
                 child: StudyTopBar(
                   title: '출퇴근 모드 · 귀로 듣기',
                   index: total == 0 ? 0 : (_phase == _Phase.done ? total : _index + 1),
@@ -247,7 +247,7 @@ class _CommuteScreenState extends ConsumerState<CommuteScreen> with StudyScreenG
                     ? _DoneView(recorded: _recorded, onAgain: _play, onClose: () => popOrHome(context))
                     : total == 0
                     ? Center(
-                        child: Text('오늘 들을 문장이 없어요.', style: sans(15, color: context.colors.ink2)),
+                        child: Text('오늘 들을 문장이 없어요.', style: AppType.body(color: context.colors.ink2)),
                       )
                     : _itemView(context, _items[_index]),
               ),
@@ -261,24 +261,27 @@ class _CommuteScreenState extends ConsumerState<CommuteScreen> with StudyScreenG
 
   Widget _itemView(BuildContext context, CommuteItem item) {
     return ListView(
-      padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+      padding: const EdgeInsets.fromLTRB(AppSpace.xxl, AppSpace.xl, AppSpace.xxl, 0),
       children: [
         Semantics(
           liveRegion: true,
           child: Text(
             _phaseLabel,
-            style: sans(14, weight: FontWeight.w600, color: context.colors.penBlue, letterSpacing: 0.3),
+            style: AppType.callout(weight: FontWeight.w600, color: context.colors.penBlue, letterSpacing: 0.3),
           ),
         ),
-        const SizedBox(height: 12),
-        englishSemantics(item.en, Text(item.en, style: serif(34, weight: 500, height: 1.3, letterSpacing: -0.3))),
-        const SizedBox(height: 14),
+        const SizedBox(height: AppSpace.md),
+        englishSemantics(item.en, Text(item.en, style: AppType.enHero(weight: 500, height: 1.3, letterSpacing: -0.3))),
+        const SizedBox(height: AppSpace.lg),
         AnimatedOpacity(
           opacity: _showKo || !_playing ? 1 : 0,
           duration: const Duration(milliseconds: 200),
-          child: Text(item.ko, style: sans(19, height: 1.5, color: context.colors.ink2)),
+          child: Text(
+            item.ko,
+            style: AppType.title2(weight: FontWeight.w400, height: 1.5, color: context.colors.ink2),
+          ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: AppSpace.xl),
         if (_phase == _Phase.shadow)
           TweenAnimationBuilder<double>(
             key: ValueKey('gap-$_run-$_index'),
@@ -295,17 +298,17 @@ class _CommuteScreenState extends ConsumerState<CommuteScreen> with StudyScreenG
             ),
           )
         else
-          const SizedBox(height: 4),
-        const SizedBox(height: 24),
+          const SizedBox(height: AppSpace.xs),
+        const SizedBox(height: AppSpace.xxl),
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
-          title: Text('천천히 한 번 더 듣기 (0.8배)', style: sans(15, weight: FontWeight.w500)),
+          title: Text('천천히 한 번 더 듣기 (0.8배)', style: AppType.body(weight: FontWeight.w500)),
           value: _slowRepeat,
           onChanged: (v) => setState(() => _slowRepeat = v),
         ),
         Text(
           '영어를 듣고, 뜻을 확인하고, 빈 시간에 입 모양이나 속으로 따라 해 보세요. 화면이 켜져 있는 동안 재생돼요.',
-          style: sans(13, height: 1.55, color: context.colors.ink2),
+          style: AppType.callout(height: 1.55, color: context.colors.ink2),
         ),
       ],
     );
@@ -313,7 +316,7 @@ class _CommuteScreenState extends ConsumerState<CommuteScreen> with StudyScreenG
 
   Widget _controls(BuildContext context, int total) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+      padding: const EdgeInsets.fromLTRB(AppSpace.xxl, AppSpace.sm, AppSpace.xxl, AppSpace.xxl),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
@@ -393,21 +396,21 @@ class _DoneView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
+      padding: const EdgeInsets.fromLTRB(AppSpace.xxl, AppSpace.xxxl, AppSpace.xxl, AppSpace.xxl),
       children: [
         Icon(Icons.headphones_rounded, size: 40, color: context.colors.penBlue),
-        const SizedBox(height: 16),
-        Text('오늘 문장을 다 들었어요', style: sans(24, weight: FontWeight.w700)),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpace.lg),
+        Text('오늘 문장을 다 들었어요', style: AppType.title1(weight: FontWeight.w700)),
+        const SizedBox(height: AppSpace.sm),
         Text(
           recorded > 0
               ? '말하기 문장 $recorded개를 속으로 따라 한 것으로 기록했어요 (점수 없음). 저녁에 소리 내어 말해 보면 발음 점수를 받을 수 있어요.'
               : '저녁에 소리 내어 말해 보면 발음 점수를 받을 수 있어요.',
-          style: sans(15, height: 1.6, color: context.colors.ink2),
+          style: AppType.body(height: 1.6, color: context.colors.ink2),
         ),
-        const SizedBox(height: 28),
+        const SizedBox(height: AppSpace.xxl),
         FilledButton(onPressed: onClose, child: const Text('홈으로')),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpace.sm),
         TextButton(onPressed: onAgain, child: const Text('처음부터 다시 듣기')),
       ],
     );

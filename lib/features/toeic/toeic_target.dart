@@ -23,8 +23,8 @@ class ToeicTargetList extends StatelessWidget {
         for (final t in ToeicTarget.values)
           ListTile(
             minTileHeight: 52,
-            title: Text('${t.score}점 · ${t.label}', style: sans(15, weight: FontWeight.w500)),
-            subtitle: Text('공식 구간 ${t.range}', style: sans(12, color: context.colors.ink2)),
+            title: Text('${t.score}점 · ${t.label}', style: AppType.body(weight: FontWeight.w500)),
+            subtitle: Text('공식 구간 ${t.range}', style: AppType.caption(color: context.colors.ink2)),
             trailing: t == selected ? Icon(Icons.check_rounded, color: context.colors.penBlue) : null,
             selected: t == selected,
             onTap: () => onSelect(t),
@@ -47,12 +47,12 @@ Future<void> pickToeicTarget(BuildContext context, WidgetRef ref) async {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(24, 0, 24, 4),
-              child: Text('토스 목표 점수', style: sans(17, weight: FontWeight.w700)),
+              padding: const EdgeInsets.fromLTRB(AppSpace.xxl, 0, AppSpace.xxl, AppSpace.xs),
+              child: Text('토스 목표 점수', style: AppType.headline(weight: FontWeight.w700)),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
-              child: Text('목표에 맞춰 문항·모범 답안과 표현·단어 난이도가 바뀌어요.', style: sans(13, color: ctx.colors.ink2)),
+              padding: const EdgeInsets.fromLTRB(AppSpace.xxl, 0, AppSpace.xxl, AppSpace.sm),
+              child: Text('목표에 맞춰 문항·모범 답안과 표현·단어 난이도가 바뀌어요.', style: AppType.caption(color: ctx.colors.ink2)),
             ),
             ToeicTargetList(selected: current, onSelect: (t) => Navigator.pop(ctx, t)),
           ],
@@ -72,57 +72,33 @@ class TargetReachedCard extends ConsumerWidget {
     final s = ref.watch(studyProvider);
     final next = s.toeicTarget.next;
     if (!s.targetReached || next == null) return const SizedBox.shrink();
-    return Container(
-      padding: const EdgeInsets.fromLTRB(18, 16, 12, 10),
-      decoration: BoxDecoration(color: context.colors.successTint, borderRadius: BorderRadius.circular(AppRadius.card)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.emoji_events_outlined, color: context.colors.success),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text('목표 달성! 다음 목표로 올릴까요?', style: sans(15, weight: FontWeight.w700)),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            '모의고사 예상 ${s.mocks.last.level} · 지금 목표 ${s.toeicTarget.label} → 다음 ${next.label} (${next.range})',
-            style: sans(13, color: context.colors.ink2, height: 1.5),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              TextButton(
-                onPressed: ref.read(studyProvider.notifier).dismissTargetSuggestion,
-                child: const Text('괜찮아요'),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: FilledButton(
-                  onPressed: () async {
-                    final ok = await showDialog<bool>(
-                      context: context,
-                      builder: (ctx) => AlertDialog(
-                        title: Text('목표를 ${next.label}로 올릴까요?'),
-                        content: Text('${targetLabel(next)}\n문항·모범 답안과 표현·단어 난이도가 한 단계 올라가요.'),
-                        actions: [
-                          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('취소')),
-                          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('올리기')),
-                        ],
-                      ),
-                    );
-                    if (ok == true) ref.read(studyProvider.notifier).setToeicTarget(next);
-                  },
-                  child: Text('${next.label}로 올리기'),
+    return AppBanner(
+      kind: BannerKind.success,
+      icon: Icons.emoji_events_outlined,
+      title: '목표 달성! 다음 목표로 올릴까요?',
+      message: '모의고사 예상 ${s.mocks.last.level} · 지금 목표 ${s.toeicTarget.label} → 다음 ${next.label} (${next.range})',
+      actions: [
+        TextButton(onPressed: ref.read(studyProvider.notifier).dismissTargetSuggestion, child: const Text('괜찮아요')),
+        Expanded(
+          child: FilledButton(
+            onPressed: () async {
+              final ok = await showDialog<bool>(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: Text('목표를 ${next.label}로 올릴까요?'),
+                  content: Text('${targetLabel(next)}\n문항·모범 답안과 표현·단어 난이도가 한 단계 올라가요.'),
+                  actions: [
+                    TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('취소')),
+                    FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('올리기')),
+                  ],
                 ),
-              ),
-            ],
+              );
+              if (ok == true) ref.read(studyProvider.notifier).setToeicTarget(next);
+            },
+            child: Text('${next.label}로 올리기'),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -138,41 +114,12 @@ class MockEntryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: weekend ? context.colors.penBlueTint : context.colors.card,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: weekend ? context.colors.penBlueTint : context.colors.line),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: onTap,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 56),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            child: Row(
-              children: [
-                Icon(Icons.timer_outlined, color: context.colors.penBlue, size: 22),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('토스 실전 모의고사', style: sans(15, weight: FontWeight.w500)),
-                      Text(
-                        weekend ? '주말이에요 · 11문항 약 20분, 실전처럼' : '11문항 약 20분${last == null ? '' : ' · 지난번 $last'}',
-                        style: sans(12, color: context.colors.ink2),
-                      ),
-                    ],
-                  ),
-                ),
-                Icon(Icons.chevron_right_rounded, color: context.colors.ink2, size: 20),
-              ],
-            ),
-          ),
-        ),
-      ),
+    return ActionRow(
+      icon: Icons.timer_outlined,
+      title: '토스 실전 모의고사',
+      subtitle: weekend ? '주말이에요 · 11문항 약 20분, 실전처럼' : '11문항 약 20분${last == null ? '' : ' · 지난번 $last'}',
+      tinted: weekend,
+      onTap: onTap,
     );
   }
 }
@@ -188,16 +135,16 @@ class MockHistoryRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.symmetric(vertical: AppSpace.sm),
       child: Row(
         children: [
           SizedBox(
             width: 92,
-            child: Text(date, style: sans(13, color: context.colors.ink2)),
+            child: Text(date, style: AppType.caption(color: context.colors.ink2)),
           ),
-          Tag(level, color: met ? context.colors.success : null, background: met ? context.colors.successTint : null),
+          ScoreBadge(level: level, met: met),
           const Spacer(),
-          Text('평균 $average점', style: sans(13)),
+          Text('평균 $average점', style: AppType.callout()),
         ],
       ),
     );

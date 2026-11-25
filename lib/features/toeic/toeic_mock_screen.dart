@@ -136,7 +136,7 @@ class _ToeicMockScreenState extends ConsumerState<ToeicMockScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(8, 8, 12, 0),
+              padding: const EdgeInsets.fromLTRB(AppSpace.sm, AppSpace.sm, AppSpace.md, 0),
               child: Row(
                 children: [
                   IconButton(
@@ -146,14 +146,14 @@ class _ToeicMockScreenState extends ConsumerState<ToeicMockScreen> {
                       if (await _confirmQuit() && context.mounted) popOrHome(context);
                     },
                   ),
-                  const SizedBox(width: 4),
+                  const SizedBox(width: AppSpace.xs),
                   Expanded(
-                    child: Text('토스 실전 모의고사', style: sans(15, weight: FontWeight.w700)),
+                    child: Text('토스 실전 모의고사', style: AppType.body(weight: FontWeight.w700)),
                   ),
                   if (_stage == _Stage.running)
                     Text(
                       '$done/11',
-                      style: sans(13, weight: FontWeight.w600, color: context.colors.ink2),
+                      style: AppType.caption(weight: FontWeight.w600, color: context.colors.ink2),
                     ),
                 ],
               ),
@@ -163,7 +163,7 @@ class _ToeicMockScreenState extends ConsumerState<ToeicMockScreen> {
                 _Stage.intro =>
                   bank == null
                       ? Center(
-                          child: Text('문항을 불러오지 못했어요.', style: sans(15, color: context.colors.ink2)),
+                          child: Text('문항을 불러오지 못했어요.', style: AppType.body(color: context.colors.ink2)),
                         )
                       : _Intro(onStart: () => _begin(bank)),
                 _Stage.running => ToeicTaskView(
@@ -180,8 +180,8 @@ class _ToeicMockScreenState extends ConsumerState<ToeicMockScreen> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               const CircularProgressIndicator(),
-                              const SizedBox(height: 12),
-                              Text('채점하는 중', style: sans(14, color: context.colors.ink2)),
+                              const SizedBox(height: AppSpace.md),
+                              Text('채점하는 중', style: AppType.callout(color: context.colors.ink2)),
                             ],
                           ),
                         )
@@ -210,34 +210,34 @@ class _Intro extends ConsumerWidget {
       ('Q11', '의견 말하기', '준비 45초 · 답하기 60초'),
     ];
     return ListView(
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 20),
+      padding: const EdgeInsets.fromLTRB(AppSpace.xxl, AppSpace.lg, AppSpace.xxl, AppSpace.xl),
       children: [
-        Text('실제 시험처럼 11문항', style: sans(22, weight: FontWeight.w700)),
-        const SizedBox(height: 4),
+        Text('실제 시험처럼 11문항', style: AppType.title2(weight: FontWeight.w700)),
+        const SizedBox(height: AppSpace.xs),
         Text(
           '약 20분 · 문항 사이에 피드백 없이 이어서 진행해요. 조용한 곳에서 시작하세요. 목표 ${targetLabel(s.toeicTarget)}',
-          style: sans(13, color: context.colors.ink2, height: 1.5),
+          style: AppType.callout(color: context.colors.ink2, height: 1.5),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpace.lg),
         PaperCard(
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+          padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.sm, AppSpace.lg, AppSpace.sm),
           child: Column(
             children: [
               for (final r in rows)
                 Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  padding: const EdgeInsets.symmetric(vertical: AppSpace.sm),
                   child: Row(
                     children: [
                       SizedBox(
                         width: 56,
-                        child: Text(r.$1, style: sans(13, weight: FontWeight.w700)),
+                        child: Text(r.$1, style: AppType.callout(weight: FontWeight.w700)),
                       ),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(r.$2, style: sans(14)),
-                            Text(r.$3, style: sans(12, color: context.colors.ink2)),
+                            Text(r.$2, style: AppType.callout()),
+                            Text(r.$3, style: AppType.caption(color: context.colors.ink2)),
                           ],
                         ),
                       ),
@@ -247,7 +247,7 @@ class _Intro extends ConsumerWidget {
             ],
           ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: AppSpace.xl),
         FilledButton(onPressed: onStart, child: const Text('모의고사 시작')),
       ],
     );
@@ -267,59 +267,66 @@ class _Summary extends ConsumerWidget {
     final met = meetsTarget(result.level, target);
     final say = ref.read(sayProvider);
     return ListView(
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+      padding: const EdgeInsets.fromLTRB(AppSpace.xxl, AppSpace.lg, AppSpace.xxl, AppSpace.xxl),
       children: [
         PaperCard(
           elevated: true,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('예상 등급', style: sans(13, color: context.colors.ink2)),
-              Text(result.level, style: serif(44, weight: 600, color: context.colors.penBlue)),
+              Text('예상 등급', style: AppType.caption(color: context.colors.ink2)),
+              Text(result.level, style: AppType.enDisplay(weight: 600, color: context.colors.penBlue)),
               Text(
                 met ? '목표 ${target.label} 달성!' : '목표 ${target.label}까지 조금 더',
-                style: sans(15, weight: FontWeight.w700, color: met ? context.colors.success : context.colors.ember),
+                style: AppType.body(
+                  weight: FontWeight.w700,
+                  color: met ? context.colors.success : context.colors.ember,
+                ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: AppSpace.xs),
               Text(
                 '평균 ${result.average.round()}점 · ${result.graded ? 'Claude 채점' : '기기에서 계산한 대략의 점수'}',
-                style: sans(12, color: context.colors.ink2),
+                style: AppType.caption(color: context.colors.ink2),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpace.md),
         const TargetReachedCard(),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpace.md),
         for (var n = 1; n <= 11; n++)
           if (outcomes[n] case final o?)
             ExpansionTile(
               tilePadding: EdgeInsets.zero,
-              title: Text('Q$n ${o.task.title.split(' ').skip(1).join(' ')}', style: sans(14, weight: FontWeight.w500)),
+              title: Text(
+                'Q$n ${o.task.title.split(' ').skip(1).join(' ')}',
+                style: AppType.callout(weight: FontWeight.w500),
+              ),
               trailing: Text(
                 result.scores.length >= n && result.scores[n - 1] != null ? '${result.scores[n - 1]}점' : '-',
-                style: sans(14, weight: FontWeight.w600),
+                style: AppType.callout(weight: FontWeight.w600),
               ),
-              childrenPadding: const EdgeInsets.only(bottom: 12),
+              childrenPadding: const EdgeInsets.only(bottom: AppSpace.md),
               expandedCrossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (o.outcome.turn.question != null) Text(o.outcome.turn.question!, style: serif(15, weight: 500)),
-                const SizedBox(height: 4),
+                if (o.outcome.turn.question != null)
+                  Text(o.outcome.turn.question!, style: AppType.enCallout(weight: 500)),
+                const SizedBox(height: AppSpace.xs),
                 Text(
                   o.outcome.transcript.isEmpty ? '들린 말이 없어요.' : '"${o.outcome.transcript}"',
-                  style: serif(15, italic: true, height: 1.4),
+                  style: AppType.enCallout(italic: true, height: 1.4),
                 ),
                 Text(
                   '${o.outcome.seconds}초 / ${o.outcome.turn.speakSeconds}초 · 단어 ${wordCount(o.outcome.transcript)}개',
-                  style: sans(12, color: context.colors.ink2),
+                  style: AppType.caption(color: context.colors.ink2),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpace.sm),
                 Row(
                   children: [
                     Expanded(
                       child: Text(
                         '모범 답안',
-                        style: sans(12, weight: FontWeight.w600, color: context.colors.ink2),
+                        style: AppType.caption(weight: FontWeight.w600, color: context.colors.ink2),
                       ),
                     ),
                     IconButton(
@@ -329,10 +336,10 @@ class _Summary extends ConsumerWidget {
                     ),
                   ],
                 ),
-                Text(o.outcome.turn.model, style: serif(15, height: 1.45)),
+                Text(o.outcome.turn.model, style: AppType.enCallout(height: 1.45)),
               ],
             ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpace.lg),
         FilledButton(onPressed: onClose, child: const Text('닫기')),
       ],
     );

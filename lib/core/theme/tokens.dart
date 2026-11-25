@@ -79,6 +79,15 @@ class AppPalette extends ThemeExtension<AppPalette> {
 
   bool get isDark => brightness == Brightness.dark;
 
+  /// 토스 준비 시간 타이머 색 (= 펜 파랑)
+  Color get timerPrep => penBlue;
+
+  /// 토스 답하기 타이머 색 (= 불씨색)
+  Color get timerSpeak => ember;
+
+  /// 목표선 (잉크 50%). 등급별 색은 만들지 않는다 — 등급은 글자와 목표선 위치로 읽는다.
+  Color get target => ink.withValues(alpha: 0.5);
+
   /// 결과 시트 그림자
   Color get sheetShadow => isDark ? const Color(0x80000000) : const Color(0x4D3C2D14);
 
@@ -259,6 +268,7 @@ extension AppColorsX on BuildContext {
   AppPalette get colors => Theme.of(this).extension<AppPalette>() ?? AppPalette.light;
 }
 
+/// 간격 토큰. 4·8·12·16·20·24·32·48 여덟 개만 쓴다 (2·6·10·14 같은 값은 가장 가까운 값으로).
 abstract final class AppSpace {
   static const xs = 4.0;
   static const sm = 8.0;
@@ -266,12 +276,25 @@ abstract final class AppSpace {
   static const lg = 16.0;
   static const xl = 20.0;
   static const xxl = 24.0;
+  static const xxxl = 32.0;
+  static const huge = 48.0;
+
+  /// 화면 좌우 여백
   static const gutter = 24.0;
+
+  /// 카드 안 여백
+  static const card = 20.0;
+
+  /// 행(ActionRow) 안 좌우 여백
+  static const row = 16.0;
 }
 
+/// 모서리 토큰. `BorderRadius.circular(16)` 처럼 직접 쓰지 않는다.
 abstract final class AppRadius {
   static const chip = 12.0;
+  static const nav = 14.0;
   static const button = 16.0;
+  static const row = 16.0;
   static const card = 20.0;
   static const hero = 24.0;
   static const sheet = 28.0;
@@ -296,6 +319,12 @@ abstract final class AppMotion {
   static const slow = Duration(milliseconds: 320);
   static const celebrate = Duration(milliseconds: 700);
   static const count = Duration(milliseconds: 900);
+
+  /// 토스 단계 전환 (준비→답하기 링 색·굵기 보간)
+  static const phase = Duration(milliseconds: 240);
+
+  /// 채점 점수 카운트업
+  static const score = Duration(milliseconds: 600);
   static const curve = Curves.easeOutCubic;
 }
 

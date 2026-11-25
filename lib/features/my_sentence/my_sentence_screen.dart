@@ -111,28 +111,28 @@ class _MySentenceScreenState extends ConsumerState<MySentenceScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(8, 8, 20, 0),
+              padding: const EdgeInsets.fromLTRB(AppSpace.sm, AppSpace.sm, AppSpace.xl, 0),
               child: Row(
                 children: [
                   IconButton(tooltip: '닫기', onPressed: () => popOrHome(context), icon: const Icon(Icons.close_rounded)),
-                  const SizedBox(width: 4),
-                  Text('내 상황으로 말하기', style: sans(17, weight: FontWeight.w700)),
+                  const SizedBox(width: AppSpace.xs),
+                  Text('내 상황으로 말하기', style: AppType.headline(weight: FontWeight.w700)),
                 ],
               ),
             ),
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+                padding: const EdgeInsets.fromLTRB(AppSpace.xl, AppSpace.md, AppSpace.xl, AppSpace.xxl),
                 children: [
-                  Text('오늘 표현으로 내 이야기를 한 문장 만들어 보세요', style: sans(15, color: context.colors.ink2)),
-                  const SizedBox(height: 14),
+                  Text('오늘 표현으로 내 이야기를 한 문장 만들어 보세요', style: AppType.body(color: context.colors.ink2)),
+                  const SizedBox(height: AppSpace.lg),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
                     children: [
                       for (var i = 0; i < expressions.length; i++)
                         ChoiceChip(
-                          label: Text(expressions[i].pattern, style: serif(15)),
+                          label: Text(expressions[i].pattern, style: AppType.enCallout()),
                           selected: i == _expression,
                           onSelected: (_) => setState(() {
                             _expression = i;
@@ -142,37 +142,37 @@ class _MySentenceScreenState extends ConsumerState<MySentenceScreen> {
                         ),
                     ],
                   ),
-                  const SizedBox(height: 10),
-                  Text(e.meaning, style: sans(14, weight: FontWeight.w600)),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSpace.sm),
+                  Text(e.meaning, style: AppType.callout(weight: FontWeight.w600)),
+                  const SizedBox(height: AppSpace.lg),
                   TextField(
                     controller: _situation,
                     maxLength: 200,
                     decoration: const InputDecoration(labelText: '어떤 상황인가요? (선택)', hintText: '예: 회사 동료에게 주말 계획을 말할 때'),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpace.sm),
                   TextField(
                     controller: _sentence,
                     maxLength: 300,
                     minLines: 2,
                     maxLines: 4,
                     autocorrect: false,
-                    style: serif(18),
+                    style: AppType.enBody(),
                     onChanged: (_) => setState(() {}),
                     decoration: InputDecoration(labelText: '내 문장 (영어)', hintText: e.examples.first.en),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpace.sm),
                   FilledButton(
                     onPressed: _sentence.text.trim().isEmpty || _sending ? null : () => _submit(e),
                     child: Text(_sending ? '첨삭하는 중…' : (ref.read(correctSourceProvider) == null ? '확인하기' : '첨삭 받기')),
                   ),
                   if (_error != null) ...[
-                    const SizedBox(height: 12),
-                    Text(_error!, style: sans(13, color: context.colors.error)),
+                    const SizedBox(height: AppSpace.md),
+                    Text(_error!, style: AppType.callout(color: context.colors.error)),
                   ],
-                  if (_result != null) ...[const SizedBox(height: 16), _ResultCard(result: _result!)],
+                  if (_result != null) ...[const SizedBox(height: AppSpace.lg), _ResultCard(result: _result!)],
                   if (_offlineUsed != null) ...[
-                    const SizedBox(height: 16),
+                    const SizedBox(height: AppSpace.lg),
                     _OfflineCard(used: _offlineUsed!, expression: e),
                   ],
                 ],
@@ -198,12 +198,12 @@ class _ResultCard extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(result.ok ? '자연스러운 문장이에요!' : '이렇게 고치면 더 자연스러워요', style: sans(15, weight: FontWeight.w700)),
-            const SizedBox(height: 8),
+            Text(result.ok ? '자연스러운 문장이에요!' : '이렇게 고치면 더 자연스러워요', style: AppType.body(weight: FontWeight.w700)),
+            const SizedBox(height: AppSpace.sm),
             Row(
               children: [
                 Expanded(
-                  child: englishSemantics(result.corrected, Text(result.corrected, style: serif(18, weight: 500))),
+                  child: englishSemantics(result.corrected, Text(result.corrected, style: AppType.enBody(weight: 500))),
                 ),
                 RoundIconButton(
                   icon: Icons.volume_up_rounded,
@@ -213,11 +213,11 @@ class _ResultCard extends ConsumerWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            Text(result.notes, style: sans(14, height: 1.6)),
+            const SizedBox(height: AppSpace.sm),
+            Text(result.notes, style: AppType.callout(height: 1.6)),
             if (!result.usedExpression) ...[
-              const SizedBox(height: 6),
-              Text('오늘 표현을 넣어서 한 번 더 만들어 볼까요?', style: sans(13, color: context.colors.ink2)),
+              const SizedBox(height: AppSpace.sm),
+              Text('오늘 표현을 넣어서 한 번 더 만들어 볼까요?', style: AppType.caption(color: context.colors.ink2)),
             ],
           ],
         ),
@@ -238,17 +238,20 @@ class _OfflineCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(used ? '오늘 표현을 넣었어요' : "'${expression.highlight}' 가 문장에 없어요", style: sans(15, weight: FontWeight.w700)),
-          const SizedBox(height: 8),
-          Text('예문과 비교해 보세요', style: sans(13, color: context.colors.ink2)),
+          Text(
+            used ? '오늘 표현을 넣었어요' : "'${expression.highlight}' 가 문장에 없어요",
+            style: AppType.body(weight: FontWeight.w700),
+          ),
+          const SizedBox(height: AppSpace.sm),
+          Text('예문과 비교해 보세요', style: AppType.caption(color: context.colors.ink2)),
           for (final x in expression.examples) ...[
-            const SizedBox(height: 6),
+            const SizedBox(height: AppSpace.sm),
             HighlightText(
               x.en,
               highlight: expression.highlight.replaceAll('~', '').trim(),
-              style: serif(16, height: 1.4),
+              style: AppType.enCallout(height: 1.4),
             ),
-            Text(x.ko, style: sans(12, color: context.colors.ink2)),
+            Text(x.ko, style: AppType.caption(color: context.colors.ink2)),
           ],
         ],
       ),

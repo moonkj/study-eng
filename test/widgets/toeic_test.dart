@@ -193,6 +193,7 @@ void main() {
     expect(find.textContaining('/ 30초 동안 말함'), findsOneWidget);
     final play = find.byWidgetPredicate((w) => w is Semantics && w.properties.label == 'Q3 모범 답안 듣기');
     await tester.ensureVisible(play);
+    await tester.pump(); // 스크롤한 위치로 다시 배치한 뒤 누른다
     await tester.tap(play);
     expect(speaker.spoken.last.$1, 'This picture was taken in a cafe. A woman is drinking coffee.');
     expect(find.text('채점하는 중'), findsNothing);

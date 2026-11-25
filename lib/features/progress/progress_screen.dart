@@ -39,24 +39,24 @@ class ProgressScreen extends ConsumerWidget {
       child: ListView(
         padding: readablePadding(context, maxWidth: 680),
         children: [
-          Text('기록', style: sans(26, weight: FontWeight.w700, letterSpacing: -0.5)),
-          const SizedBox(height: 14),
+          Text('기록', style: AppType.title1(weight: FontWeight.w700, letterSpacing: -0.5)),
+          const SizedBox(height: AppSpace.lg),
           PaperCard(
-            padding: const EdgeInsets.fromLTRB(18, 18, 18, 12),
+            padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.lg, AppSpace.lg, AppSpace.md),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
-                    Text('레벨 성장', style: sans(14, weight: FontWeight.w600)),
+                    Text('레벨 성장', style: AppType.callout(weight: FontWeight.w600)),
                     const Spacer(),
                     Text(
                       '지금 ${s.profile.overall.label}',
-                      style: sans(12, weight: FontWeight.w600, color: context.colors.success),
+                      style: AppType.caption(weight: FontWeight.w600, color: context.colors.success),
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpace.sm),
                 if (points.length < 2)
                   SizedBox(
                     height: 110,
@@ -64,7 +64,7 @@ class ProgressScreen extends ConsumerWidget {
                       child: Text(
                         '루틴을 이틀 이상 끝내면\n레벨 변화가 여기에 그려져요',
                         textAlign: TextAlign.center,
-                        style: sans(13, color: context.colors.ink2, height: 1.5),
+                        style: AppType.callout(color: context.colors.ink2, height: 1.5),
                       ),
                     ),
                   )
@@ -79,76 +79,85 @@ class ProgressScreen extends ConsumerWidget {
               ],
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.md),
           Row(
             children: [
-              _Stat(label: '외운 단어', value: '$knownWords'),
-              const SizedBox(width: 8),
-              _Stat(label: '퀴즈 정답률', value: accuracy == null ? '-' : '${(accuracy * 100).round()}%'),
-              const SizedBox(width: 8),
-              _Stat(label: '최고 연속', value: '${s.longestStreak}일'),
+              Expanded(
+                child: StatTile(label: '외운 단어', value: '$knownWords'),
+              ),
+              const SizedBox(width: AppSpace.sm),
+              Expanded(
+                child: StatTile(label: '퀴즈 정답률', value: accuracy == null ? '-' : '${(accuracy * 100).round()}%'),
+              ),
+              const SizedBox(width: AppSpace.sm),
+              Expanded(
+                child: StatTile(label: '최고 연속', value: '${s.longestStreak}일'),
+              ),
             ],
           ),
           if (weakErrorTypesOf(s.log, s.now).isNotEmpty) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpace.md),
             PaperCard(
-              padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
+              padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.lg, AppSpace.lg, AppSpace.lg),
               child: Text(
                 '요즘 자주 틀리는 유형: ${weakErrorTypesOf(s.log, s.now).map((t) => kErrorTypeKo[t] ?? t).join(' · ')}\n다음 학습에서 이 유형을 조금 더 연습해요.',
-                style: sans(13, height: 1.55),
+                style: AppType.callout(height: 1.55),
               ),
             ),
           ],
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.md),
           _ToeicCard(state: s, ready: ref.watch(toeicBankProvider) != null),
-          if (s.toeicLog.isNotEmpty || s.mocks.isNotEmpty) ...[const SizedBox(height: 12), _ToeicTypesCard(state: s)],
-          const SizedBox(height: 12),
+          if (s.toeicLog.isNotEmpty || s.mocks.isNotEmpty) ...[
+            const SizedBox(height: AppSpace.md),
+            _ToeicTypesCard(state: s),
+          ],
+          const SizedBox(height: AppSpace.md),
           _MyExpressionsCard(state: s),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.md),
           PaperCard(
-            padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+            padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.lg, AppSpace.lg, AppSpace.lg),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
-                    Text('${now.month}월', style: sans(14, weight: FontWeight.w600)),
+                    Text('${now.month}월', style: AppType.callout(weight: FontWeight.w600)),
                     const Spacer(),
                     Text(
                       '${s.studiedDays.length}일 학습 · 연속 ${s.streakDays}일',
-                      style: sans(12, color: context.colors.ink2),
+                      style: AppType.caption(color: context.colors.ink2),
                     ),
                   ],
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: AppSpace.xs),
                 Row(
                   children: [
                     Icon(Icons.weekend_outlined, size: 14, color: context.colors.ink2),
-                    const SizedBox(width: 4),
+                    const SizedBox(width: AppSpace.xs),
                     Expanded(
                       child: Text(
                         [
                           if (s.streak.restsLeft > 0) '쉬는 날 ${s.streak.restsLeft}개 (빠진 날을 자동으로 메워요)',
                           if (s.streak.daysToNextRest > 0) '${s.streak.daysToNextRest}일 더 하면 쉬는 날 1개',
                         ].join(' · '),
-                        style: sans(12, color: context.colors.ink2),
+                        style: AppType.caption(color: context.colors.ink2),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: AppSpace.sm),
                 _MonthGrid(now: s.now, studied: s.studiedDays, rested: s.restDaysThisMonth),
               ],
             ),
           ),
-          const SizedBox(height: 18),
-          Text('자동 조정 내역', style: sans(14, weight: FontWeight.w600)),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpace.lg),
+          Text('자동 조정 내역', style: AppType.callout(weight: FontWeight.w600)),
+          const SizedBox(height: AppSpace.sm),
           if (s.lastAdjustmentReasons.isEmpty)
-            Text('첫 루틴을 끝내면 내일 학습을 어떻게 바꿨는지 알려드려요.', style: sans(13, color: context.colors.ink2)),
+            Text('첫 루틴을 끝내면 내일 학습을 어떻게 바꿨는지 알려드려요.', style: AppType.caption(color: context.colors.ink2)),
           for (final r in s.lastAdjustmentReasons)
             Padding(
-              padding: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.only(bottom: AppSpace.sm),
               child: Row(
                 children: [
                   Container(
@@ -159,36 +168,12 @@ class ProgressScreen extends ConsumerWidget {
                       color: r.contains('말하기') ? context.colors.ember : context.colors.success,
                     ),
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(child: Text(r, style: sans(13, height: 1.5))),
+                  const SizedBox(width: AppSpace.sm),
+                  Expanded(child: Text(r, style: AppType.callout(height: 1.5))),
                 ],
               ),
             ),
         ],
-      ),
-    );
-  }
-}
-
-class _Stat extends StatelessWidget {
-  const _Stat({required this.label, required this.value});
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: PaperCard(
-        radius: 16,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label, style: sans(12, color: context.colors.ink2)),
-            const SizedBox(height: 2),
-            Text(value, style: serif(24, weight: 500)),
-          ],
-        ),
       ),
     );
   }
@@ -216,7 +201,10 @@ class _MonthGrid extends StatelessWidget {
       children: [
         for (final h in heads)
           Center(
-            child: Text(h, style: sans(10, color: context.colors.ink2)),
+            child: Text(
+              h,
+              style: AppType.micro(weight: FontWeight.w400, color: context.colors.ink2),
+            ),
           ),
         for (var i = 0; i < lead; i++) const SizedBox.shrink(),
         for (var d = 1; d <= days; d++)
@@ -276,7 +264,7 @@ class _DayCell extends StatelessWidget {
           children: [
             Text(
               '$day',
-              style: sans(12, weight: isToday ? FontWeight.w700 : FontWeight.w400, color: fg),
+              style: AppType.caption(weight: isToday ? FontWeight.w700 : FontWeight.w400, color: fg),
             ),
             if (studied && !isToday)
               Container(
@@ -322,7 +310,7 @@ class _GrowthPainter extends CustomPainter {
       final tp = TextPainter(
         text: TextSpan(
           text: Level(v.round()).label,
-          style: sans(10, color: colors.ink2),
+          style: AppType.micro(weight: FontWeight.w400, color: colors.ink2),
         ),
         textDirection: TextDirection.ltr,
       )..layout();
@@ -355,7 +343,7 @@ class _GrowthPainter extends CustomPainter {
       final tp = TextPainter(
         text: TextSpan(
           text: '${d.month}/${d.day}',
-          style: sans(10, color: colors.ink2),
+          style: AppType.micro(weight: FontWeight.w400, color: colors.ink2),
         ),
         textDirection: TextDirection.ltr,
       )..layout();
@@ -384,30 +372,11 @@ class _MyExpressionsCard extends StatelessWidget {
     ];
     final counts = {for (final m in Mastery.values) m: items.where((l) => masteryOf(state.cards[l.id]) == m).length};
     final done = counts[Mastery.graduated]! + counts[Mastery.mastered]!;
-    return PaperCard(
-      padding: EdgeInsets.zero,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        onTap: () => context.push('/my-expressions'),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(18, 16, 12, 16),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('내 표현 ${items.length}개', style: sans(14, weight: FontWeight.w600)),
-                    const SizedBox(height: 2),
-                    Text('익히는 중 ${counts[Mastery.learning]} · 졸업 $done', style: sans(12, color: context.colors.ink2)),
-                  ],
-                ),
-              ),
-              Icon(Icons.chevron_right_rounded, color: context.colors.ink2),
-            ],
-          ),
-        ),
-      ),
+    return ActionRow(
+      icon: Icons.bookmark_border_rounded,
+      title: '내 표현 ${items.length}개',
+      subtitle: '익히는 중 ${counts[Mastery.learning]} · 졸업 $done',
+      onTap: () => context.push('/my-expressions'),
     );
   }
 }
@@ -423,23 +392,23 @@ class _ToeicTypesCard extends StatelessWidget {
     final weak = weakestType(stats);
     final weakIsBlock = weak != null && blockType.containsValue(weak);
     return PaperCard(
-      padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
+      padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.lg, AppSpace.lg, AppSpace.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('토스 유형별 점수', style: sans(14, weight: FontWeight.w600)),
-          const SizedBox(height: 2),
-          Text('유형마다 최근 5번 평균 (루틴·모의고사)', style: sans(12, color: context.colors.ink2)),
-          const SizedBox(height: 10),
+          Text('토스 유형별 점수', style: AppType.callout(weight: FontWeight.w600)),
+          const SizedBox(height: AppSpace.xs),
+          Text('유형마다 최근 5번 평균 (루틴·모의고사)', style: AppType.caption(color: context.colors.ink2)),
+          const SizedBox(height: AppSpace.sm),
           for (final type in toeicTypeKo.keys)
             _TypeRow(name: toeicTypeKo[type]!, stat: stats[type], weak: type == weak),
           if (weak != null) ...[
-            const SizedBox(height: 6),
+            const SizedBox(height: AppSpace.sm),
             Text(
               weakIsBlock
                   ? '${toeicTypeKo[weak]}이(가) 가장 약해요. 매일 루틴에 이틀에 한 번 더 나와요.'
                   : '${toeicTypeKo[weak]}이(가) 가장 약해요. 매일 루틴에 나오니 모범 답안을 따라 말해 보세요.',
-              style: sans(13, height: 1.5),
+              style: AppType.callout(height: 1.5),
             ),
           ],
         ],
@@ -461,10 +430,10 @@ class _TypeRow extends StatelessWidget {
       label: avg == null ? '$name, 기록 없음' : '$name, 평균 $avg점${weak ? ', 약점' : ''}',
       excludeSemantics: true,
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 5),
+        padding: const EdgeInsets.symmetric(vertical: AppSpace.xs),
         child: Row(
           children: [
-            SizedBox(width: 104, child: Text(name, style: sans(13))),
+            SizedBox(width: 104, child: Text(name, style: AppType.callout())),
             Expanded(
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(4),
@@ -481,11 +450,11 @@ class _TypeRow extends StatelessWidget {
               child: Text(
                 avg == null ? '-' : '$avg점',
                 textAlign: TextAlign.right,
-                style: sans(13, weight: weak ? FontWeight.w700 : FontWeight.w400),
+                style: AppType.callout(weight: weak ? FontWeight.w700 : FontWeight.w400),
               ),
             ),
             if (weak) ...[
-              const SizedBox(width: 6),
+              const SizedBox(width: AppSpace.sm),
               Tag('약점', color: context.colors.error, background: context.colors.errorTint),
             ],
           ],
@@ -506,17 +475,23 @@ class _ToeicCard extends StatelessWidget {
     final target = state.toeicTarget;
     final recent = state.mocks.reversed.take(5).toList();
     return PaperCard(
-      padding: const EdgeInsets.fromLTRB(18, 16, 18, 12),
+      padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.lg, AppSpace.lg, AppSpace.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('토스 모의고사', style: sans(14, weight: FontWeight.w600)),
-          const SizedBox(height: 2),
-          Text('목표 ${targetLabel(target)}', style: sans(12, color: context.colors.ink2)),
-          if (state.targetReached) ...[const SizedBox(height: 10), const TargetReachedCard()],
-          const SizedBox(height: 6),
+          Text('토스 모의고사', style: AppType.callout(weight: FontWeight.w600)),
+          const SizedBox(height: AppSpace.xs),
+          Text('목표 ${targetLabel(target)}', style: AppType.caption(color: context.colors.ink2)),
+          if (state.targetReached) ...[const SizedBox(height: AppSpace.sm), const TargetReachedCard()],
+          const SizedBox(height: AppSpace.sm),
           if (recent.isEmpty)
-            Text('아직 본 모의고사가 없어요.', style: sans(13, color: context.colors.ink2))
+            EmptyState(
+              icon: Icons.timer_outlined,
+              message: '첫 모의고사로 지금 위치를 확인해요',
+              time: '약 20분',
+              actionLabel: '모의고사 보기',
+              onAction: ready ? () => context.push('/toeic-mock') : null,
+            )
           else
             for (final m in recent)
               MockHistoryRow(
@@ -528,7 +503,7 @@ class _ToeicCard extends StatelessWidget {
                   ToeicTarget.values.firstWhere((t) => t.label == m.target, orElse: () => target),
                 ),
               ),
-          if (ready)
+          if (ready && recent.isNotEmpty)
             Align(
               alignment: Alignment.centerLeft,
               child: TextButton(onPressed: () => context.push('/toeic-mock'), child: const Text('모의고사 보기')),

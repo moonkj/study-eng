@@ -304,11 +304,14 @@ class _ToeicTaskViewState extends ConsumerState<ToeicTaskView> {
       children: [
         Expanded(
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
+            padding: const EdgeInsets.fromLTRB(AppSpace.xxl, AppSpace.md, AppSpace.xxl, AppSpace.lg),
             children: _phase == _Phase.result ? _resultChildren(context) : _liveChildren(context),
           ),
         ),
-        Padding(padding: const EdgeInsets.fromLTRB(24, 8, 24, 20), child: _bottom(context)),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(AppSpace.xxl, AppSpace.sm, AppSpace.xxl, AppSpace.xl),
+          child: _bottom(context),
+        ),
       ],
     );
   }
@@ -317,53 +320,56 @@ class _ToeicTaskViewState extends ConsumerState<ToeicTaskView> {
     final turn = task.turns[_turn];
     final started = _phase != _Phase.intro;
     return [
-      Text(task.title, style: sans(20, weight: FontWeight.w700)),
-      const SizedBox(height: 4),
-      Text(task.directionsKo, style: sans(13, color: context.colors.ink2, height: 1.5)),
-      const SizedBox(height: 16),
+      Text(task.title, style: AppType.title2(weight: FontWeight.w700)),
+      const SizedBox(height: AppSpace.xs),
+      Text(task.directionsKo, style: AppType.callout(color: context.colors.ink2, height: 1.5)),
+      const SizedBox(height: AppSpace.lg),
       if (started) ...[
         _StatusRow(phase: _phase, remaining: _remaining, total: _total, number: turn.number),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpace.lg),
       ],
       ..._content(context),
       if (started && task.turns.length > 1 && turn.question != null && turn.showQuestion) ...[
-        const SizedBox(height: 14),
+        const SizedBox(height: AppSpace.lg),
         PaperCard(
-          padding: const EdgeInsets.all(16),
-          child: englishSemantics(turn.question!, Text(turn.question!, style: serif(19, weight: 500, height: 1.35))),
+          padding: const EdgeInsets.all(AppSpace.lg),
+          child: englishSemantics(
+            turn.question!,
+            Text(turn.question!, style: AppType.enBody(weight: 500, height: 1.35)),
+          ),
         ),
       ],
       if (started && task.type == ToeicTaskType.info) ...[
-        const SizedBox(height: 14),
+        const SizedBox(height: AppSpace.lg),
         Row(
           children: [
             Icon(Icons.headphones_rounded, size: 18, color: context.colors.penBlue),
-            const SizedBox(width: 8),
+            const SizedBox(width: AppSpace.sm),
             Expanded(
-              child: Text('질문 ${turn.number - 7}/3 · 듣고 답해요', style: sans(13, color: context.colors.ink2)),
+              child: Text('질문 ${turn.number - 7}/3 · 듣고 답해요', style: AppType.caption(color: context.colors.ink2)),
             ),
           ],
         ),
       ],
       if (widget.suggestions.isNotEmpty && task.suggestExpressions && !widget.exam) ...[
-        const SizedBox(height: 14),
+        const SizedBox(height: AppSpace.lg),
         _SuggestionCard(suggestions: widget.suggestions),
       ],
       if (_phase == _Phase.speak || _phase == _Phase.finishing) ...[
-        const SizedBox(height: 14),
+        const SizedBox(height: AppSpace.lg),
         PaperCard(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(AppSpace.lg),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Icon(Icons.hearing_rounded, color: context.colors.penBlue),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppSpace.md),
               Expanded(
                 child: _micError != null
-                    ? Text(_micError!, style: sans(14, color: context.colors.error, height: 1.5))
+                    ? Text(_micError!, style: AppType.callout(color: context.colors.error, height: 1.5))
                     : _live.isEmpty
-                    ? Text('듣고 있어요. 시간이 끝날 때까지 이어서 말해 보세요.', style: sans(14, height: 1.5))
-                    : Text('"$_live"', style: serif(17, italic: true, height: 1.4)),
+                    ? Text('듣고 있어요. 시간이 끝날 때까지 이어서 말해 보세요.', style: AppType.callout(height: 1.5))
+                    : Text('"$_live"', style: AppType.enBody(italic: true, height: 1.4)),
               ),
             ],
           ),
@@ -378,22 +384,28 @@ class _ToeicTaskViewState extends ConsumerState<ToeicTaskView> {
     return [
       if (task.passage != null)
         PaperCard(
-          padding: const EdgeInsets.all(18),
-          child: englishSemantics(task.passage!, Text(task.passage!, style: serif(20, height: 1.45))),
+          padding: const EdgeInsets.all(AppSpace.lg),
+          child: englishSemantics(
+            task.passage!,
+            Text(task.passage!, style: AppType.enTitle(weight: 400, height: 1.45)),
+          ),
         ),
       if (task.picture != null) ToeicPicture(item: task.picture!),
       if (task.setting != null)
         Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(AppSpace.lg),
           decoration: BoxDecoration(color: context.colors.sand, borderRadius: BorderRadius.circular(AppRadius.card)),
-          child: englishSemantics(task.setting!, Text(task.setting!, style: serif(16, height: 1.45))),
+          child: englishSemantics(task.setting!, Text(task.setting!, style: AppType.enCallout(height: 1.45))),
         ),
       if (task.info != null) InfoTableView(table: task.info!.table),
       if (task.turns.length == 1 && turn.question != null) ...[
-        const SizedBox(height: 4),
+        const SizedBox(height: AppSpace.xs),
         PaperCard(
-          padding: const EdgeInsets.all(16),
-          child: englishSemantics(turn.question!, Text(turn.question!, style: serif(19, weight: 500, height: 1.35))),
+          padding: const EdgeInsets.all(AppSpace.lg),
+          child: englishSemantics(
+            turn.question!,
+            Text(turn.question!, style: AppType.enBody(weight: 500, height: 1.35)),
+          ),
         ),
       ],
     ];
@@ -406,28 +418,28 @@ class _ToeicTaskViewState extends ConsumerState<ToeicTaskView> {
             ? Text(
                 '곧 시작해요',
                 textAlign: TextAlign.center,
-                style: sans(14, color: context.colors.ink2),
+                style: AppType.callout(color: context.colors.ink2),
               )
             : FilledButton(onPressed: _start, child: const Text('시작'));
       case _Phase.reading:
       case _Phase.prep:
         return widget.exam
-            ? const SizedBox(height: 48)
+            ? const SizedBox(height: AppSpace.huge)
             : OutlinedButton(onPressed: _skipPrep, child: Text(_phase == _Phase.reading ? '다 읽었어요' : '준비 끝 · 바로 말하기'));
       case _Phase.speak:
         return widget.exam
-            ? const SizedBox(height: 48)
+            ? const SizedBox(height: AppSpace.huge)
             : OutlinedButton(onPressed: () => _endSpeaking(_run), child: const Text('다 말했어요'));
       case _Phase.cue:
       case _Phase.finishing:
-        return const SizedBox(height: 48);
+        return const SizedBox(height: AppSpace.huge);
       case _Phase.result:
         return Row(
           children: [
             Expanded(
               child: OutlinedButton(onPressed: _retry, child: const Text('다시 하기')),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSpace.md),
             Expanded(
               child: FilledButton(onPressed: _next, child: const Text('다음')),
             ),
@@ -439,26 +451,26 @@ class _ToeicTaskViewState extends ConsumerState<ToeicTaskView> {
   List<Widget> _resultChildren(BuildContext context) {
     final say = ref.read(sayProvider);
     return [
-      Text(task.title, style: sans(20, weight: FontWeight.w700)),
-      const SizedBox(height: 12),
+      Text(task.title, style: AppType.title2(weight: FontWeight.w700)),
+      const SizedBox(height: AppSpace.md),
       ..._content(context),
       if (task.tips.isNotEmpty) ...[
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpace.md),
         for (final t in task.tips)
           Padding(
-            padding: const EdgeInsets.only(bottom: 4),
-            child: Text('· $t', style: sans(13, color: context.colors.inkSoft, height: 1.5)),
+            padding: const EdgeInsets.only(bottom: AppSpace.xs),
+            child: Text('· $t', style: AppType.callout(color: context.colors.inkSoft, height: 1.5)),
           ),
       ],
       if (task.picture != null && task.picture!.vocab.isNotEmpty) ...[
-        const SizedBox(height: 10),
+        const SizedBox(height: AppSpace.sm),
         Text(
           '사진 단어 · ${task.picture!.vocab.map((v) => '${v.en} ${v.ko}').join(' · ')}',
-          style: sans(13, color: context.colors.inkSoft, height: 1.5),
+          style: AppType.callout(color: context.colors.inkSoft, height: 1.5),
         ),
       ],
       for (final o in _outcomes) ...[
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpace.lg),
         _TurnResult(
           task: task,
           outcome: o,
@@ -491,37 +503,28 @@ class _StatusRow extends StatelessWidget {
     };
     final counting = phase == _Phase.reading || phase == _Phase.prep || phase == _Phase.speak;
     return Semantics(
+      // TODO(P0-7): 단계 이름만 live region 으로 두고 남은 시간은 10초·5초에만 따로 알리기
       liveRegion: true,
       label: counting ? 'Q$number $label $remaining초 남음' : 'Q$number $label',
       excludeSemantics: true,
       child: Row(
         children: [
-          SizedBox(
-            width: 64,
-            height: 64,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                SizedBox.expand(
-                  child: CircularProgressIndicator(
-                    value: counting && total > 0 ? remaining / total : null,
-                    strokeWidth: 5,
-                    backgroundColor: context.colors.muted,
-                    color: phase == _Phase.speak ? context.colors.ember : context.colors.penBlue,
-                    strokeCap: StrokeCap.round,
-                  ),
-                ),
-                if (counting) Text('$remaining', style: serif(22, weight: 600)),
-              ],
-            ),
+          TimerRing(
+            phase: phase == _Phase.speak
+                ? TimerPhase.speak
+                : counting
+                ? TimerPhase.prep
+                : TimerPhase.idle,
+            remaining: counting ? remaining : null,
+            total: total,
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: AppSpace.lg),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Q$number · $label', style: sans(15, weight: FontWeight.w700)),
-                if (en.isNotEmpty) Text(en, style: serif(15, italic: true, color: context.colors.ink2)),
+                Text('Q$number · $label', style: AppType.body(weight: FontWeight.w700)),
+                if (en.isNotEmpty) Text(en, style: AppType.enCallout(italic: true, color: context.colors.ink2)),
               ],
             ),
           ),
@@ -556,10 +559,10 @@ class ToeicPicture extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(Icons.image_outlined, size: 40, color: context.colors.ink2),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: AppSpace.sm),
                     Text(
                       item.place.isEmpty ? '사진을 불러오지 못했어요' : item.place,
-                      style: sans(13, color: context.colors.ink2),
+                      style: AppType.caption(color: context.colors.ink2),
                     ),
                   ],
                 ),
@@ -569,8 +572,11 @@ class ToeicPicture extends StatelessWidget {
         ),
         if (item.credit.isNotEmpty)
           Padding(
-            padding: const EdgeInsets.only(top: 4),
-            child: Text(item.credit, style: sans(11, color: context.colors.ink2)),
+            padding: const EdgeInsets.only(top: AppSpace.xs),
+            child: Text(
+              item.credit,
+              style: AppType.micro(weight: FontWeight.w400, color: context.colors.ink2),
+            ),
           ),
       ],
     );
@@ -584,20 +590,20 @@ class InfoTableView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cell = serif(14, height: 1.3);
+    final cell = AppType.enCaption(height: 1.3);
     return PaperCard(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(AppSpace.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(table.title, textAlign: TextAlign.center, style: serif(17, weight: 600)),
+          Text(table.title, textAlign: TextAlign.center, style: AppType.enBody(weight: 600)),
           if (table.subtitle != null)
             Text(
               table.subtitle!,
               textAlign: TextAlign.center,
-              style: serif(14, color: context.colors.ink2),
+              style: AppType.enCaption(color: context.colors.ink2),
             ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpace.sm),
           Table(
             border: TableBorder.all(color: context.colors.line),
             defaultVerticalAlignment: TableCellVerticalAlignment.middle,
@@ -608,7 +614,7 @@ class InfoTableView extends StatelessWidget {
                   children: [
                     for (final c in table.columns)
                       Padding(
-                        padding: const EdgeInsets.all(6),
+                        padding: const EdgeInsets.all(AppSpace.sm),
                         child: Text(c, style: cell.copyWith(fontWeight: FontWeight.w600)),
                       ),
                   ],
@@ -618,7 +624,7 @@ class InfoTableView extends StatelessWidget {
                   children: [
                     for (var i = 0; i < (table.columns.isEmpty ? r.length : table.columns.length); i++)
                       Padding(
-                        padding: const EdgeInsets.all(6),
+                        padding: const EdgeInsets.all(AppSpace.sm),
                         child: Text(i < r.length ? r[i] : '', style: cell),
                       ),
                   ],
@@ -627,8 +633,8 @@ class InfoTableView extends StatelessWidget {
           ),
           for (final n in table.notes)
             Padding(
-              padding: const EdgeInsets.only(top: 6),
-              child: Text(n, style: serif(13, italic: true, color: context.colors.ink2)),
+              padding: const EdgeInsets.only(top: AppSpace.sm),
+              child: Text(n, style: AppType.enCaption(italic: true, color: context.colors.ink2)),
             ),
         ],
       ),
@@ -643,17 +649,17 @@ class _SuggestionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(AppSpace.lg),
       decoration: BoxDecoration(color: context.colors.penBlueTint, borderRadius: BorderRadius.circular(AppRadius.card)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             '써 보면 좋은 표현',
-            style: sans(12, weight: FontWeight.w600, color: context.colors.penBlue),
+            style: AppType.caption(weight: FontWeight.w600, color: context.colors.penBlue),
           ),
-          const SizedBox(height: 6),
-          for (final s in suggestions) Text(s.text, style: serif(15, height: 1.4)),
+          const SizedBox(height: AppSpace.sm),
+          for (final s in suggestions) Text(s.text, style: AppType.enCallout(height: 1.4)),
         ],
       ),
     );
@@ -691,42 +697,42 @@ class _TurnResult extends StatelessWidget {
     final read = task.type == ToeicTaskType.readAloud && turn.reference != null && said.isNotEmpty
         ? scoreSpeech(turn.reference!, said)
         : null;
-    final muted = sans(13, color: context.colors.ink2, height: 1.5);
+    final muted = AppType.callout(color: context.colors.ink2, height: 1.5);
     return PaperCard(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpace.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             'Q${turn.number}',
-            style: sans(13, weight: FontWeight.w700, color: context.colors.penBlue),
+            style: AppType.callout(weight: FontWeight.w700, color: context.colors.penBlue),
           ),
           if (turn.question != null && task.turns.length > 1) ...[
-            const SizedBox(height: 4),
-            Text(turn.question!, style: serif(16, weight: 500, height: 1.35)),
+            const SizedBox(height: AppSpace.xs),
+            Text(turn.question!, style: AppType.enCallout(weight: 500, height: 1.35)),
           ],
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpace.sm),
           Text(
             '내 답',
-            style: sans(12, weight: FontWeight.w600, color: context.colors.ink2),
+            style: AppType.caption(weight: FontWeight.w600, color: context.colors.ink2),
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: AppSpace.xs),
           Text(
             said.isEmpty ? '들린 말이 없어요.' : '"$said"',
-            style: said.isEmpty ? muted : serif(16, italic: true, height: 1.4),
+            style: said.isEmpty ? muted : AppType.enCallout(italic: true, height: 1.4),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpace.sm),
           Text(
             '${outcome.seconds}초 / ${turn.speakSeconds}초 동안 말함 · 단어 ${wordCount(said)}개'
             '${read != null ? ' · 원문과 ${read.score}% 일치' : ''}',
-            style: sans(13, weight: FontWeight.w600),
+            style: AppType.callout(weight: FontWeight.w600),
           ),
           if (read != null && read.missed.isNotEmpty)
             Text('다르게 들린 단어: ${read.missed.take(8).join(', ')}', style: muted),
           if (task.keyPhrases.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            Text('핵심 표현 ${used.length}/${task.keyPhrases.length}개 사용', style: sans(12, weight: FontWeight.w600)),
-            const SizedBox(height: 6),
+            const SizedBox(height: AppSpace.sm),
+            Text('핵심 표현 ${used.length}/${task.keyPhrases.length}개 사용', style: AppType.caption(weight: FontWeight.w600)),
+            const SizedBox(height: AppSpace.sm),
             Wrap(
               spacing: 6,
               runSpacing: 6,
@@ -742,35 +748,35 @@ class _TurnResult extends StatelessWidget {
             ),
           ],
           if (usedSuggestions.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Text('오늘 표현을 썼어요: ${usedSuggestions.join(' · ')}', style: sans(13, color: context.colors.success)),
+            const SizedBox(height: AppSpace.sm),
+            Text('오늘 표현을 썼어요: ${usedSuggestions.join(' · ')}', style: AppType.callout(color: context.colors.success)),
           ],
           if (grading) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpace.md),
             Row(
               children: [
                 const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
-                const SizedBox(width: 8),
+                const SizedBox(width: AppSpace.sm),
                 Text('채점하는 중', style: muted),
               ],
             ),
           ] else if (grade != null) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpace.md),
             _GradeCard(grade: grade!),
           ] else if (gradeError != null) ...[
-            const SizedBox(height: 10),
-            Text(gradeError!, style: sans(13, color: context.colors.error)),
+            const SizedBox(height: AppSpace.sm),
+            Text(gradeError!, style: AppType.callout(color: context.colors.error)),
           ],
           if (task.type != ToeicTaskType.readAloud) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpace.md),
             const Divider(),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpace.sm),
             Row(
               children: [
                 Expanded(
                   child: Text(
                     '모범 답안',
-                    style: sans(12, weight: FontWeight.w600, color: context.colors.ink2),
+                    style: AppType.caption(weight: FontWeight.w600, color: context.colors.ink2),
                   ),
                 ),
                 RoundIconButton(
@@ -781,9 +787,9 @@ class _TurnResult extends StatelessWidget {
                 ),
               ],
             ),
-            englishSemantics(turn.model, Text(turn.model, style: serif(16, height: 1.45))),
+            englishSemantics(turn.model, Text(turn.model, style: AppType.enCallout(height: 1.45))),
           ] else ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpace.sm),
             Align(
               alignment: Alignment.centerLeft,
               child: TextButton.icon(
@@ -805,24 +811,23 @@ class _GradeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final muted = sans(13, color: context.colors.inkSoft, height: 1.55);
+    final muted = AppType.callout(color: context.colors.inkSoft, height: 1.55);
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(AppSpace.lg),
       decoration: BoxDecoration(color: context.colors.penBlueTint, borderRadius: BorderRadius.circular(AppRadius.card)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Text('${grade.score}/${grade.maxScore}', style: serif(22, weight: 600)),
-              const SizedBox(width: 10),
+              Text('${grade.score}/${grade.maxScore}', style: AppType.enTitle(weight: 600)),
+              const SizedBox(width: AppSpace.sm),
               if (grade.level.isNotEmpty) Tag(grade.level),
               const Spacer(),
               if (grade.targetMet != null)
                 Text(
                   grade.targetMet! ? '목표 수준' : '목표까지 조금 더',
-                  style: sans(
-                    12,
+                  style: AppType.caption(
                     weight: FontWeight.w600,
                     color: grade.targetMet! ? context.colors.success : context.colors.ember,
                   ),
@@ -830,38 +835,41 @@ class _GradeCard extends StatelessWidget {
             ],
           ),
           if (grade.summaryKo.isNotEmpty) ...[
-            const SizedBox(height: 6),
-            Text(grade.summaryKo, style: sans(14, height: 1.55)),
+            const SizedBox(height: AppSpace.sm),
+            Text(grade.summaryKo, style: AppType.callout(height: 1.55)),
           ],
           for (final g in grade.goodKo) Text('· $g', style: muted),
           for (final f in grade.fixes) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpace.sm),
             Text.rich(
               TextSpan(
                 children: [
                   TextSpan(
                     text: f.from,
-                    style: serif(15, color: context.colors.error),
+                    style: AppType.enCallout(color: context.colors.error),
                   ),
                   TextSpan(
                     text: '  →  ',
-                    style: sans(13, color: context.colors.ink2),
+                    style: AppType.caption(color: context.colors.ink2),
                   ),
-                  TextSpan(text: f.to, style: serif(15, weight: 600)),
+                  TextSpan(text: f.to, style: AppType.enCallout(weight: 600)),
                 ],
               ),
             ),
             if (f.whyKo.isNotEmpty) Text(f.whyKo, style: muted),
           ],
           if (grade.improved.isNotEmpty) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpace.sm),
             Text(
               '다듬은 답',
-              style: sans(12, weight: FontWeight.w600, color: context.colors.penBlue),
+              style: AppType.caption(weight: FontWeight.w600, color: context.colors.penBlue),
             ),
-            Text(grade.improved, style: serif(15, height: 1.45)),
+            Text(grade.improved, style: AppType.enCallout(height: 1.45)),
           ],
-          if (grade.nextTipKo.isNotEmpty) ...[const SizedBox(height: 8), Text('다음엔: ${grade.nextTipKo}', style: muted)],
+          if (grade.nextTipKo.isNotEmpty) ...[
+            const SizedBox(height: AppSpace.sm),
+            Text('다음엔: ${grade.nextTipKo}', style: muted),
+          ],
         ],
       ),
     );

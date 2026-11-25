@@ -83,7 +83,7 @@ class _CompleteScreenState extends ConsumerState<CompleteScreen> {
           children: [
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(24, 48, 24, 0),
+                padding: const EdgeInsets.fromLTRB(AppSpace.xxl, AppSpace.huge, AppSpace.xxl, 0),
                 children: [
                   Center(
                     // 불꽃(또는 레벨 업이면 새 레벨)이 톡 튀어나온다
@@ -110,7 +110,10 @@ class _CompleteScreenState extends ConsumerState<CompleteScreen> {
                           ],
                         ),
                         child: levelUp
-                            ? Text(now.label, style: serif(34, weight: 600, color: context.colors.onEmphasisAccent))
+                            ? Text(
+                                now.label,
+                                style: AppType.enHero(weight: 600, color: context.colors.onEmphasisAccent),
+                              )
                             : Icon(
                                 Icons.local_fire_department_rounded,
                                 size: 46,
@@ -119,7 +122,7 @@ class _CompleteScreenState extends ConsumerState<CompleteScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 26),
+                  const SizedBox(height: AppSpace.xxl),
                   Center(
                     // 연속 학습일이 하나 올라가는 순간을 보여준다
                     child: TweenAnimationBuilder<double>(
@@ -129,41 +132,41 @@ class _CompleteScreenState extends ConsumerState<CompleteScreen> {
                       builder: (_, v, _) => Text.rich(
                         TextSpan(
                           children: [
-                            TextSpan(text: '${v.round()}', style: serif(44, weight: 500, letterSpacing: -1)),
+                            TextSpan(text: '${v.round()}', style: AppType.enDisplay(weight: 500, letterSpacing: -1)),
                             TextSpan(
                               text: '일 연속',
-                              style: sans(22, weight: FontWeight.w600),
+                              style: AppType.title2(weight: FontWeight.w600),
                             ),
                           ],
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpace.sm),
                   Center(
                     child: Text(
                       levelUp ? '레벨 업! ${before.label} → ${now.label}' : milestone ?? '오늘 루틴 완료!',
                       textAlign: TextAlign.center,
-                      style: sans(22, weight: FontWeight.w700, letterSpacing: -0.4),
+                      style: AppType.title2(weight: FontWeight.w700, letterSpacing: -0.4),
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: AppSpace.sm),
                   Center(
                     child: Text(
                       '표현 ${s.pack.expressions.length}개 · 단어 ${s.pack.words.length}개 · 문장 ${s.spokenCount}개 완료',
                       textAlign: TextAlign.center,
-                      style: sans(14, color: context.colors.ink2),
+                      style: AppType.callout(color: context.colors.ink2),
                     ),
                   ),
                   if (remembered != null || graduated > 0) ...[
-                    const SizedBox(height: 14),
+                    const SizedBox(height: AppSpace.lg),
                     PaperCard(
                       color: context.colors.successTint,
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                      padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.md, AppSpace.lg, AppSpace.md),
                       child: Row(
                         children: [
                           Icon(Icons.psychology_alt_outlined, color: context.colors.success),
-                          const SizedBox(width: 10),
+                          const SizedBox(width: AppSpace.sm),
                           Expanded(
                             child: Text(
                               [
@@ -171,50 +174,59 @@ class _CompleteScreenState extends ConsumerState<CompleteScreen> {
                                   '${remembered.days}일 전에 배운 \'${remembered.item.text}\', 아직 기억하고 있어요',
                                 if (graduated > 0) '오늘 졸업 $graduated개 — 30일 간격까지 기억했어요',
                               ].join('\n'),
-                              style: sans(14, weight: FontWeight.w600, height: 1.5),
+                              style: AppType.callout(weight: FontWeight.w600, height: 1.5),
                             ),
                           ),
                         ],
                       ),
                     ),
                   ],
-                  const SizedBox(height: 26),
+                  const SizedBox(height: AppSpace.xxl),
                   Row(
                     children: [
-                      _Stat(value: '$quizCorrect/$quizTotal', label: '퀴즈'),
-                      const SizedBox(width: 8),
-                      _Stat(value: speaking == null ? '-' : '${speaking.round()}', label: '말하기 평균'),
-                      const SizedBox(width: 8),
-                      _Stat(value: '$newWords', label: '새 단어'),
+                      Expanded(
+                        child: StatTile(value: '$quizCorrect/$quizTotal', label: '퀴즈', centered: true),
+                      ),
+                      const SizedBox(width: AppSpace.sm),
+                      Expanded(
+                        child: StatTile(
+                          value: speaking == null ? '-' : '${speaking.round()}',
+                          label: '말하기 평균',
+                          centered: true,
+                        ),
+                      ),
+                      const SizedBox(width: AppSpace.sm),
+                      Expanded(
+                        child: StatTile(value: '$newWords', label: '새 단어', centered: true),
+                      ),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpace.md),
                   PaperCard(
-                    padding: const EdgeInsets.all(18),
+                    padding: const EdgeInsets.all(AppSpace.lg),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
                           children: [
-                            Text('레벨 점수', style: sans(14, weight: FontWeight.w600)),
+                            Text('레벨 점수', style: AppType.callout(weight: FontWeight.w600)),
                             const Spacer(),
                             // 점수가 내려간 날은 숫자로 탓하지 않는다 (아래에 이유를 보여 준다)
                             if (delta != null && delta >= 0)
                               Text(
                                 '${delta >= 0 ? '+' : ''}$delta',
-                                style: sans(
-                                  13,
+                                style: AppType.callout(
                                   weight: FontWeight.w700,
                                   color: delta >= 0 ? context.colors.success : context.colors.error,
                                 ),
                               ),
                           ],
                         ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: AppSpace.sm),
                         Row(
                           children: [
-                            Text(now.label, style: serif(18, weight: 600, color: context.colors.penBlue)),
-                            const SizedBox(width: 10),
+                            Text(now.label, style: AppType.enBody(weight: 600, color: context.colors.penBlue)),
+                            const SizedBox(width: AppSpace.sm),
                             Expanded(
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(4),
@@ -241,24 +253,24 @@ class _CompleteScreenState extends ConsumerState<CompleteScreen> {
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 10),
-                            Text(now.next.label, style: serif(18, color: context.colors.ink2)),
+                            const SizedBox(width: AppSpace.sm),
+                            Text(now.next.label, style: AppType.enBody(color: context.colors.ink2)),
                           ],
                         ),
                         if (before.step < now.step) ...[
-                          const SizedBox(height: 10),
+                          const SizedBox(height: AppSpace.sm),
                           Text(
                             '레벨 업! ${before.label} → ${now.label}',
-                            style: sans(13, weight: FontWeight.w700, color: context.colors.success),
+                            style: AppType.callout(weight: FontWeight.w700, color: context.colors.success),
                           ),
                         ],
                       ],
                     ),
                   ),
-                  if (_askReminder) ...[const SizedBox(height: 12), const _ReminderSuggestion()],
-                  const SizedBox(height: 12),
+                  if (_askReminder) ...[const SizedBox(height: AppSpace.md), const _ReminderSuggestion()],
+                  const SizedBox(height: AppSpace.md),
                   Container(
-                    padding: const EdgeInsets.all(18),
+                    padding: const EdgeInsets.all(AppSpace.lg),
                     decoration: BoxDecoration(
                       color: context.colors.penBlueTint,
                       borderRadius: BorderRadius.circular(AppRadius.card),
@@ -268,12 +280,16 @@ class _CompleteScreenState extends ConsumerState<CompleteScreen> {
                       children: [
                         Text(
                           '내일은 이렇게 준비할게요',
-                          style: sans(12, weight: FontWeight.w600, color: context.colors.penBlue, letterSpacing: 0.4),
+                          style: AppType.caption(
+                            weight: FontWeight.w600,
+                            color: context.colors.penBlue,
+                            letterSpacing: 0.4,
+                          ),
                         ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: AppSpace.sm),
                         for (final r in s.lastAdjustmentReasons)
                           Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
+                            padding: const EdgeInsets.only(bottom: AppSpace.sm),
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -281,8 +297,8 @@ class _CompleteScreenState extends ConsumerState<CompleteScreen> {
                                   padding: EdgeInsets.only(top: 2),
                                   child: Icon(Icons.north_east_rounded, size: 16, color: context.colors.penBlue),
                                 ),
-                                const SizedBox(width: 10),
-                                Expanded(child: Text(r, style: sans(14, height: 1.55))),
+                                const SizedBox(width: AppSpace.sm),
+                                Expanded(child: Text(r, style: AppType.callout(height: 1.55))),
                               ],
                             ),
                           ),
@@ -318,29 +334,6 @@ class _CompleteScreenState extends ConsumerState<CompleteScreen> {
   }
 }
 
-class _Stat extends StatelessWidget {
-  const _Stat({required this.value, required this.label});
-  final String value;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: PaperCard(
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
-        radius: 16,
-        child: Column(
-          children: [
-            Text(value, style: serif(26, weight: 500)),
-            const SizedBox(height: 2),
-            Text(label, style: sans(12, color: context.colors.ink2)),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 /// 첫 완료 때: 내일 몇 시에 알려 줄지 바로 고르게 한다 (동기가 가장 높은 순간)
 class _ReminderSuggestion extends ConsumerStatefulWidget {
   const _ReminderSuggestion();
@@ -361,14 +354,14 @@ class _ReminderSuggestionState extends ConsumerState<_ReminderSuggestion> {
   @override
   Widget build(BuildContext context) {
     return PaperCard(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(AppSpace.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('내일 몇 시에 알려 드릴까요?', style: sans(15, weight: FontWeight.w700)),
-          const SizedBox(height: 10),
+          Text('내일 몇 시에 알려 드릴까요?', style: AppType.body(weight: FontWeight.w700)),
+          const SizedBox(height: AppSpace.sm),
           if (_message != null)
-            Text(_message!, style: sans(14, color: context.colors.ink2))
+            Text(_message!, style: AppType.callout(color: context.colors.ink2))
           else
             Wrap(
               spacing: 8,
@@ -378,14 +371,14 @@ class _ReminderSuggestionState extends ConsumerState<_ReminderSuggestion> {
                   ActionChip(
                     label: Text(
                       formatMinutes(m),
-                      style: sans(14, weight: FontWeight.w500, color: context.colors.ink),
+                      style: AppType.callout(weight: FontWeight.w500, color: context.colors.ink),
                     ),
                     backgroundColor: context.colors.paper,
                     side: BorderSide(color: context.colors.line),
                     onPressed: () => _pick(m),
                   ),
                 ActionChip(
-                  label: Text('괜찮아요', style: sans(14, color: context.colors.ink2)),
+                  label: Text('괜찮아요', style: AppType.callout(color: context.colors.ink2)),
                   backgroundColor: context.colors.paper,
                   side: BorderSide(color: context.colors.line),
                   onPressed: () => setState(() => _message = '알림은 설정에서 언제든 켤 수 있어요.'),

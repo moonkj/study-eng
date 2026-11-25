@@ -57,14 +57,14 @@ class _RecallQuestionState extends State<RecallQuestion> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         PaperCard(
-          padding: const EdgeInsets.all(18),
+          padding: const EdgeInsets.all(AppSpace.lg),
           child: englishSemantics(
             // 스크린리더에는 빈칸을 '첫 글자 ○로 시작하는 빈칸'처럼 읽히게
             clue.replaceAll(RegExp(r'(\w)_+'), r'$1 빈칸'),
-            Text(clue, style: serif(21, height: 1.45, letterSpacing: 0.2)),
+            Text(clue, style: AppType.enTitle(weight: 400, height: 1.45, letterSpacing: 0.2)),
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpace.lg),
         TextField(
           controller: _controller,
           enabled: !widget.answered && !_checking,
@@ -76,61 +76,61 @@ class _RecallQuestionState extends State<RecallQuestion> {
           textInputAction: TextInputAction.done,
           onSubmitted: (_) => _submit(),
           onChanged: (_) => setState(() {}),
-          style: serif(20),
+          style: AppType.enTitle(weight: 400),
           decoration: InputDecoration(
             labelText: '빈칸에 들어갈 영어',
             hintText: '첫 글자를 보고 떠올려 보세요',
             filled: true,
             fillColor: context.colors.card,
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.row)),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(AppRadius.row),
               borderSide: BorderSide(color: context.colors.line),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(AppRadius.row),
               borderSide: BorderSide(color: context.colors.ink, width: 1.5),
             ),
           ),
         ),
         if (!widget.answered && _checking) ...[
-          const SizedBox(height: 14),
+          const SizedBox(height: AppSpace.lg),
           PaperCard(
             color: context.colors.sand,
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(AppSpace.lg),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   '정답',
-                  style: sans(12, weight: FontWeight.w600, color: context.colors.ink2),
+                  style: AppType.caption(weight: FontWeight.w600, color: context.colors.ink2),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: AppSpace.xs),
                 englishSemantics(
                   widget.item.choices.first,
-                  Text(widget.item.choices.first, style: serif(22, weight: 600)),
+                  Text(widget.item.choices.first, style: AppType.enTitle(weight: 600)),
                 ),
-                const SizedBox(height: 6),
-                Text('떠올린 답과 같았나요? 스스로 채점한 문제는 점수에 넣지 않아요.', style: sans(13, color: context.colors.ink2)),
+                const SizedBox(height: AppSpace.sm),
+                Text('떠올린 답과 같았나요? 스스로 채점한 문제는 점수에 넣지 않아요.', style: AppType.caption(color: context.colors.ink2)),
               ],
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.md),
           Row(
             children: [
               Expanded(
                 child: OutlinedButton(onPressed: () => widget.onSelfGrade(false), child: const Text('틀렸어요')),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpace.sm),
               Expanded(
                 child: FilledButton(onPressed: () => widget.onSelfGrade(true), child: const Text('맞았어요')),
               ),
             ],
           ),
         ] else if (!widget.answered) ...[
-          const SizedBox(height: 14),
+          const SizedBox(height: AppSpace.lg),
           FilledButton(onPressed: _controller.text.trim().isEmpty ? null : _submit, child: const Text('확인')),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpace.xs),
           TextButton(
             onPressed: () {
               FocusScope.of(context).unfocus();

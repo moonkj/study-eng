@@ -50,16 +50,16 @@ class _DialogueScreenState extends ConsumerState<DialogueScreen> with StudyScree
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(8, 8, 20, 0),
+              padding: const EdgeInsets.fromLTRB(AppSpace.sm, AppSpace.sm, AppSpace.xl, 0),
               child: Row(
                 children: [
                   IconButton(tooltip: '닫기', onPressed: () => popOrHome(context), icon: const Icon(Icons.close_rounded)),
-                  const SizedBox(width: 4),
+                  const SizedBox(width: AppSpace.xs),
                   Expanded(
                     child: Text(
                       d == null ? '오늘의 대화' : '${d.title} · ${d.episode}화',
                       overflow: TextOverflow.ellipsis,
-                      style: sans(17, weight: FontWeight.w700),
+                      style: AppType.headline(weight: FontWeight.w700),
                     ),
                   ),
                 ],
@@ -68,13 +68,13 @@ class _DialogueScreenState extends ConsumerState<DialogueScreen> with StudyScree
             Expanded(
               child: d == null
                   ? Center(
-                      child: Text('오늘은 대화가 없어요', style: sans(14, color: context.colors.ink2)),
+                      child: Text('오늘은 대화가 없어요', style: AppType.callout(color: context.colors.ink2)),
                     )
                   : ListView(
-                      padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+                      padding: const EdgeInsets.fromLTRB(AppSpace.xl, AppSpace.md, AppSpace.xl, AppSpace.xl),
                       children: [
-                        Text('오늘 표현이 대화 속에서 어떻게 쓰이는지 들어 보세요', style: sans(13, color: context.colors.ink2)),
-                        const SizedBox(height: 14),
+                        Text('오늘 표현이 대화 속에서 어떻게 쓰이는지 들어 보세요', style: AppType.caption(color: context.colors.ink2)),
+                        const SizedBox(height: AppSpace.lg),
                         for (var i = 0; i < d.lines.length; i++)
                           _Line(
                             line: d.lines[i],
@@ -89,7 +89,7 @@ class _DialogueScreenState extends ConsumerState<DialogueScreen> with StudyScree
             ),
             if (d != null)
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+                padding: const EdgeInsets.fromLTRB(AppSpace.xl, AppSpace.sm, AppSpace.xl, AppSpace.lg),
                 child: Row(
                   children: [
                     Expanded(
@@ -98,7 +98,7 @@ class _DialogueScreenState extends ConsumerState<DialogueScreen> with StudyScree
                         child: Text(_showKo ? '뜻 가리기' : '뜻 보기'),
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AppSpace.sm),
                     Expanded(
                       child: FilledButton.icon(
                         onPressed: () => _playAll(d),
@@ -140,35 +140,35 @@ class _Line extends StatelessWidget {
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 520),
         child: Padding(
-          padding: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.only(bottom: AppSpace.sm),
           child: Column(
             crossAxisAlignment: right ? CrossAxisAlignment.end : CrossAxisAlignment.start,
             children: [
               Text(
                 line.speaker,
-                style: sans(12, weight: FontWeight.w600, color: context.colors.ink2),
+                style: AppType.caption(weight: FontWeight.w600, color: context.colors.ink2),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: AppSpace.xs),
               Material(
                 color: playing ? context.colors.penBlueTint : (right ? context.colors.sand : context.colors.card),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(AppRadius.row),
                   side: BorderSide(color: playing ? context.colors.penBlue : context.colors.line),
                 ),
                 child: InkWell(
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(AppRadius.row),
                   onTap: onListen,
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+                    padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.sm, AppSpace.lg, AppSpace.sm),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         hl == null
-                            ? englishSemantics(line.en, Text(line.en, style: serif(17, height: 1.4)))
-                            : HighlightText(line.en, highlight: hl, style: serif(17, height: 1.4)),
+                            ? englishSemantics(line.en, Text(line.en, style: AppType.enBody(height: 1.4)))
+                            : HighlightText(line.en, highlight: hl, style: AppType.enBody(height: 1.4)),
                         if (showKo) ...[
-                          const SizedBox(height: 4),
-                          Text(line.ko, style: sans(13, color: context.colors.ink2)),
+                          const SizedBox(height: AppSpace.xs),
+                          Text(line.ko, style: AppType.caption(color: context.colors.ink2)),
                         ],
                       ],
                     ),

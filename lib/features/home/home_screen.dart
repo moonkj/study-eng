@@ -48,12 +48,12 @@ class HomeScreen extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(koreanDate(s.now), style: sans(13, color: context.colors.ink2, letterSpacing: 0.2)),
-              const SizedBox(height: 4),
-              Text(greeting(now), style: sans(26, weight: FontWeight.w700, letterSpacing: -0.5)),
+              Text(koreanDate(s.now), style: AppType.caption(color: context.colors.ink2, letterSpacing: 0.2)),
+              const SizedBox(height: AppSpace.xs),
+              Text(greeting(now), style: AppType.title1(weight: FontWeight.w700, letterSpacing: -0.5)),
               if (!s.allDone && s.restsUsedRecently > 0) ...[
-                const SizedBox(height: 4),
-                Text('쉬는 날 ${s.restsUsedRecently}개로 연속 기록을 지켰어요', style: sans(13, color: context.colors.ink2)),
+                const SizedBox(height: AppSpace.xs),
+                Text('쉬는 날 ${s.restsUsedRecently}개로 연속 기록을 지켰어요', style: AppType.caption(color: context.colors.ink2)),
               ],
             ],
           ),
@@ -71,37 +71,41 @@ class HomeScreen extends ConsumerWidget {
     final heroCard = PaperCard(
       elevated: true,
       radius: AppRadius.hero,
-      padding: const EdgeInsets.fromLTRB(22, 22, 22, 20),
+      padding: const EdgeInsets.fromLTRB(AppSpace.xxl, AppSpace.xxl, AppSpace.xxl, AppSpace.xl),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Text(
-                "TODAY'S EXPRESSION",
-                style: sans(12, weight: FontWeight.w600, color: context.colors.penBlue, letterSpacing: 1),
+              Expanded(
+                child: Text(
+                  '오늘의 표현',
+                  style: AppType.caption(weight: FontWeight.w600, color: context.colors.penBlue),
+                ),
               ),
-              const Spacer(),
-              Text('1 / ${s.pack.expressions.length}', style: sans(12, color: context.colors.ink2)),
+              Text('1 / ${s.pack.expressions.length}', style: AppType.caption(color: context.colors.ink2)),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: AppSpace.lg),
           HighlightText(
             exp.pattern,
             highlight: exp.highlight,
-            style: serif(30, weight: 500, height: 1.15, letterSpacing: -0.3),
+            style: AppType.enHero(weight: 500, height: 1.15, letterSpacing: -0.3),
           ),
-          const SizedBox(height: 6),
-          Text(exp.meaning, style: sans(15, color: context.colors.ink2)),
-          const SizedBox(height: 14),
+          const SizedBox(height: AppSpace.sm),
+          Text(exp.meaning, style: AppType.body(color: context.colors.ink2)),
+          const SizedBox(height: AppSpace.lg),
           const Divider(),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.md),
           Row(
             children: [
               Expanded(
                 child: englishSemantics(
                   exp.examples.first.en,
-                  Text('"${exp.examples.first.en}"', style: serif(15, italic: true, color: context.colors.inkSoft)),
+                  Text(
+                    '"${exp.examples.first.en}"',
+                    style: AppType.enCallout(italic: true, color: context.colors.inkSoft),
+                  ),
                 ),
               ),
               RoundIconButton(
@@ -118,30 +122,22 @@ class HomeScreen extends ConsumerWidget {
     final routine = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.baseline,
-          textBaseline: TextBaseline.alphabetic,
-          children: [
-            Text('오늘의 루틴', style: sans(17, weight: FontWeight.w700)),
-            const Spacer(),
-            Text(
-              s.allDone
-                  ? '4/4 완료'
-                  : (s.log[dateKey(s.now)]?.mini ?? false)
-                  ? '3분 루틴으로 오늘 기록 완료 · 남은 단계도 할 수 있어요'
-                  : '남은 시간 약 ${remainingMinutes(s, toeic: toeic)}분 · ${s.done.length}/4',
-              style: sans(13, color: context.colors.ink2),
-            ),
-          ],
+        SectionHeader(
+          title: '오늘의 루틴',
+          trailing: s.allDone
+              ? '4/4 완료'
+              : (s.log[dateKey(s.now)]?.mini ?? false)
+              ? '3분 루틴으로 오늘 기록 완료 · 남은 단계도 할 수 있어요'
+              : '남은 시간 약 ${remainingMinutes(s, toeic: toeic)}분 · ${s.done.length}/4',
+          padding: const EdgeInsets.only(bottom: AppSpace.sm),
         ),
-        const SizedBox(height: 10),
         for (final step in RoutineStep.values) ...[
           _RoutineRow(step: step, state: s, toeic: toeic),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpace.sm),
         ],
         const CommuteEntry(),
         if (bank != null) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpace.sm),
           MockEntryCard(
             // 주말에는 모의고사를 권한다 (언제든 볼 수 있다)
             weekend: s.now.weekday >= DateTime.saturday,
@@ -154,25 +150,42 @@ class HomeScreen extends ConsumerWidget {
 
     final notice = s.packError != null && s.untouched
         ? Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: _FallbackNotice(
-              message: s.packError!,
-              onRetry: () => ref.read(studyProvider.notifier).loadTodayPack(),
+            padding: const EdgeInsets.only(bottom: AppSpace.md),
+            child: AppBanner(
+              icon: Icons.cloud_off_rounded,
+              message: '${s.packError!} 오늘은 기본 학습으로 진행할 수 있어요.',
+              actions: [
+                TextButton(
+                  onPressed: () => ref.read(studyProvider.notifier).loadTodayPack(),
+                  child: const Text('다시 시도'),
+                ),
+              ],
             ),
           )
         : null;
 
     final reached = s.targetReached
-        ? const Padding(padding: EdgeInsets.only(bottom: 12), child: TargetReachedCard())
+        ? const Padding(
+            padding: EdgeInsets.only(bottom: AppSpace.md),
+            child: TargetReachedCard(),
+          )
         : null;
 
     final carriedFrom = s.today.carriedFrom;
     final carryNotice = carriedFrom != null && !s.allDone
         ? Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: _CarryNotice(
-              days: daysBetween(parseDateKey(carriedFrom), s.now),
-              onNew: ref.read(studyProvider.notifier).dropCarried,
+            padding: const EdgeInsets.only(bottom: AppSpace.md),
+            child: Builder(
+              builder: (context) {
+                final days = daysBetween(parseDateKey(carriedFrom), s.now);
+                return AppBanner(
+                  icon: Icons.redo_rounded,
+                  message: '${days <= 1 ? '어제' : '$days일 전에'} 하던 루틴을 이어서 해요. 한 만큼은 기록에 남았어요.',
+                  actions: [
+                    TextButton(onPressed: ref.read(studyProvider.notifier).dropCarried, child: const Text('새로 시작')),
+                  ],
+                );
+              },
             ),
           )
         : null;
@@ -184,7 +197,7 @@ class HomeScreen extends ConsumerWidget {
           padding: readablePadding(context, maxWidth: 1040, top: 28),
           children: [
             header,
-            const SizedBox(height: 20),
+            const SizedBox(height: AppSpace.xl),
             if (s.packLoading)
               _PreparingCard(onSkip: ref.read(studyProvider.notifier).startWithFallback)
             else
@@ -199,21 +212,21 @@ class HomeScreen extends ConsumerWidget {
                         ?notice,
                         ?carryNotice,
                         ?reached,
-                        if (s.allDone) ...[_DoneCard(state: s), const SizedBox(height: 16)],
+                        if (s.allDone) ...[_DoneCard(state: s), const SizedBox(height: AppSpace.lg)],
                         heroCard,
-                        const SizedBox(height: 24),
+                        const SizedBox(height: AppSpace.xxl),
                         routine,
                       ],
                     ),
                   ),
-                  const SizedBox(width: 24),
+                  const SizedBox(width: AppSpace.xxl),
                   Expanded(
                     flex: 2,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         _LevelStrip(state: s),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: AppSpace.md),
                         _ReviewSummary(state: s),
                       ],
                     ),
@@ -233,18 +246,21 @@ class HomeScreen extends ConsumerWidget {
           const SizedBox(height: AppSpace.lg),
           if (s.packLoading) ...[
             _PreparingCard(onSkip: ref.read(studyProvider.notifier).startWithFallback),
-            const SizedBox(height: 22),
+            const SizedBox(height: AppSpace.xxl),
             _LevelStrip(state: s),
           ] else ...[
             ?notice,
             ?carryNotice,
             ?reached,
-            if (s.allDone) ...[_DoneCard(state: s), const SizedBox(height: 16)],
+            if (s.allDone) ...[_DoneCard(state: s), const SizedBox(height: AppSpace.lg)],
             heroCard,
-            const SizedBox(height: 22),
+            const SizedBox(height: AppSpace.xxl),
             routine,
-            if (s.dueCount > 0) ...[_ReviewRow(count: s.dueCount, minutes: s.reviewMinutes), const SizedBox(height: 8)],
-            const SizedBox(height: 6),
+            if (s.dueCount > 0) ...[
+              _ReviewRow(count: s.dueCount, minutes: s.reviewMinutes),
+              const SizedBox(height: AppSpace.sm),
+            ],
+            const SizedBox(height: AppSpace.sm),
             _LevelStrip(state: s),
           ],
         ],
@@ -265,23 +281,23 @@ class _ReviewSummary extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('복습', style: sans(14, weight: FontWeight.w600)),
-          const SizedBox(height: 6),
-          Text('$due장', style: serif(32, weight: 500)),
-          Text('오늘 다시 볼 카드', style: sans(13, color: context.colors.ink2)),
+          Text('복습', style: AppType.callout(weight: FontWeight.w600)),
+          const SizedBox(height: AppSpace.sm),
+          Text('$due장', style: AppType.enHero(weight: 500)),
+          Text('오늘 다시 볼 카드', style: AppType.caption(color: context.colors.ink2)),
           if (state.lastAdjustmentReasons.isNotEmpty) ...[
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpace.lg),
             const Divider(),
-            const SizedBox(height: 12),
-            Text('최근 자동 조정', style: sans(13, weight: FontWeight.w600)),
-            const SizedBox(height: 6),
+            const SizedBox(height: AppSpace.md),
+            Text('최근 자동 조정', style: AppType.callout(weight: FontWeight.w600)),
+            const SizedBox(height: AppSpace.sm),
             for (final r in state.lastAdjustmentReasons)
               Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Text('· $r', style: sans(13, color: context.colors.ink2, height: 1.5)),
+                padding: const EdgeInsets.only(bottom: AppSpace.xs),
+                child: Text('· $r', style: AppType.callout(color: context.colors.ink2, height: 1.5)),
               ),
           ],
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.md),
           Align(
             alignment: Alignment.centerLeft,
             child: due > 0
@@ -330,22 +346,22 @@ class _PreparingCardState extends State<_PreparingCard> {
     return PaperCard(
       elevated: true,
       radius: AppRadius.hero,
-      padding: const EdgeInsets.fromLTRB(22, 26, 22, 26),
+      padding: const EdgeInsets.fromLTRB(AppSpace.xxl, AppSpace.xxl, AppSpace.xxl, AppSpace.xxl),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            "TODAY'S PACK",
-            style: sans(12, weight: FontWeight.w600, color: context.colors.penBlue, letterSpacing: 1),
+            '오늘의 학습',
+            style: AppType.caption(weight: FontWeight.w600, color: context.colors.penBlue),
           ),
-          const SizedBox(height: 14),
-          Text('내 레벨에 맞춰\n오늘의 학습을 만들고 있어요', style: sans(20, weight: FontWeight.w700, height: 1.4)),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpace.lg),
+          Text('내 레벨에 맞춰\n오늘의 학습을 만들고 있어요', style: AppType.title2(weight: FontWeight.w700, height: 1.4)),
+          const SizedBox(height: AppSpace.sm),
           Text(
             _slow ? '조금 오래 걸리고 있어요. 기본 학습으로 먼저 시작해도 돼요.' : '오늘의 표현·단어·문장과 퀴즈를 만들고 있어요 · 보통 30초~1분',
-            style: sans(13, color: context.colors.ink2),
+            style: AppType.caption(color: context.colors.ink2),
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: AppSpace.lg),
           ClipRRect(
             borderRadius: BorderRadius.all(Radius.circular(2)),
             child: LinearProgressIndicator(
@@ -354,7 +370,7 @@ class _PreparingCardState extends State<_PreparingCard> {
               backgroundColor: context.colors.track,
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpace.lg),
           if (_slow)
             FilledButton(onPressed: widget.onSkip, child: const Text('기본 학습으로 바로 시작'))
           else
@@ -373,26 +389,26 @@ class _DoneCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 18, 12, 18),
+      padding: const EdgeInsets.fromLTRB(AppSpace.xl, AppSpace.lg, AppSpace.md, AppSpace.lg),
       decoration: BoxDecoration(color: context.colors.emphasis, borderRadius: BorderRadius.circular(AppRadius.card)),
       child: Row(
         children: [
           Icon(Icons.local_fire_department_rounded, color: context.colors.onEmphasisAccent),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpace.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   '오늘 루틴 완료 · ${state.streakDays}일째',
-                  style: sans(15, weight: FontWeight.w700, color: context.colors.onEmphasis),
+                  style: AppType.body(weight: FontWeight.w700, color: context.colors.onEmphasis),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: AppSpace.xs),
                 Text(
                   state.dueCount > 0
                       ? '복습 카드 ${state.dueCount}장이 기다려요. ${state.reviewMinutes}분이면 돼요.'
                       : '오늘 복습까지 끝! 내일 만나요.',
-                  style: sans(13, color: context.colors.onEmphasisSoft),
+                  style: AppType.callout(color: context.colors.onEmphasisSoft),
                 ),
               ],
             ),
@@ -417,84 +433,11 @@ class _ReviewRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: context.colors.card,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: context.colors.line),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: () => context.push('/review-session'),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 56),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            child: Row(
-              children: [
-                Icon(Icons.replay_rounded, color: context.colors.penBlue, size: 22),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Text('복습 카드 $count장', style: sans(15, weight: FontWeight.w500)),
-                ),
-                Text('$minutes분', style: sans(13, color: context.colors.ink2)),
-                Icon(Icons.chevron_right_rounded, color: context.colors.ink2, size: 20),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// 맞춤 팩을 못 받아 기본 팩으로 진행할 때
-/// 지난 학습일에 끝내지 못한 루틴을 이어서 하는 중임을 알리고, 원하면 오늘 팩으로 새로 시작하게 한다
-class _CarryNotice extends StatelessWidget {
-  const _CarryNotice({required this.days, required this.onNew});
-  final int days;
-  final VoidCallback onNew;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
-      decoration: BoxDecoration(color: context.colors.sand, borderRadius: BorderRadius.circular(16)),
-      child: Row(
-        children: [
-          Icon(Icons.redo_rounded, size: 18, color: context.colors.ink2),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              '${days <= 1 ? '어제' : '$days일 전에'} 하던 루틴을 이어서 해요. 한 만큼은 기록에 남았어요.',
-              style: sans(13, height: 1.45),
-            ),
-          ),
-          TextButton(onPressed: onNew, child: const Text('새로 시작')),
-        ],
-      ),
-    );
-  }
-}
-
-class _FallbackNotice extends StatelessWidget {
-  const _FallbackNotice({required this.message, required this.onRetry});
-  final String message;
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
-      decoration: BoxDecoration(color: context.colors.sand, borderRadius: BorderRadius.circular(16)),
-      child: Row(
-        children: [
-          Icon(Icons.cloud_off_rounded, size: 18, color: context.colors.ink2),
-          const SizedBox(width: 10),
-          Expanded(child: Text('$message 오늘은 기본 학습으로 진행할 수 있어요.', style: sans(13, height: 1.45))),
-          TextButton(onPressed: onRetry, child: const Text('다시 시도')),
-        ],
-      ),
+    return ActionRow(
+      icon: Icons.replay_rounded,
+      title: '복습 카드 $count장',
+      value: '$minutes분',
+      onTap: () => context.push('/review-session'),
     );
   }
 }
@@ -522,10 +465,10 @@ class _StreakChip extends StatelessWidget {
       excludeSemantics: true,
       child: Container(
         constraints: const BoxConstraints(minHeight: 32),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.xs),
         decoration: BoxDecoration(
           color: atRisk ? context.colors.ember : (doneToday ? context.colors.emphasis : context.colors.card),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(AppRadius.row),
           border: Border.all(
             color: atRisk ? context.colors.ember : (doneToday ? context.colors.emphasis : context.colors.line),
           ),
@@ -540,11 +483,10 @@ class _StreakChip extends StatelessWidget {
                   ? context.colors.card
                   : (doneToday ? context.colors.onEmphasisAccent : context.colors.ember),
             ),
-            const SizedBox(width: 4),
+            const SizedBox(width: AppSpace.xs),
             Text(
               label,
-              style: sans(
-                13,
+              style: AppType.callout(
                 weight: FontWeight.w600,
                 color: atRisk || doneToday ? context.colors.onEmphasis : context.colors.ink,
               ),
@@ -594,126 +536,18 @@ class _RoutineRow extends StatelessWidget {
     final done = state.done.contains(step);
     final current = state.current == step;
     final (title, sub) = _texts;
-    final number = step.index + 1;
-
-    if (current) {
-      return Material(
-        color: context.colors.emphasis,
-        borderRadius: BorderRadius.circular(16),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: () => context.push(routinePaths[step]!),
-          child: Container(
-            // 큰 글씨에서도 넘치지 않도록 최소 높이 + 세로 여백
-            constraints: const BoxConstraints(minHeight: 64),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            child: Row(
-              children: [
-                Container(
-                  width: 30,
-                  height: 30,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: context.colors.onEmphasisAccent, width: 2),
-                  ),
-                  child: Text(
-                    '$number',
-                    style: sans(13, weight: FontWeight.w700, color: context.colors.onEmphasisAccent),
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: sans(15, weight: FontWeight.w600, color: context.colors.onEmphasis),
-                      ),
-                      SizedBox(height: 6),
-                      ThinProgress(
-                        _progress,
-                        color: context.colors.onEmphasisAccent,
-                        track: context.colors.onEmphasis.withValues(alpha: 0.2),
-                      ),
-                    ],
-                  ),
-                ),
-                SizedBox(width: 12),
-                Text(
-                  _progress > 0 ? '이어서' : '시작',
-                  style: sans(13, weight: FontWeight.w600, color: context.colors.onEmphasis),
-                ),
-                Icon(Icons.chevron_right_rounded, color: context.colors.onEmphasis, size: 18),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-
-    return Material(
-      color: done ? Colors.transparent : context.colors.card,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: context.colors.line),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: () => context.push(routinePaths[step]!),
-        child: ConstrainedBox(
-          constraints: BoxConstraints(minHeight: 60),
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            child: Row(
-              children: [
-                if (done)
-                  CircleAvatar(
-                    radius: 15,
-                    backgroundColor: context.colors.success,
-                    child: Icon(Icons.check_rounded, size: 17, color: context.colors.card),
-                  )
-                else
-                  Container(
-                    width: 30,
-                    height: 30,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: context.colors.lineStrong, width: 1.5),
-                    ),
-                    child: Text(
-                      '$number',
-                      style: sans(13, weight: FontWeight.w600, color: context.colors.ink2),
-                    ),
-                  ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: done
-                            ? sans(15, weight: FontWeight.w600, color: context.colors.ink2).copyWith(
-                                decoration: TextDecoration.lineThrough,
-                                decorationColor: context.colors.lineStrong,
-                              )
-                            : sans(15, weight: FontWeight.w600),
-                      ),
-                      if (!done) Text(sub, style: sans(12, color: context.colors.ink2)),
-                    ],
-                  ),
-                ),
-                if (done) Text('완료', style: sans(12, color: context.colors.ink2)),
-              ],
-            ),
-          ),
-        ),
-      ),
+    return ActionRow(
+      number: step.index + 1,
+      title: title,
+      subtitle: sub,
+      state: done
+          ? ActionRowState.done
+          : current
+          ? ActionRowState.emphasis
+          : ActionRowState.normal,
+      progress: current ? _progress : null,
+      value: current ? (_progress > 0 ? '이어서' : '시작') : null,
+      onTap: () => context.push(routinePaths[step]!),
     );
   }
 }
@@ -727,17 +561,17 @@ class _LevelStrip extends StatelessWidget {
     final level = state.profile.overall;
     return Material(
       color: context.colors.sand,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(AppRadius.row),
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppRadius.row),
         onTap: () => context.push('/level-result'),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.lg, vertical: AppSpace.lg),
           child: Row(
             children: [
               SizedBox(
                 width: 60,
-                child: Text(level.label, style: serif(24, weight: 600, color: context.colors.penBlue)),
+                child: Text(level.label, style: AppType.enTitle(weight: 600, color: context.colors.penBlue)),
               ),
               Expanded(
                 child: Column(
@@ -747,13 +581,16 @@ class _LevelStrip extends StatelessWidget {
                       children: [
                         Text(
                           level.isMax ? '최고 단계' : '다음 단계 ${level.next.label}까지',
-                          style: sans(12, weight: FontWeight.w600),
+                          style: AppType.caption(weight: FontWeight.w600),
                         ),
                         const Spacer(),
-                        Text('${(level.progressToNext * 100).round()}%', style: sans(12, color: context.colors.ink2)),
+                        Text(
+                          '${(level.progressToNext * 100).round()}%',
+                          style: AppType.caption(color: context.colors.ink2),
+                        ),
                       ],
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: AppSpace.sm),
                     ThinProgress(
                       level.progressToNext,
                       height: 6,
