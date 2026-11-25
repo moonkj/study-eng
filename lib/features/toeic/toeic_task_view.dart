@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:flutter/semantics.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -15,6 +17,9 @@ import '../../domain/toeic_feedback.dart';
 import '../speaking/speech_input.dart';
 import 'timed_listen.dart';
 import 'toeic_task.dart';
+
+part 'toeic_phase_timer.dart';
+part 'toeic_result.dart';
 
 /// 질문 하나에 대한 내 답
 class TurnOutcome {
@@ -117,7 +122,14 @@ class _ToeicTaskViewState extends ConsumerState<ToeicTaskView> {
   final _gradeErrors = <int, String>{};
   final _grading = <int>{};
 
+  /// 결과에서 펼친 질문 번호 (하나만 펼친다, 처음엔 모두 접힘)
+  int? _openTurn;
+
+  /// '고친 걸로 다시 말하기' 로 다시 할 때 화면에 띄워 둘 고칠 것
+  _FocusFix? _focus;
+
   late final Speaker _speaker;
+  final _scroll = ScrollController();
 
   @override
   void initState() {
@@ -137,6 +149,7 @@ class _ToeicTaskViewState extends ConsumerState<ToeicTaskView> {
     _timer?.cancel();
     _listen?.stop();
     _speaker.stop();
+    _scroll.dispose();
     super.dispose();
   }
 
@@ -159,11 +172,20 @@ class _ToeicTaskViewState extends ConsumerState<ToeicTaskView> {
         _remaining--;
         if (phase == _Phase.speak) _speakElapsed++;
       });
+      _timeCue(phase);
       if (_remaining <= 0) {
         t.cancel();
         then();
       }
     });
+  }
+
+  /// 남은 10초·5초: 스크린리더로 따로 알리고, 5초에는 진동도 (live region 에는 단계 이름만 있다)
+  void _timeCue(_Phase phase) {
+    final message = _remainingAnnouncement(phase, _remaining, _total);
+    if (message == null) return;
+    SemanticsService.sendAnnouncement(View.of(context), message, TextDirection.ltr);
+    if (_remaining == _urgentAt) HapticFeedback.selectionClick();
   }
 
   void _start() {
@@ -204,6 +226,8 @@ class _ToeicTaskViewState extends ConsumerState<ToeicTaskView> {
     await _say('Begin speaking now.');
     if (!_alive(run)) return;
     await _speaker.stop();
+    // 소리를 놓쳐도 답하기 시작을 알 수 있게
+    HapticFeedback.mediumImpact();
     final turn = task.turns[_turn];
     _speakElapsed = 0;
     _lastHeardAt = 0;
@@ -228,6 +252,7 @@ class _ToeicTaskViewState extends ConsumerState<ToeicTaskView> {
   Future<void> _endSpeaking(int run) async {
     if (!_alive(run) || _phase != _Phase.speak) return;
     _timer?.cancel();
+    HapticFeedback.lightImpact();
     setState(() => _phase = _Phase.finishing);
     final heard = await (_listen?.stop() ?? Future.value(_live));
     _listen = null;
@@ -245,6 +270,7 @@ class _ToeicTaskViewState extends ConsumerState<ToeicTaskView> {
       return;
     }
     setState(() => _phase = _Phase.result);
+    _toTop();
     _gradeAll(run);
   }
 
@@ -282,7 +308,10 @@ class _ToeicTaskViewState extends ConsumerState<ToeicTaskView> {
     }
   }
 
-  void _retry() {
+  /// 같은 문항을 처음부터 다시. [focus] 가 있으면 다시 하는 동안 고칠 것을 띄워 둔다.
+  void _retry({_FocusFix? focus}) {
+    _focus = focus;
+    _openTurn = null;
     _run++;
     _timer?.cancel();
     _listen?.stop();
@@ -292,7 +321,13 @@ class _ToeicTaskViewState extends ConsumerState<ToeicTaskView> {
       _phase = _Phase.intro;
       _turn = 0;
     });
+    _toTop();
     _start();
+  }
+
+  /// 결과·다시 하기로 바뀌면 맨 위(요약 띠·타이머)부터 보이게
+  void _toTop() {
+    if (_scroll.hasClients) _scroll.jumpTo(0);
   }
 
   void _next() => widget.onComplete(List.of(_outcomes), recordOf(task, _outcomes, _grades));
@@ -304,6 +339,7 @@ class _ToeicTaskViewState extends ConsumerState<ToeicTaskView> {
       children: [
         Expanded(
           child: ListView(
+            controller: _scroll,
             padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
             children: _phase == _Phase.result ? _resultChildren(context) : _liveChildren(context),
           ),
@@ -322,7 +358,28 @@ class _ToeicTaskViewState extends ConsumerState<ToeicTaskView> {
       Text(task.directionsKo, style: sans(13, color: context.colors.ink2, height: 1.5)),
       const SizedBox(height: 16),
       if (started) ...[
-        _StatusRow(phase: _phase, remaining: _remaining, total: _total, number: turn.number),
+        _PhaseTimer(phase: _phase, remaining: _remaining, total: _total, number: turn.number),
+        const SizedBox(height: 16),
+      ],
+      if (_focus != null && !widget.exam) ...[
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: context.colors.penBlueTint,
+            borderRadius: BorderRadius.circular(AppRadius.card),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '이번에 고칠 것',
+                style: sans(12, weight: FontWeight.w600, color: context.colors.penBlue),
+              ),
+              const SizedBox(height: 4),
+              _FixLine(fix: _focus!),
+            ],
+          ),
+        ),
         const SizedBox(height: 16),
       ],
       ..._content(context),
@@ -422,13 +479,36 @@ class _ToeicTaskViewState extends ConsumerState<ToeicTaskView> {
       case _Phase.finishing:
         return const SizedBox(height: 48);
       case _Phase.result:
+        final summary = _summary(ref.read(studyProvider).toeicTarget);
+        // 목표 미달이거나 말한 시간이 짧으면 같은 문항을 고쳐서 다시 말하기가 주 버튼
+        if (summary.suggestRetry) {
+          return Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(onPressed: _next, child: const Text('다음')),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                flex: 2,
+                child: FilledButton(
+                  onPressed: () => _retry(focus: summary.fix),
+                  child: const Text('고친 걸로 다시 말하기'),
+                ),
+              ),
+            ],
+          );
+        }
         return Row(
           children: [
             Expanded(
-              child: OutlinedButton(onPressed: _retry, child: const Text('다시 하기')),
+              child: TextButton(
+                onPressed: () => _retry(focus: summary.fix),
+                child: const Text('다시 하기'),
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
+              flex: 2,
               child: FilledButton(onPressed: _next, child: const Text('다음')),
             ),
           ],
@@ -436,11 +516,72 @@ class _ToeicTaskViewState extends ConsumerState<ToeicTaskView> {
     }
   }
 
+  _ResultSummary _summary(ToeicTarget target) =>
+      _ResultSummary.of(task, _outcomes, _grades, target, grading: _grading.isNotEmpty);
+
+  /// 따라 할 답: 다듬은 답이 있으면 그것, 없으면 목표 단계 모범 답안(문장 읽기는 원문)
+  List<_ShadowAnswer> get _shadowAnswers => [
+    for (final o in _outcomes)
+      (
+        number: o.turn.number,
+        text: (_grades[o.turn.number]?.improved ?? '').trim().isNotEmpty
+            ? _grades[o.turn.number]!.improved
+            : o.turn.model,
+      ),
+  ];
+
   List<Widget> _resultChildren(BuildContext context) {
     final say = ref.read(sayProvider);
+    final target = ref.watch(studyProvider.select((s) => s.toeicTarget));
+    final summary = _summary(target);
+    final improved = _outcomes.any((o) => (_grades[o.turn.number]?.improved ?? '').trim().isNotEmpty);
     return [
       Text(task.title, style: sans(20, weight: FontWeight.w700)),
       const SizedBox(height: 12),
+      // ① 요약 띠
+      _SummaryStrip(
+        summary: summary,
+        target: target,
+        grading: _grading.isNotEmpty,
+        readAloud: task.type == ToeicTaskType.readAloud,
+      ),
+      // ② 질문별 카드 (접어 둠)
+      for (final o in _outcomes) ...[
+        const SizedBox(height: 12),
+        _TurnCard(
+          key: ValueKey('turn-${o.turn.number}'),
+          task: task,
+          outcome: o,
+          grade: _grades[o.turn.number],
+          gradeError: _gradeErrors[o.turn.number],
+          grading: _grading.contains(o.turn.number),
+          suggestions: task.suggestExpressions ? widget.suggestions : const [],
+          onPlay: (t) => say(t),
+          expanded: _openTurn == o.turn.number,
+          onToggle: () => setState(() => _openTurn = _openTurn == o.turn.number ? null : o.turn.number),
+        ),
+      ],
+      // ③ 다듬은 답 문장 단위 따라 하기 (채점이 오는 중이면 기다렸다가 다듬은 답으로)
+      if (_grading.isEmpty) ...[
+        const SizedBox(height: 16),
+        _ShadowingCard(
+          key: ValueKey('shadow-$improved'),
+          title: improved
+              ? '다듬은 답 따라 하기'
+              : task.type == ToeicTaskType.readAloud
+              ? '원문 따라 읽기'
+              : '모범 답안 따라 하기',
+          answers: _shadowAnswers,
+          say: say,
+        ),
+      ],
+      // 문항 다시 보기 (글·사진·표와 요령)
+      const SizedBox(height: 20),
+      Text(
+        '문항 다시 보기',
+        style: sans(12, weight: FontWeight.w600, color: context.colors.ink2),
+      ),
+      const SizedBox(height: 8),
       ..._content(context),
       if (task.tips.isNotEmpty) ...[
         const SizedBox(height: 12),
@@ -457,77 +598,7 @@ class _ToeicTaskViewState extends ConsumerState<ToeicTaskView> {
           style: sans(13, color: context.colors.inkSoft, height: 1.5),
         ),
       ],
-      for (final o in _outcomes) ...[
-        const SizedBox(height: 16),
-        _TurnResult(
-          task: task,
-          outcome: o,
-          grade: _grades[o.turn.number],
-          gradeError: _gradeErrors[o.turn.number],
-          grading: _grading.contains(o.turn.number),
-          suggestions: task.suggestExpressions ? widget.suggestions : const [],
-          onPlay: (t) => say(t),
-        ),
-      ],
     ];
-  }
-}
-
-class _StatusRow extends StatelessWidget {
-  const _StatusRow({required this.phase, required this.remaining, required this.total, required this.number});
-  final _Phase phase;
-  final int remaining;
-  final int total;
-  final int number;
-
-  @override
-  Widget build(BuildContext context) {
-    final (label, en) = switch (phase) {
-      _Phase.reading => ('표 읽는 시간', 'Read the information'),
-      _Phase.prep => ('준비 시간', 'Begin preparing now'),
-      _Phase.speak => ('답하기', 'Begin speaking now'),
-      _Phase.finishing => ('정리하는 중', ''),
-      _ => ('잘 들어 보세요', ''),
-    };
-    final counting = phase == _Phase.reading || phase == _Phase.prep || phase == _Phase.speak;
-    return Semantics(
-      liveRegion: true,
-      label: counting ? 'Q$number $label $remaining초 남음' : 'Q$number $label',
-      excludeSemantics: true,
-      child: Row(
-        children: [
-          SizedBox(
-            width: 64,
-            height: 64,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                SizedBox.expand(
-                  child: CircularProgressIndicator(
-                    value: counting && total > 0 ? remaining / total : null,
-                    strokeWidth: 5,
-                    backgroundColor: context.colors.muted,
-                    color: phase == _Phase.speak ? context.colors.ember : context.colors.penBlue,
-                    strokeCap: StrokeCap.round,
-                  ),
-                ),
-                if (counting) Text('$remaining', style: serif(22, weight: 600)),
-              ],
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Q$number · $label', style: sans(15, weight: FontWeight.w700)),
-                if (en.isNotEmpty) Text(en, style: serif(15, italic: true, color: context.colors.ink2)),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }
 
@@ -654,214 +725,6 @@ class _SuggestionCard extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           for (final s in suggestions) Text(s.text, style: serif(15, height: 1.4)),
-        ],
-      ),
-    );
-  }
-}
-
-class _TurnResult extends StatelessWidget {
-  const _TurnResult({
-    required this.task,
-    required this.outcome,
-    required this.grade,
-    required this.gradeError,
-    required this.grading,
-    required this.suggestions,
-    required this.onPlay,
-  });
-
-  final ToeicTask task;
-  final TurnOutcome outcome;
-  final GradeResult? grade;
-  final String? gradeError;
-  final bool grading;
-  final List<Suggestion> suggestions;
-  final void Function(String text) onPlay;
-
-  @override
-  Widget build(BuildContext context) {
-    final turn = outcome.turn;
-    final said = outcome.transcript;
-    final used = usedPhrases(said, task.keyPhrases).toSet();
-    final usedSuggestions = [
-      for (final s in suggestions)
-        if (usedPhrase(said, s.check)) s.text,
-    ];
-    final read = task.type == ToeicTaskType.readAloud && turn.reference != null && said.isNotEmpty
-        ? scoreSpeech(turn.reference!, said)
-        : null;
-    final muted = sans(13, color: context.colors.ink2, height: 1.5);
-    return PaperCard(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Q${turn.number}',
-            style: sans(13, weight: FontWeight.w700, color: context.colors.penBlue),
-          ),
-          if (turn.question != null && task.turns.length > 1) ...[
-            const SizedBox(height: 4),
-            Text(turn.question!, style: serif(16, weight: 500, height: 1.35)),
-          ],
-          const SizedBox(height: 10),
-          Text(
-            '내 답',
-            style: sans(12, weight: FontWeight.w600, color: context.colors.ink2),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            said.isEmpty ? '들린 말이 없어요.' : '"$said"',
-            style: said.isEmpty ? muted : serif(16, italic: true, height: 1.4),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            '${outcome.seconds}초 / ${turn.speakSeconds}초 동안 말함 · 단어 ${wordCount(said)}개'
-            '${read != null ? ' · 원문과 ${read.score}% 일치' : ''}',
-            style: sans(13, weight: FontWeight.w600),
-          ),
-          if (read != null && read.missed.isNotEmpty)
-            Text('다르게 들린 단어: ${read.missed.take(8).join(', ')}', style: muted),
-          if (task.keyPhrases.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            Text('핵심 표현 ${used.length}/${task.keyPhrases.length}개 사용', style: sans(12, weight: FontWeight.w600)),
-            const SizedBox(height: 6),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: [
-                for (final p in task.keyPhrases)
-                  Tag(
-                    p,
-                    icon: used.contains(p) ? Icons.check_rounded : null,
-                    color: used.contains(p) ? context.colors.success : context.colors.ink2,
-                    background: used.contains(p) ? context.colors.successTint : context.colors.sand,
-                  ),
-              ],
-            ),
-          ],
-          if (usedSuggestions.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Text('오늘 표현을 썼어요: ${usedSuggestions.join(' · ')}', style: sans(13, color: context.colors.success)),
-          ],
-          if (grading) ...[
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
-                const SizedBox(width: 8),
-                Text('채점하는 중', style: muted),
-              ],
-            ),
-          ] else if (grade != null) ...[
-            const SizedBox(height: 12),
-            _GradeCard(grade: grade!),
-          ] else if (gradeError != null) ...[
-            const SizedBox(height: 10),
-            Text(gradeError!, style: sans(13, color: context.colors.error)),
-          ],
-          if (task.type != ToeicTaskType.readAloud) ...[
-            const SizedBox(height: 12),
-            const Divider(),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    '모범 답안',
-                    style: sans(12, weight: FontWeight.w600, color: context.colors.ink2),
-                  ),
-                ),
-                RoundIconButton(
-                  icon: Icons.volume_up_rounded,
-                  label: 'Q${turn.number} 모범 답안 듣기',
-                  filled: false,
-                  onPressed: () => onPlay(turn.model),
-                ),
-              ],
-            ),
-            englishSemantics(turn.model, Text(turn.model, style: serif(16, height: 1.45))),
-          ] else ...[
-            const SizedBox(height: 10),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton.icon(
-                onPressed: () => onPlay(turn.model),
-                icon: const Icon(Icons.volume_up_rounded),
-                label: const Text('원문 듣기'),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _GradeCard extends StatelessWidget {
-  const _GradeCard({required this.grade});
-  final GradeResult grade;
-
-  @override
-  Widget build(BuildContext context) {
-    final muted = sans(13, color: context.colors.inkSoft, height: 1.55);
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: context.colors.penBlueTint, borderRadius: BorderRadius.circular(AppRadius.card)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Text('${grade.score}/${grade.maxScore}', style: serif(22, weight: 600)),
-              const SizedBox(width: 10),
-              if (grade.level.isNotEmpty) Tag(grade.level),
-              const Spacer(),
-              if (grade.targetMet != null)
-                Text(
-                  grade.targetMet! ? '목표 수준' : '목표까지 조금 더',
-                  style: sans(
-                    12,
-                    weight: FontWeight.w600,
-                    color: grade.targetMet! ? context.colors.success : context.colors.ember,
-                  ),
-                ),
-            ],
-          ),
-          if (grade.summaryKo.isNotEmpty) ...[
-            const SizedBox(height: 6),
-            Text(grade.summaryKo, style: sans(14, height: 1.55)),
-          ],
-          for (final g in grade.goodKo) Text('· $g', style: muted),
-          for (final f in grade.fixes) ...[
-            const SizedBox(height: 8),
-            Text.rich(
-              TextSpan(
-                children: [
-                  TextSpan(
-                    text: f.from,
-                    style: serif(15, color: context.colors.error),
-                  ),
-                  TextSpan(
-                    text: '  →  ',
-                    style: sans(13, color: context.colors.ink2),
-                  ),
-                  TextSpan(text: f.to, style: serif(15, weight: 600)),
-                ],
-              ),
-            ),
-            if (f.whyKo.isNotEmpty) Text(f.whyKo, style: muted),
-          ],
-          if (grade.improved.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            Text(
-              '다듬은 답',
-              style: sans(12, weight: FontWeight.w600, color: context.colors.penBlue),
-            ),
-            Text(grade.improved, style: serif(15, height: 1.45)),
-          ],
-          if (grade.nextTipKo.isNotEmpty) ...[const SizedBox(height: 8), Text('다음엔: ${grade.nextTipKo}', style: muted)],
         ],
       ),
     );
