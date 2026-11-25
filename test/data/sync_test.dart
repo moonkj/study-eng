@@ -6,6 +6,7 @@ import 'package:todaye/data/sync.dart';
 import 'package:todaye/domain/level.dart';
 import 'package:todaye/domain/study_log.dart';
 import 'package:todaye/domain/toeic_feedback.dart';
+import 'package:todaye/domain/toeic_weakness.dart';
 
 /// 서버 흉내: 버전이 맞을 때만 저장한다
 class FakeServer implements SyncClient {
@@ -39,7 +40,7 @@ SavedData _data({
   TodayProgress? today,
   int? updatedAt,
   List<MockResult> mocks = const [],
-  Map<String, Map<String, int>> toeicLog = const {},
+  ToeicLog toeicLog = const {},
 }) => SavedData(
   profile: _profile(step),
   contentStep: step,
@@ -63,7 +64,7 @@ void main() {
         today: const TodayProgress(date: '2026-11-25'),
         updatedAt: 2000,
         toeicLog: const {
-          '2026-11-25': {'info': 40},
+          '2026-11-25': {'info': ToeicDayScore(first: 40, best: 40)},
         },
       );
       final pad = _data(
@@ -72,7 +73,7 @@ void main() {
         today: const TodayProgress(date: '2026-11-24'),
         updatedAt: 1000,
         toeicLog: const {
-          '2026-11-25': {'info': 60, 'picture': 50},
+          '2026-11-25': {'info': ToeicDayScore(first: 55, best: 60), 'picture': ToeicDayScore(first: 50, best: 50)},
         },
         mocks: const [MockResult(date: '2026-11-20', level: 'IM2', target: 'IM3')],
       );
@@ -81,7 +82,11 @@ void main() {
       expect(m.log.keys.toSet(), {'2026-11-23', '2026-11-24', '2026-11-25'});
       expect(m.log['2026-11-25']!.mini, isFalse); // 정식 기록 우선
       expect(m.today!.date, '2026-11-25');
-      expect(m.toeicLog['2026-11-25'], {'info': 60, 'picture': 50});
+      // 첫 시도는 최근 저장한 쪽(아이폰 40), 최고 점수는 높은 쪽(아이패드 60)
+      expect(m.toeicLog['2026-11-25'], {
+        'info': const ToeicDayScore(first: 40, best: 60),
+        'picture': const ToeicDayScore(first: 50, best: 50),
+      });
       expect(m.mocks.length, 1);
       expect(m.updatedAt, 2000);
       expect(mergeSaved(phone, pad).contentStep, 8); // 순서와 상관없이 같은 결과

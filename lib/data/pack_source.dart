@@ -75,6 +75,7 @@ Map<String, Object?> buildPackRequest({
   SeriesState? series,
   String? topicHint,
   String? toeicTarget,
+  Map<String, Object?>? toeic,
 }) {
   final today = dateOnly(date);
   bool recent(LearnedItem i, int days) => daysBetween(parseDateKey(i.firstSeen), today) <= days;
@@ -89,6 +90,8 @@ Map<String, Object?> buildPackRequest({
     'skills': {for (final e in profile.skills.entries) e.key.name: e.value.label},
     'focusSkill': focus.name,
     'toeicTarget': ?toeicTarget,
+    // 그날 토스 세트 (묶음 유형·사진 장소·질문 주제·목표): 표현 2개·단어를 토스 사전 과제로 맞춘다
+    'toeic': ?toeic,
     'speakingSentences': focus == Skill.speaking ? 12 : 10,
     'avoid': {
       'expressions': [

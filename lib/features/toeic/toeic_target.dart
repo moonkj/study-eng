@@ -76,7 +76,8 @@ class TargetReachedCard extends ConsumerWidget {
       kind: BannerKind.success,
       icon: Icons.emoji_events_outlined,
       title: '목표 달성! 다음 목표로 올릴까요?',
-      message: '모의고사 예상 ${s.mocks.last.level} · 지금 목표 ${s.toeicTarget.label} → 다음 ${next.label} (${next.range})',
+      message:
+          '모의고사 예상 ${s.mocks.last.estimate?.label ?? s.mocks.last.level} · 지금 목표 ${s.toeicTarget.label} → 다음 ${next.label} (${next.range})',
       actions: [
         TextButton(onPressed: ref.read(studyProvider.notifier).dismissTargetSuggestion, child: const Text('괜찮아요')),
         Expanded(

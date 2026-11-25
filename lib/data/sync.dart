@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../domain/toeic_feedback.dart' show MockResult, mockKey;
+import '../domain/toeic_weakness.dart' show ToeicDayScore, ToeicLog;
 import 'store.dart';
 
 // ───────────────────────── 합치기 ─────────────────────────
@@ -29,13 +30,19 @@ SavedData mergeSaved(SavedData a, SavedData b) {
     for (final m in [...other.mocks, ...base.mocks]) mockKey(m): m,
   }.values.toList()..sort((x, y) => x.date.compareTo(y.date));
 
-  final toeicLog = <String, Map<String, int>>{};
+  // 같은 날 같은 유형: 첫 시도는 기준 쪽(없으면 다른 쪽), 최고 점수는 높은 쪽
+  final ToeicLog toeicLog = {};
   for (final src in [other.toeicLog, base.toeicLog]) {
     for (final day in src.entries) {
       final merged = toeicLog[day.key] = {...?toeicLog[day.key]};
       for (final t in day.value.entries) {
         final before = merged[t.key];
-        if (before == null || t.value > before) merged[t.key] = t.value;
+        merged[t.key] = before == null
+            ? t.value
+            : ToeicDayScore(
+                first: t.value.first ?? before.first,
+                best: t.value.best > before.best ? t.value.best : before.best,
+              );
       }
     }
   }

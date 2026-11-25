@@ -1,9 +1,11 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:todaye/app/routine_flow.dart';
 import 'package:todaye/app/study_controller.dart';
 import 'package:todaye/data/grade_source.dart';
 import 'package:todaye/data/pack_source.dart';
@@ -28,6 +30,18 @@ SavedData _saved({
   today: today,
   mocks: mocks,
 );
+
+/// 받은 팩 요청을 남기는 서버 흉내 (응답은 서버가 실제로 내보낸 JSON)
+class _RecordingSource implements PackSource {
+  final requests = <Map<String, Object?>>[];
+
+  @override
+  Future<Map<String, Object?>> fetch(Map<String, Object?> request) async {
+    requests.add(request);
+    final json = (jsonDecode(File('test/fixtures/server_pack.json').readAsStringSync()) as Map).cast<String, Object?>();
+    return {...json, 'date': request['date']};
+  }
+}
 
 ProviderContainer _container(AppStore store, {DateTime? now}) {
   final c = ProviderContainer(
@@ -161,22 +175,161 @@ void main() {
       expect(none.containsKey('toeicTarget'), isFalse);
     });
 
+    test('범위 등급은 아래 등급으로 목표 달성을 본다', () {
+      expect(meetsTarget('IM3~IH', ToeicTarget.im3), isTrue);
+      expect(meetsTarget('IM2~IM3', ToeicTarget.im3), isFalse); // 위 등급만 닿으면 아직
+      expect(meetsTarget('', ToeicTarget.im1), isFalse);
+    });
+
     test('모의고사가 목표에 닿으면 다음 목표를 제안하고, 올리거나 닫으면 사라진다', () {
       final c = _container(MemoryStore(_saved(settings: const AppSettings(toeicTarget: 140))));
       final n = c.read(studyProvider.notifier);
-      n.recordMock(const MockResult(date: '2026-11-22', level: 'IM2', target: 'IM3', scores: [60]));
-      expect(c.read(studyProvider).targetReached, isFalse);
+      n.recordMock(const MockResult(date: '2026-11-22', level: 'IM2~IM3', target: 'IM3', scores: [60], graded: true));
+      expect(c.read(studyProvider).targetReached, isFalse); // 범위 아래 등급이 목표 미만
       n.recordMock(const MockResult(date: '2026-11-22', level: 'IH', target: 'IM3', scores: [82]));
+      expect(c.read(studyProvider).targetReached, isFalse); // 기기 점수 등급으로는 제안하지 않는다
+      n.recordMock(const MockResult(date: '2026-11-22', level: 'IH~AL', target: 'IM3', scores: [82], graded: true));
       expect(c.read(studyProvider).targetReached, isTrue);
       n.dismissTargetSuggestion();
       expect(c.read(studyProvider).targetReached, isFalse);
-      n.recordMock(const MockResult(date: '2026-11-23', level: 'IM3', target: 'IM3', scores: [72]));
+      n.recordMock(const MockResult(date: '2026-11-23', level: 'IM3~IH', target: 'IM3', scores: [72], graded: true));
       expect(c.read(studyProvider).targetReached, isTrue);
       n.setToeicTarget(ToeicTarget.im3.next!);
       final s = c.read(studyProvider);
       expect(s.toeicTarget, ToeicTarget.ih);
       expect(s.contentStep, 9);
       expect(s.targetReached, isFalse); // IM3 은 새 목표 IH 에 못 미친다
+    });
+  });
+
+  group('모의고사 등급 추정 (문항 가중 + 원점수 추정표 + 범위)', () {
+    List<int?> pts(int q1to4, int q5to10, int q11) => [
+      for (var i = 0; i < 4; i++) q1to4,
+      for (var i = 0; i < 6; i++) q5to10,
+      q11,
+    ];
+
+    test('가중치: Q11·Q5-10 이 등급을 크게 가르고, 문장 읽기는 영향이 작다', () {
+      expect(mockWeights.reduce((a, b) => a + b), 21);
+      expect(weightedMockPercent(pts(3, 3, 5)), 100);
+      // 문장 읽기 두 개만 0점이어도 약간 내려갈 뿐
+      final readAloudMiss = weightedMockPercent([0, 0, 3, 3, 3, 3, 3, 3, 3, 3, 5])!;
+      final opinionMiss = weightedMockPercent([3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 0])!;
+      expect(readAloudMiss, closeTo(100 * 19 / 21, 0.01));
+      expect(opinionMiss, closeTo(100 * 17 / 21, 0.01));
+      expect(opinionMiss, lessThan(readAloudMiss));
+    });
+
+    test('한 등급이 아니라 범위로: 칸의 아래쪽 절반이면 한 단계 아래와, 위쪽 절반이면 한 단계 위와', () {
+      // IM3 전형: Q1-4 3점 · Q5-10 2~3점(여기선 3·2 섞어 2.5) · Q11 3점
+      expect(estimateMockLevel([3, 3, 3, 3, 3, 2, 3, 2, 3, 2, 3])!.label, 'IM3~IH'); // ≈ 82.9
+      expect(estimateMockLevel(pts(3, 2, 3))!.label, 'IM2~IM3'); // ≈ 73.3 (IM2 칸 위쪽)
+      expect(estimateMockLevel(pts(2, 2, 2))!.label, 'IM1~IM2'); // ≈ 61.6 (IM2 칸 아래쪽)
+      expect(estimateMockLevel(pts(3, 3, 4))!.label, 'IH~AL'); // ≈ 96.2 (AL 칸 아래쪽)
+      expect(estimateMockLevel(pts(3, 3, 5))!.label, 'AL'); // 맨 위는 한 등급
+      expect(estimateMockLevel(pts(0, 0, 0))!.label, 'NL');
+    });
+
+    test('기기 점수만 있으면(채점 원점수 없음) 등급을 내지 않는다', () {
+      expect(estimateMockLevel(List<int?>.filled(11, null)), isNull);
+      expect(estimateMockLevel(const []), isNull);
+      // Q11 과 Q8-10 채점이 실패하면(가중치 60% 미만) 내지 않는다
+      expect(estimateMockLevel([3, 3, 3, 3, 3, 3, 3, null, null, null, null]), isNull);
+      // 몇 문항만 빠지면 남은 문항으로 낸다
+      expect(estimateMockLevel([null, null, 3, 3, 3, 3, 3, 3, 3, 3, 5])!.label, 'AL');
+    });
+
+    test('저장된 결과: 예전 기록(한 등급·기기 점수)도 읽히고, 등급은 Claude 채점일 때만 보여 준다', () {
+      expect(const MockResult(date: 'd', level: 'IM3', target: 'IM3', graded: true).estimate!.label, 'IM3');
+      expect(const MockResult(date: 'd', level: 'IM3', target: 'IM3').estimate, isNull);
+      expect(const MockResult(date: 'd', level: '', target: 'IM3').estimate, isNull);
+      final m = MockResult.fromJson(
+        jsonDecode(
+          jsonEncode(
+            const MockResult(
+              date: '2026-11-25',
+              level: 'IM2~IM3',
+              target: 'IM3',
+              scores: [80, 70],
+              points: [3, null],
+              graded: true,
+            ).toJson(),
+          ),
+        ),
+      )!;
+      expect(m.points, [3, null]);
+      expect(m.estimate!.low, 'IM2');
+      expect(m.estimate!.high, 'IM3');
+      expect(m.gradedPercent(0), 100);
+      expect(m.gradedPercent(1), isNull); // 기기 점수 문항은 약점 통계에서 뺀다
+    });
+  });
+
+  group('팩-토스 정렬', () {
+    test('그날 토스 세트 정보를 팩 요청 형식으로: 묶음·사진 장소·질문 주제·목표', () {
+      final set = dailySetFor(toeicFixture, DateTime(2026, 11, 22), ToeicTarget.im3);
+      final ctx = toeicPackContext(set, ToeicTarget.ih);
+      expect(ctx['block'], set.block.name);
+      expect(ctx['target'], 'IH');
+      expect(ctx['picturePlace'], set.picture.place);
+      final topic = switch (set.block) {
+        ToeicBlock.respond => set.respond!.setting,
+        ToeicBlock.info => '${set.info!.table.title} · ${set.info!.table.subtitle}',
+        ToeicBlock.opinion => set.opinion!.question,
+      };
+      expect(ctx['topic'], topic);
+      expect(ctx.containsKey('focused'), isFalse);
+    });
+
+    test('팩 요청에 오늘 세트를, 내일 팩 미리 받기에는 내일 세트를 넣는다', () async {
+      final source = _RecordingSource();
+      final c = ProviderContainer(
+        overrides: [
+          storeProvider.overrideWithValue(MemoryStore(_saved(settings: const AppSettings(toeicTarget: 140)))),
+          clockProvider.overrideWithValue(() => DateTime(2026, 11, 22, 8)),
+          fallbackPackProvider.overrideWithValue(fixedSamplePackFor),
+          packSourceProvider.overrideWithValue(source),
+          toeicBankProvider.overrideWithValue(toeicFixture),
+        ],
+      );
+      addTearDown(c.dispose);
+      c.read(studyProvider);
+      await Future<void>.delayed(Duration.zero);
+      final today = c.read(toeicDailyProvider)!;
+      final req = source.requests.first;
+      final toeic = req['toeic'] as Map;
+      expect(req['toeicTarget'], 'IM3');
+      expect(toeic['block'], today.block.name);
+      expect(toeic['picturePlace'], today.picture.place);
+      expect(toeic['target'], 'IM3');
+      expect(toeic['topic'], isNotEmpty);
+
+      final n = c.read(studyProvider.notifier);
+      for (final step in RoutineStep.values) {
+        n.complete(step);
+      }
+      await Future<void>.delayed(Duration.zero);
+      final next = source.requests.last;
+      expect(next['date'], '2026-11-23');
+      final tomorrow = dailySetFor(toeicFixture, DateTime(2026, 11, 23), ToeicTarget.im3);
+      expect((next['toeic'] as Map)['block'], tomorrow.block.name);
+      expect((next['toeic'] as Map)['picturePlace'], tomorrow.picture.place);
+    });
+
+    test('문항 모음이 없으면 토스 정보 없이 예전처럼 요청한다', () async {
+      final source = _RecordingSource();
+      final c = ProviderContainer(
+        overrides: [
+          storeProvider.overrideWithValue(MemoryStore(_saved())),
+          clockProvider.overrideWithValue(() => DateTime(2026, 11, 22, 8)),
+          fallbackPackProvider.overrideWithValue(fixedSamplePackFor),
+          packSourceProvider.overrideWithValue(source),
+        ],
+      );
+      addTearDown(c.dispose);
+      c.read(studyProvider);
+      await Future<void>.delayed(Duration.zero);
+      expect(source.requests.single.containsKey('toeic'), isFalse);
     });
   });
 

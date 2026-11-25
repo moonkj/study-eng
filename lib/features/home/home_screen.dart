@@ -141,7 +141,7 @@ class HomeScreen extends ConsumerWidget {
           MockEntryCard(
             // 주말에는 모의고사를 권한다 (언제든 볼 수 있다)
             weekend: s.now.weekday >= DateTime.saturday,
-            last: s.mocks.isEmpty ? null : s.mocks.last.level,
+            last: s.mocks.isEmpty ? null : s.mocks.last.estimate?.label,
             onTap: () => context.push('/toeic-mock'),
           ),
         ],

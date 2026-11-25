@@ -8,6 +8,7 @@ import '../domain/level.dart';
 import '../domain/srs.dart';
 import '../domain/study_log.dart';
 import '../domain/toeic_feedback.dart';
+import '../domain/toeic_weakness.dart' show ToeicDayScore, ToeicLog;
 import 'toeic.dart' show ToeicTarget;
 import 'pack_source.dart';
 
@@ -305,8 +306,8 @@ class SavedData {
   /// 토스 모의고사 결과 (오래된 것부터, 최근 30개)
   final List<MockResult> mocks;
 
-  /// 토스 루틴 점수 (날짜 → 유형 → 점수, 최근 60일). 약점 유형을 찾는 데 쓴다.
-  final Map<String, Map<String, int>> toeicLog;
+  /// 토스 루틴 점수 (날짜 → 유형 → Claude 채점 첫 시도·최고 점수, 최근 60일). 약점 유형을 찾는 데 쓴다.
+  final ToeicLog toeicLog;
 
   /// 마지막으로 저장한 시각 (ms, 기기 간 동기화에서 어느 쪽이 최신인지 가린다). 예전 데이터는 null
   final int? updatedAt;
@@ -326,7 +327,7 @@ class SavedData {
     AppSettings? settings,
     SeriesState? Function()? series,
     List<MockResult>? mocks,
-    Map<String, Map<String, int>>? toeicLog,
+    ToeicLog? toeicLog,
     int? updatedAt,
   }) => SavedData(
     profile: profile ?? this.profile,
@@ -359,7 +360,10 @@ class SavedData {
     'settings': settings.toJson(),
     if (series != null) 'series': series!.toJson(),
     if (mocks.isNotEmpty) 'mocks': [for (final m in mocks) m.toJson()],
-    if (toeicLog.isNotEmpty) 'toeicLog': toeicLog,
+    if (toeicLog.isNotEmpty)
+      'toeicLog': {
+        for (final d in toeicLog.entries) d.key: {for (final t in d.value.entries) t.key: t.value.toJson()},
+      },
     'updatedAt': ?updatedAt,
   };
 
@@ -435,13 +439,15 @@ class SavedData {
       ),
       series: section(() => SeriesState.fromJson(j['series']), null),
       mocks: section(() => [for (final m in (j['mocks'] as List?) ?? const []) ?MockResult.fromJson(m)], const []),
+      // 예전 형식(유형 → 숫자)은 채점 여부를 알 수 없어 최고 점수로만 남긴다 (약점 계산에서 빠진다)
       toeicLog: section(
         () => {
           for (final e in ((j['toeicLog'] as Map?) ?? const {}).entries)
             if (_isDateKey(e.key) && e.value is Map)
               e.key as String: {
                 for (final t in (e.value as Map).entries)
-                  if (t.key is String && t.value is num) t.key as String: (t.value as num).toInt().clamp(0, 100),
+                  if (t.key is String && ToeicDayScore.fromJson(t.value) != null)
+                    t.key as String: ToeicDayScore.fromJson(t.value)!,
               },
         },
         const {},

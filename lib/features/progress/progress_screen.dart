@@ -391,6 +391,7 @@ class _ToeicTypesCard extends StatelessWidget {
     final stats = typeStats(state.toeicLog, state.mocks);
     final weak = weakestType(stats);
     final weakIsBlock = weak != null && blockType.containsValue(weak);
+    final growth = latestRetryGrowth(state.toeicLog);
     return PaperCard(
       padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.lg, AppSpace.lg, AppSpace.lg),
       child: Column(
@@ -398,7 +399,7 @@ class _ToeicTypesCard extends StatelessWidget {
         children: [
           Text('토스 유형별 점수', style: AppType.callout(weight: FontWeight.w600)),
           const SizedBox(height: AppSpace.xs),
-          Text('유형마다 최근 5번 평균 (루틴·모의고사)', style: AppType.caption(color: context.colors.ink2)),
+          Text('유형마다 최근 5번 평균 (Claude 채점 · 그날 첫 시도)', style: AppType.caption(color: context.colors.ink2)),
           const SizedBox(height: AppSpace.sm),
           for (final type in toeicTypeKo.keys)
             _TypeRow(name: toeicTypeKo[type]!, stat: stats[type], weak: type == weak),
@@ -409,6 +410,14 @@ class _ToeicTypesCard extends StatelessWidget {
                   ? '${toeicTypeKo[weak]}이(가) 가장 약해요. 매일 루틴에 이틀에 한 번 더 나와요.'
                   : '${toeicTypeKo[weak]}이(가) 가장 약해요. 매일 루틴에 나오니 모범 답안을 따라 말해 보세요.',
               style: AppType.callout(height: 1.5),
+            ),
+          ],
+          if (growth != null) ...[
+            const SizedBox(height: AppSpace.xs),
+            Text(
+              '${toeicTypeKo[growth.type]} 다시 해서 ${growth.first} → ${growth.best}점 '
+              '(${parseDateKey(growth.date).month}월 ${parseDateKey(growth.date).day}일)',
+              style: AppType.caption(color: context.colors.ink2, height: 1.5),
             ),
           ],
         ],
@@ -496,12 +505,15 @@ class _ToeicCard extends StatelessWidget {
             for (final m in recent)
               MockHistoryRow(
                 date: '${parseDateKey(m.date).month}월 ${parseDateKey(m.date).day}일',
-                level: m.level,
+                // 기기 점수만으로 본 모의고사는 등급 대신 '채점 필요'
+                level: m.estimate?.label ?? '채점 필요',
                 average: m.average.round(),
-                met: meetsTarget(
-                  m.level,
-                  ToeicTarget.values.firstWhere((t) => t.label == m.target, orElse: () => target),
-                ),
+                met:
+                    m.estimate != null &&
+                    meetsTarget(
+                      m.estimate!.low,
+                      ToeicTarget.values.firstWhere((t) => t.label == m.target, orElse: () => target),
+                    ),
               ),
           if (ready && recent.isNotEmpty)
             Align(
