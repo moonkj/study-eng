@@ -159,7 +159,7 @@ test("첫 응답이 규칙에 어긋나면 문제를 알려주고 한 번 더 �
   assert.equal(result.attempts, 2);
   const second = client.calls[1] as { messages: Array<{ content: string }>; model: string; fallbacks: string };
   assert.match(second.messages[0].content, /sentences 는 10개여야/);
-  assert.equal(second.model, "claude-opus-5-5");
+  assert.equal(second.model, "claude-sonnet-5-5");
   assert.equal(second.fallbacks, "default");
 });
 

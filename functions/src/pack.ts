@@ -3,7 +3,7 @@ import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 
 import { GeneratedPack, PackRequest, type ErrorType } from "./schema.js";
 
-export const MODEL = "claude-opus-5-5";
+export const MODEL = "claude-sonnet-5-5";
 
 /** 시스템 프롬프트는 매일 같게 유지해 프롬프트 캐시가 잘 맞도록 한다. */
 export const SYSTEM_PROMPT = `당신은 한국인 성인 학습자를 위한 실용 영어회화 선생님입니다.

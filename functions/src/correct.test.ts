@@ -59,7 +59,7 @@ test("교정: 고친 문장·해설·오답 유형·표현 사용 여부를 앱 
   const params = client.calls[0] as { max_tokens: number; output_config: { effort: string }; model: string; fallbacks: string };
   assert.ok(params.max_tokens <= 2000);
   assert.equal(params.output_config.effort, "low");
-  assert.equal(params.model, "claude-opus-5-5");
+  assert.equal(params.model, "claude-sonnet-5-5");
   assert.equal(params.fallbacks, "default");
 });
 
