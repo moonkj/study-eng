@@ -21,6 +21,7 @@ import '../features/review/review_session_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/speaking/speaking_screen.dart';
 import '../features/toeic/toeic_daily_screen.dart';
+import '../features/toeic/toeic_hub_screen.dart';
 import '../features/toeic/toeic_mock_screen.dart';
 import '../features/welcome/welcome_screen.dart';
 import '../features/words/words_screen.dart';
@@ -67,6 +68,8 @@ GoRouter buildRouter({String initialLocation = '/', bool Function()? isOnboarded
         _focused('/words', const WordsScreen()),
         // 예전 따라 말하기 (루틴 단계는 이제 /toeic-today)
         _focused('/speaking', const SpeakingScreen()),
+        // 토스 허브: 유형별 한 문항 연습·모의고사·내 답 모음
+        _focused('/toeic', const ToeicHubScreen()),
         _focused('/toeic-today', const ToeicDailyScreen()),
         _focused('/toeic-mock', const ToeicMockScreen()),
         _focused('/quiz', const QuizScreen()),

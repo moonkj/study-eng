@@ -515,10 +515,15 @@ class _ToeicCard extends StatelessWidget {
                       ToeicTarget.values.firstWhere((t) => t.label == m.target, orElse: () => target),
                     ),
               ),
-          if (ready && recent.isNotEmpty)
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton(onPressed: () => context.push('/toeic-mock'), child: const Text('모의고사 보기')),
+          if (ready)
+            Wrap(
+              spacing: AppSpace.sm,
+              children: [
+                // 기록이 없으면 위 빈 칸 안내에 모의고사 버튼이 있다
+                if (recent.isNotEmpty)
+                  TextButton(onPressed: () => context.push('/toeic-mock'), child: const Text('모의고사 보기')),
+                TextButton(onPressed: () => context.push('/toeic'), child: const Text('유형별로 연습하기')),
+              ],
             ),
         ],
       ),
