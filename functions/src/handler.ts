@@ -52,7 +52,7 @@ function errorResult(e: unknown, log: (msg: string, data?: unknown) => void, wha
     return { status: 503, body: { error: "temporarily unavailable, retry later" } };
   }
   if (e instanceof Anthropic.AuthenticationError) {
-    log("anthropic auth failed");
+    log("anthropic auth failed", { status: e.status, message: e.message });
     return { status: 500, body: { error: "server misconfigured" } };
   }
   if (e instanceof Anthropic.APIError) {
